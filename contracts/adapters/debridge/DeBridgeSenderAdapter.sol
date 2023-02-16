@@ -1,38 +1,49 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
 
-import "../../../../interfaces/IMessageBus.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
-import "../../interfaces/IMultiBridgeReceiver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IDeBridgeGate.sol";
+import "./interfaces/IDeBridgeReceiverAdapter.sol";
 
-contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable {
-    string public constant name = "celer";
+contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
+    /* ========== STATE VARIABLES ========== */
+
+    string public constant name = "deBridge";
     address public multiBridgeSender;
-    address public immutable msgBus;
+    IDeBridgeGate public immutable deBridgeGate;
+    uint32 public nonce;
+
     // dstChainId => receiverAdapter address
     mapping(uint256 => address) public receiverAdapters;
-    uint32 public nonce;
+
+    /* ========== EVENTS ========== */
 
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
     event MultiBridgeSenderSet(address multiBridgeSender);
+
+    /* ========== MODIFIERS ========== */
 
     modifier onlyMultiBridgeSender() {
         require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
         _;
     }
 
-    constructor(address _msgBus) {
-        msgBus = _msgBus;
+    /* ========== CONSTRUCTOR  ========== */
+
+    constructor(IDeBridgeGate _deBridgeGate) {
+        deBridgeGate = _deBridgeGate;
     }
+
+    /* ========== PUBLIC METHODS ========== */
 
     function getMessageFee(
         uint256,
-        address _to,
-        bytes calldata _data
-    ) external view override returns (uint256) {
-        return IMessageBus(msgBus).calcFee(abi.encode(bytes32(uint256(nonce)), msg.sender, _to, _data));
+        address,
+        bytes calldata
+    ) external view returns (uint256) {
+        return deBridgeGate.globalFixedNativeFee();
     }
 
     function dispatchMessage(
@@ -41,16 +52,28 @@ contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable {
         bytes calldata _data
     ) external payable override onlyMultiBridgeSender returns (bytes32) {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
+        address receiver = receiverAdapters[_toChainId];
         bytes32 msgId = bytes32(uint256(nonce));
-        IMessageBus(msgBus).sendMessage{value: msg.value}(
-            receiverAdapters[_toChainId],
-            _toChainId,
-            abi.encode(msgId, msg.sender, _to, _data)
+        bytes memory executeMethodData = abi.encodeWithSelector(
+            IDeBridgeReceiverAdapter.executeMessage.selector,
+            msg.sender,
+            _to,
+            _data,
+            msgId
         );
+
+        deBridgeGate.sendMessage{value: msg.value}(
+            _toChainId, //_dstChainId,
+            abi.encodePacked(receiver), //_targetContractAddress
+            executeMethodData //_targetContractCalldata,
+        );
+
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
         nonce++;
         return msgId;
     }
+
+    /* ========== ADMIN METHODS ========== */
 
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
         external

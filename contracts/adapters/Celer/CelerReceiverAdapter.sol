@@ -3,7 +3,8 @@
 pragma solidity 0.8.17;
 
 import "./safeguard/MessageAppPauser.sol";
-import "../../interfaces/IMultiBridgeReceiver.sol";
+import "./libraries/Utils.sol";
+import "../../interfaces/IBridgeReceiverAdapter.sol";
 import "../../MessageStruct.sol";
 
 interface IMessageReceiverApp {
@@ -28,10 +29,13 @@ interface IMessageReceiverApp {
     ) external payable returns (ExecutionStatus);
 }
 
-contract CelerReceiverAdapter is MessageAppPauser, IMessageReceiverApp {
-    mapping(uint64 => address) public senderAdapters;
+contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMessageReceiverApp {
+    string constant ABORT_PREFIX = "MSG::ABORT:";
+    mapping(uint256 => address) public senderAdapters;
     address public immutable msgBus;
-    address public multiBridgeReceiver;
+    mapping(bytes32 => bool) public executedMessages;
+
+    event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
 
     modifier onlyMessageBus() {
         require(msg.sender == msgBus, "caller is not message bus");
@@ -50,23 +54,42 @@ contract CelerReceiverAdapter is MessageAppPauser, IMessageReceiverApp {
         bytes calldata _message,
         address // executor
     ) external payable override onlyMessageBus whenNotMsgPaused returns (ExecutionStatus) {
-        MessageStruct.Message memory message = abi.decode(_message, (MessageStruct.Message));
-        require(_srcContract == senderAdapters[_srcChainId], "not allowed message sender");
-        IMultiBridgeReceiver(multiBridgeReceiver).receiveMessage(message);
-        return ExecutionStatus.Success;
-    }
-
-    function updateSenderAdapter(
-        uint64[] calldata _srcChainIds,
-        address[] calldata _senderAdapters
-    ) external onlyOwner {
-        require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _srcChainIds.length; i++) {
-            senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
+        (bytes32 msgId, address multiBridgeSender, address multiBridgeReceiver, bytes memory data) = abi.decode(
+            _message,
+            (bytes32, address, address, bytes)
+        );
+        require(_srcContract == senderAdapters[uint256(_srcChainId)], "not allowed message sender");
+        if (executedMessages[msgId]) {
+            revert MessageIdAlreadyExecuted(msgId);
+        } else {
+            executedMessages[msgId] = true;
+        }
+        (bool ok, bytes memory lowLevelData) = multiBridgeReceiver.call(
+            abi.encodePacked(data, msgId, uint256(_srcChainId), multiBridgeSender)
+        );
+        if (!ok) {
+            string memory reason = Utils.getRevertMsg(lowLevelData);
+            revert(
+                string.concat(
+                    ABORT_PREFIX,
+                    string(abi.encodeWithSelector(MessageFailure.selector, msgId, bytes(reason)))
+                )
+            );
+        } else {
+            emit MessageIdExecuted(uint256(_srcChainId), msgId);
+            return ExecutionStatus.Success;
         }
     }
 
-    function setMultiBridgeReceiver(address _multiBridgeReceiver) external onlyOwner {
-        multiBridgeReceiver = _multiBridgeReceiver;
+    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
+        external
+        override
+        onlyOwner
+    {
+        require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
+        for (uint256 i = 0; i < _srcChainIds.length; i++) {
+            senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
+            emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
+        }
     }
 }
