@@ -1,3 +1,5 @@
+> **This is a temporary implementation of EIP5164, does not represent the final MultiBridge resolution**
+
 # Send Cross-Chain Messages through Multiple Bridges
 
 This is a solution for cross-chain message passing without vendor lock-in and with enhanced security beyond any single bridge.
