@@ -15,6 +15,7 @@ contract MultiBridgeSender {
 
     event MultiBridgeMsgSent(uint32 nonce, uint64 dstChainId, address target, bytes callData, address[] senderAdapters);
     event SenderAdapterUpdated(address senderAdapter, bool add); // add being false indicates removal of the adapter
+    event ErrorSendMessage(address senderAdapters, MessageStruct.Message message);
 
     modifier onlyCaller() {
         require(msg.sender == caller, "not caller");
@@ -37,7 +38,11 @@ contract MultiBridgeSender {
      * @param _target is the contract address on the destination chain.
      * @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData)).
      */
-    function remoteCall(uint64 _dstChainId, address _target, bytes calldata _callData) external payable onlyCaller {
+    function remoteCall(
+        uint64 _dstChainId,
+        address _target,
+        bytes calldata _callData
+    ) external payable onlyCaller {
         MessageStruct.Message memory message = MessageStruct.Message(
             uint64(block.chainid),
             _dstChainId,
@@ -50,8 +55,12 @@ contract MultiBridgeSender {
         // send copies of the message through multiple bridges
         for (uint256 i = 0; i < senderAdapters.length; i++) {
             uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(message);
-            totalFee += fee;
-            IBridgeSenderAdapter(senderAdapters[i]).sendMessage{value: fee}(message);
+            // if one bridge is paused it shouldn't halt the process
+            try IBridgeSenderAdapter(senderAdapters[i]).sendMessage{value: fee}(message) {
+                totalFee += fee;
+            } catch {
+                emit ErrorSendMessage(senderAdapters[i], message);
+            }
         }
         emit MultiBridgeMsgSent(nonce, _dstChainId, _target, _callData, senderAdapters);
         nonce++;
