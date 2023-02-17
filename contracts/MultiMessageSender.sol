@@ -3,7 +3,7 @@
 pragma solidity >=0.8.9;
 
 import "./interfaces/IBridgeSenderAdapter.sol";
-import "./interfaces/IMultiBridgeReceiver.sol";
+import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 
 contract MultiBridgeSender {
