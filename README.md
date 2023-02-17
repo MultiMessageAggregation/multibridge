@@ -11,7 +11,7 @@ The current solution is designed for messages being sent from one source chain t
 
 ### Send message on source chain
 
-To send a message to execute a remote call on the destination chain, sender on the source chain should call [`remoteCall()`](https://github.com/celer-network/multibridge/blob/cb35235b32b638d1f6fb8e5a8a78571516b40954/contracts/MultiBridgeSender.sol#L43-L87) of `MultiBridgeSender`, which invokes `sendMessage()` of every bridge sender adapter to send messages via different message bridges.
+To send a message to execute a remote call on the destination chain, sender on the source chain should call [`remoteCall()`](https://github.com/celer-network/multibridge/blob/cb35235b32b638d1f6fb8e5a8a78571516b40954/contracts/MultiBridgeSender.sol#L43-L87) of `MultiBridgeSender`, which invokes `dispatchMessage()` of every bridge sender adapter to send messages via different message bridges.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐
@@ -64,7 +64,7 @@ The message execution will invoke a function call according to the message conte
 Below are steps to add a new bridge (e.g., Bridge4) by the dApp community.
 
 1. Bridge4 provider should implement and deploy Bridge4 adapters on the source chain and all destination chains. The adapter contracts should meet the following requirements.
-   - On the source chain, the sender adapter should only accept `sendMessage()` call from `MultiBridgeSender`.
+   - On the source chain, the sender adapter should only accept `dispatchMessage()` call from `MultiBridgeSender`.
    - On the destination chain, the receiver adapter should only accept messages sent from the Bridge4 sender adapter on the source chain, and then call `receiveMessage()` of `MultiBridgeReceiver` for each valid message.
    - Renounce any ownership or special roles of the adapter contracts after initial setup.
 2. Bridge4 provider deploys the adapter contracts and makes them open source. The dApp community should review the code and check if the requirements above are met.

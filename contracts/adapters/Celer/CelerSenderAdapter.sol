@@ -18,6 +18,9 @@ contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable {
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
     event MultiBridgeSenderSet(address multiBridgeSender);
 
+    event ReceiverAdapterUpdated(uint64 dstChainId, address receiverAdapter);
+    event MultiBridgeSenderSet(address multiBridgeSender);
+
     modifier onlyMultiBridgeSender() {
         require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
         _;
