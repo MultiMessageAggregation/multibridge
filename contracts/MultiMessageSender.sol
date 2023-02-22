@@ -49,6 +49,7 @@ contract MultiBridgeSender {
         MessageStruct.Message memory message = MessageStruct.Message(
             uint64(block.chainid),
             _dstChainId,
+            address(this),
             nonce,
             _target,
             _callData,

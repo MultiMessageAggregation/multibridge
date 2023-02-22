@@ -17,6 +17,9 @@ contract MultiBridgeReceiver is IMultiMessageReceiver, Ownable {
     // total power of all bridge adapters
     uint64 public totalPower;
 
+    // address of the source chain governance sender
+    address public srcGovernance;
+
     struct MsgInfo {
         bool executed;
         mapping(address => bool) from; // bridge receiver adapters that has already delivered this message.
@@ -67,9 +70,12 @@ contract MultiBridgeReceiver is IMultiMessageReceiver, Ownable {
      * according to the message content.
      */
     function receiveMessage(MessageStruct.Message calldata _message) external override onlyReceiverAdapter {
+        require(_message.srcAddress == srcGovernance, "message did not originate from governance")
+
         bytes32 msgId = getMsgId(_message);
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(msgInfo.from[msg.sender] == false, "already received from this bridge adapter");
+        
         msgInfo.from[msg.sender] = true;
         emit SingleBridgeMsgReceived(_message.srcChainId, _message.bridgeName, _message.nonce, msg.sender);
 
