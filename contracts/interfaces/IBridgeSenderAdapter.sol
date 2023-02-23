@@ -24,11 +24,6 @@ interface IBridgeSenderAdapter is SingleMessageDispatcher {
         bytes calldata data
     ) external view returns (uint256);
 
-    //    /**
-    //     * @dev Send a MessageStruct.Message through this message bridge.
-    //     */
-    //    function sendMessage(MessageStruct.Message memory _message) external payable;
-
     /**
      * @dev Owner update receiver adapter address on dst chain.
      */

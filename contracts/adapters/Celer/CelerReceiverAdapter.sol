@@ -37,6 +37,9 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
 
     event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
 
+    event SenderAdapterUpdated(uint64 srcChainId, address senderAdapter);
+    event MultiBridgeReceiverSet(address multiBridgeReceiver);
+
     modifier onlyMessageBus() {
         require(msg.sender == msgBus, "caller is not message bus");
         _;

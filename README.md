@@ -1,4 +1,8 @@
+
 # Multi-Message Aggregation (MMA) Design
+
+> **This is a temporary implementation of EIP5164, does not represent the final MultiBridge resolution**
+
 
 Multi-Message Aggregation (MMA) is a solution for cross-chain message passing without vendor lock-in and enhanced security beyond any single bridge.
 **A message with multiple copies is sent through different bridges to the destination chains, and will only be executed at the destination chain when the same message has been delivered by a quorum of different bridges.**
@@ -9,7 +13,9 @@ The current solution is designed for messages being sent from one source chain t
 
 ### High-level example
 
+
 Assume, we use 3 bridges to relay governance message from Ethereum mainnet to a destination chain. (This number can be changed during actual deployment or via a later governance vote.)
+
 
 On the destination chain, if 2 of the 3 bridges agree with each other, we would consider the message.
 
@@ -81,8 +87,10 @@ The message execution will invoke a function call according to the message conte
 Below are steps to add a new bridge (e.g., Bridge4) by governance community.
 
 1. Bridge4 provider should implement and deploy Bridge4 adapters on the source chain and all destination chains. The adapter contracts should meet the following requirements.
+
    - On the source chain, the sender adapter should only accept `dispatchMessage()` call from `MultiMessageSender`.
    - On the destination chain, the receiver adapter should only accept messages sent from the Bridge4 sender adapter on the source chain, and then call `receiveMessage()` of `MultiMessageReceiver` for each valid message.
+
    - Renounce any ownership or special roles of the adapter contracts after initial setup.
 2. Bridge4 provider deploys the adapter contracts and makes them open source. The dApp community should review the code and check if the requirements above are met.
 3. dApp contract (`Caller`) on the source chain adds the new Bridge4 receiver adapter to `MultiMessageReceiver` on the destination chain by calling the [`remoteCall()`](https://github.com/celer-network/multibridge/blob/cb35235b32b638d1f6fb8e5a8a78571516b40954/contracts/MultiMessageSender.sol#L43-L87) function of `MultiMessageSender`, with arguments to call [`updateReceiverAdapter()`](https://github.com/celer-network/multibridge/blob/cb35235b32b638d1f6fb8e5a8a78571516b40954/contracts/MultiMessageReceiver.sol#L84-L89) of the `MultiMessageReceiver` on the destination chain.
