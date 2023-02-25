@@ -2,11 +2,11 @@
 
 pragma solidity >=0.8.9;
 
-import "./interfaces/IMultiBridgeReceiver.sol";
+import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
+contract MultiBridgeReceiver is IMultiMessageReceiver, Ownable {
     uint256 public constant THRESHOLD_DECIMAL = 100;
     // minimum accumulated power precentage for each message to be executed
     uint64 public quorumThreshold;
@@ -16,6 +16,9 @@ contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
     mapping(address => uint64) public receiverAdapterPowers;
     // total power of all bridge adapters
     uint64 public totalPower;
+
+    // address of the source chain governance sender
+    address public srcGovernance;
 
     struct MsgInfo {
         bool executed;
@@ -67,9 +70,12 @@ contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
      * according to the message content.
      */
     function receiveMessage(MessageStruct.Message calldata _message) external override onlyReceiverAdapter {
+        require(_message.srcAddress == srcGovernance, "message did not originate from governance")
+
         bytes32 msgId = getMsgId(_message);
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(msgInfo.from[msg.sender] == false, "already received from this bridge adapter");
+        
         msgInfo.from[msg.sender] = true;
         emit SingleBridgeMsgReceived(_message.srcChainId, _message.bridgeName, _message.nonce, msg.sender);
 
