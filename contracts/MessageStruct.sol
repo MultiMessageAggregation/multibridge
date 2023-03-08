@@ -17,6 +17,7 @@ library MessageStruct {
     struct Message {
         uint64 srcChainId;
         uint64 dstChainId;
+        address srcAddress;
         uint32 nonce;
         address target;
         bytes callData;
