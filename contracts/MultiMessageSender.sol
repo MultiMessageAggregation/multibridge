@@ -6,7 +6,7 @@ import "./interfaces/IBridgeSenderAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 
-contract MultiBridgeSender {
+contract MultiMessageSender {
     // List of bridge sender adapters
     address[] public senderAdapters;
     // The dApp contract that can use this multi-bridge sender for cross-chain remoteCall.

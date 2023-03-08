@@ -6,7 +6,7 @@ import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MultiBridgeReceiver is IMultiMessageReceiver, Ownable {
+contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
     uint256 public constant THRESHOLD_DECIMAL = 100;
     // minimum accumulated power precentage for each message to be executed
     uint64 public quorumThreshold;
