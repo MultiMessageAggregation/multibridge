@@ -1,18 +1,18 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-only
 
 pragma solidity 0.8.17;
 
 import "../../interfaces/IBridgeSenderAdapter.sol";
+import "./interfaces/IRouterGateway.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IDeBridgeGate.sol";
-import "./interfaces/IDeBridgeReceiverAdapter.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
+contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
     /* ========== STATE VARIABLES ========== */
 
-    string public constant name = "deBridge";
+    string public constant name = "router";
     address public multiBridgeSender;
-    IDeBridgeGate public immutable deBridgeGate;
+    IRouterGateway public immutable routerGateway;
     uint32 public nonce;
 
     // dstChainId => receiverAdapter address
@@ -32,18 +32,18 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
 
     /* ========== CONSTRUCTOR  ========== */
 
-    constructor(IDeBridgeGate _deBridgeGate) {
-        deBridgeGate = _deBridgeGate;
+    constructor(address _routerGateway) {
+        routerGateway = IRouterGateway(_routerGateway);
     }
 
-    /* ========== PUBLIC METHODS ========== */
+    /* ========== EXTERNAL METHODS ========== */
 
     function getMessageFee(
         uint256,
         address,
         bytes calldata
     ) external view returns (uint256) {
-        return deBridgeGate.globalFixedNativeFee();
+        return routerGateway.requestToDestDefaultFee();
     }
 
     function dispatchMessage(
@@ -52,23 +52,31 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
         bytes calldata _data
     ) external payable override onlyMultiBridgeSender returns (bytes32) {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
-        address receiver = receiverAdapters[_toChainId];
         bytes32 msgId = bytes32(uint256(nonce));
-        bytes memory executeMethodData = abi.encodeWithSelector(
-            IDeBridgeReceiverAdapter.executeMessage.selector,
-            msg.sender,
-            _to,
-            _data,
-            msgId
+
+        Utils.RequestArgs memory requestArgs = Utils.RequestArgs(type(uint64).max, false, Utils.FeePayer.APP);
+
+        Utils.DestinationChainParams memory destChainParams = Utils.DestinationChainParams(
+            350000,
+            0,
+            0,
+            Strings.toString(uint256(_toChainId))
         );
 
-        deBridgeGate.sendMessage{value: msg.value}(
-            _toChainId, //_dstChainId,
-            abi.encodePacked(receiver), //_targetContractAddress
-            executeMethodData //_targetContractCalldata,
+        bytes[] memory payloads = new bytes[](1);
+        payloads[0] = abi.encode(msg.sender, _to, _data, msgId);
+
+        bytes[] memory destContractAddresses = new bytes[](1);
+        destContractAddresses[0] = toBytes(receiverAdapters[_toChainId]);
+
+        routerGateway.requestToDest{value: msg.value}(
+            requestArgs,
+            Utils.AckType.NO_ACK,
+            Utils.AckGasParams(0, 0),
+            destChainParams,
+            Utils.ContractCalls(payloads, destContractAddresses)
         );
 
-        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
         nonce++;
         return msgId;
     }
@@ -90,5 +98,17 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
     function setMultiBridgeSender(address _multiBridgeSender) external override onlyOwner {
         multiBridgeSender = _multiBridgeSender;
         emit MultiBridgeSenderSet(_multiBridgeSender);
+    }
+
+    /* ========== UTILS METHODS ========== */
+
+    function toBytes(address a) public pure returns (bytes memory b) {
+        assembly {
+            let m := mload(0x40)
+            a := and(a, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            mstore(add(m, 20), xor(0x140000000000000000000000000000000000000000, a))
+            mstore(0x40, add(m, 52))
+            b := m
+        }
     }
 }

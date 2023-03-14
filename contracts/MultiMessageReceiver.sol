@@ -2,11 +2,11 @@
 
 pragma solidity >=0.8.9;
 
-import "./interfaces/IMultiBridgeReceiver.sol";
+import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
+contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
     uint256 public constant THRESHOLD_DECIMAL = 100;
     // minimum accumulated power precentage for each message to be executed
     uint64 public quorumThreshold;
@@ -16,6 +16,9 @@ contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
     mapping(address => uint64) public receiverAdapterPowers;
     // total power of all bridge adapters
     uint64 public totalPower;
+
+    // address of the source chain governance sender
+    address public srcGovernance;
 
     struct MsgInfo {
         bool executed;
@@ -47,12 +50,14 @@ contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
      * The contract ownership will be renounced at the end of this call.
      */
     function initialize(
+        address _srcGovernance,
         address[] memory _receiverAdapters,
         uint32[] memory _powers,
         uint64 _quorumThreshold
     ) external onlyOwner {
         require(_receiverAdapters.length == _powers.length, "mismatch length");
         require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
+        srcGovernance = _srcGovernance
         for (uint256 i = 0; i < _receiverAdapters.length; i++) {
             _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
         }
@@ -67,9 +72,13 @@ contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
      * according to the message content.
      */
     function receiveMessage(MessageStruct.Message calldata _message) external override onlyReceiverAdapter {
+        require(_message.srcAddress == srcGovernance, "message did not originate from uniswap")
+        require(_message.srcChainId == 1, "message did not originate from ethereum")
+
         bytes32 msgId = getMsgId(_message);
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(msgInfo.from[msg.sender] == false, "already received from this bridge adapter");
+        
         msgInfo.from[msg.sender] = true;
         emit SingleBridgeMsgReceived(_message.srcChainId, _message.bridgeName, _message.nonce, msg.sender);
 
@@ -93,10 +102,16 @@ contract MultiBridgeReceiver is IMultiBridgeReceiver, Ownable {
      * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiBridgeSender at the source chain.
      */
-    function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
-        require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
-        quorumThreshold = _quorumThreshold;
-        emit QuorumThresholdUpdated(_quorumThreshold);
+    function setSrcGovernance(uint64 srcGovernance) external onlySelf {
+        this.srcGover
+    }
+
+    function _setReceiverAdapter(address _srcAdapter) private {
+        require(_power > 0, "zero power");
+        if (receiverAdapterPowers[_receiverAdapter] == 0) {
+            receiverAdapters.push(_receiverAdapter);
+        }
+        receiverAdapterPowers[_receiverAdapter] = _power;
     }
 
     /**
