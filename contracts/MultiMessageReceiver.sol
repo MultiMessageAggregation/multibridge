@@ -50,12 +50,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * The contract ownership will be renounced at the end of this call.
      */
     function initialize(
+        address _srcGovernance,
         address[] memory _receiverAdapters,
         uint32[] memory _powers,
         uint64 _quorumThreshold
     ) external onlyOwner {
         require(_receiverAdapters.length == _powers.length, "mismatch length");
         require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
+        srcGovernance = _srcGovernance
         for (uint256 i = 0; i < _receiverAdapters.length; i++) {
             _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
         }
@@ -70,7 +72,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * according to the message content.
      */
     function receiveMessage(MessageStruct.Message calldata _message) external override onlyReceiverAdapter {
-        require(_message.srcAddress == srcGovernance, "message did not originate from governance")
+        require(_message.srcAddress == srcGovernance, "message did not originate from uniswap")
+        require(_message.srcChainId == 1, "message did not originate from ethereum")
 
         bytes32 msgId = getMsgId(_message);
         MsgInfo storage msgInfo = msgInfos[msgId];
@@ -99,10 +102,16 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiBridgeSender at the source chain.
      */
-    function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
-        require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
-        quorumThreshold = _quorumThreshold;
-        emit QuorumThresholdUpdated(_quorumThreshold);
+    function setSrcGovernance(uint64 srcGovernance) external onlySelf {
+        this.srcGover
+    }
+
+    function _setReceiverAdapter(address _srcAdapter) private {
+        require(_power > 0, "zero power");
+        if (receiverAdapterPowers[_receiverAdapter] == 0) {
+            receiverAdapters.push(_receiverAdapter);
+        }
+        receiverAdapterPowers[_receiverAdapter] = _power;
     }
 
     /**
