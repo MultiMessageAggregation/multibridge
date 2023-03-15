@@ -3,13 +3,13 @@
 pragma solidity >=0.8.9;
 
 import "../MessageStruct.sol";
-import "../MultiBridgeSender.sol";
+import "../MultiMessageSender.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract MockCaller is AccessControl {
     bytes32 public constant CALLER_ROLE = keccak256("CALLER");
-    MultiBridgeSender public bridgeSender;
+    MultiMessageSender public bridgeSender;
 
     error AdminBadRole();
     error CallerBadRole();
@@ -28,18 +28,18 @@ contract MockCaller is AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function setMultiBridgeSender(MultiBridgeSender _bridgeSender) external onlyAdmin {
+    function setMultiMessageSender(MultiMessageSender _bridgeSender) external onlyAdmin {
         bridgeSender = _bridgeSender;
     }
 
     function remoteCall(
         uint64 _dstChainId,
-        address _multiBridgeReceiver,
+        address _multiMessageReceiver,
         address _target,
         bytes calldata _callData
     ) external payable onlyCaller {
-        uint256 totalFee = bridgeSender.estimateTotalMessageFee(_dstChainId, _multiBridgeReceiver, _target, _callData);
-        bridgeSender.remoteCall{value: totalFee}(_dstChainId, _multiBridgeReceiver, _target, _callData);
+        uint256 totalFee = bridgeSender.estimateTotalMessageFee(_dstChainId, _multiMessageReceiver, _target, _callData);
+        bridgeSender.remoteCall{value: totalFee}(_dstChainId, _multiMessageReceiver, _target, _callData);
     }
 
     function addSenderAdapters(address[] calldata _senderAdapters) external onlyAdmin {

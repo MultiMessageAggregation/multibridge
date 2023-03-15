@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../../interfaces/IMultiBridgeReceiver.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IRouterGateway.sol";
 import "./interfaces/IRouterReceiver.sol";
@@ -45,7 +45,7 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
         string memory srcChainId,
         uint64 //srcChainType
     ) external override onlyRouterGateway whenNotPaused returns (bytes memory) {
-        (address _multiBridgeSender, address _multiBridgeReceiver, bytes memory _data, bytes32 _msgId) = abi.decode(
+        (address _multiMessageSender, address _multiMessageReceiver, bytes memory _data, bytes32 _msgId) = abi.decode(
             payload,
             (address, address, bytes, bytes32)
         );
@@ -60,8 +60,8 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
             executedMessages[_msgId] = true;
         }
 
-        (bool ok, bytes memory lowLevelData) = _multiBridgeReceiver.call(
-            abi.encodePacked(_data, _msgId, _sourceChainId, _multiBridgeSender)
+        (bool ok, bytes memory lowLevelData) = _multiMessageReceiver.call(
+            abi.encodePacked(_data, _msgId, _sourceChainId, _multiMessageSender)
         );
 
         if (!ok) {

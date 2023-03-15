@@ -11,7 +11,6 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
     /* ========== STATE VARIABLES ========== */
 
     string public constant name = "router";
-    address public multiBridgeSender;
     IRouterGateway public immutable routerGateway;
     uint32 public nonce;
 
@@ -21,14 +20,6 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
     /* ========== EVENTS ========== */
 
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
-    event MultiBridgeSenderSet(address multiBridgeSender);
-
-    /* ========== MODIFIERS ========== */
-
-    modifier onlyMultiBridgeSender() {
-        require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
-        _;
-    }
 
     /* ========== CONSTRUCTOR  ========== */
 
@@ -50,7 +41,7 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
         uint256 _toChainId,
         address _to,
         bytes calldata _data
-    ) external payable override onlyMultiBridgeSender returns (bytes32) {
+    ) external payable override returns (bytes32) {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
         bytes32 msgId = bytes32(uint256(nonce));
 
@@ -93,11 +84,6 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
         }
-    }
-
-    function setMultiBridgeSender(address _multiBridgeSender) external override onlyOwner {
-        multiBridgeSender = _multiBridgeSender;
-        emit MultiBridgeSenderSet(_multiBridgeSender);
     }
 
     /* ========== UTILS METHODS ========== */

@@ -11,7 +11,6 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
     /* ========== STATE VARIABLES ========== */
 
     string public constant name = "deBridge";
-    address public multiBridgeSender;
     IDeBridgeGate public immutable deBridgeGate;
     uint32 public nonce;
 
@@ -21,14 +20,6 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
     /* ========== EVENTS ========== */
 
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
-    event MultiBridgeSenderSet(address multiBridgeSender);
-
-    /* ========== MODIFIERS ========== */
-
-    modifier onlyMultiBridgeSender() {
-        require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
-        _;
-    }
 
     /* ========== CONSTRUCTOR  ========== */
 
@@ -50,7 +41,7 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
         uint256 _toChainId,
         address _to,
         bytes calldata _data
-    ) external payable override onlyMultiBridgeSender returns (bytes32) {
+    ) external payable override returns (bytes32) {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
         address receiver = receiverAdapters[_toChainId];
         bytes32 msgId = bytes32(uint256(nonce));
@@ -85,10 +76,5 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
         }
-    }
-
-    function setMultiBridgeSender(address _multiBridgeSender) external override onlyOwner {
-        multiBridgeSender = _multiBridgeSender;
-        emit MultiBridgeSenderSet(_multiBridgeSender);
     }
 }

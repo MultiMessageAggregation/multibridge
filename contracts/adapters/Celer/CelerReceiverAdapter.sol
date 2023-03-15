@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import "./safeguard/MessageAppPauser.sol";
 import "./libraries/Utils.sol";
 import "../../interfaces/IBridgeReceiverAdapter.sol";
-import "../../MessageStruct.sol";
 
 interface IMessageReceiverApp {
     enum ExecutionStatus {
@@ -30,15 +29,11 @@ interface IMessageReceiverApp {
 }
 
 contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMessageReceiverApp {
-    string constant ABORT_PREFIX = "MSG::ABORT:";
     mapping(uint256 => address) public senderAdapters;
     address public immutable msgBus;
     mapping(bytes32 => bool) public executedMessages;
 
     event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
-
-    event SenderAdapterUpdated(uint64 srcChainId, address senderAdapter);
-    event MultiBridgeReceiverSet(address multiBridgeReceiver);
 
     modifier onlyMessageBus() {
         require(msg.sender == msgBus, "caller is not message bus");
@@ -57,7 +52,7 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         bytes calldata _message,
         address // executor
     ) external payable override onlyMessageBus whenNotMsgPaused returns (ExecutionStatus) {
-        (bytes32 msgId, address multiBridgeSender, address multiBridgeReceiver, bytes memory data) = abi.decode(
+        (bytes32 msgId, address multiMessageSender, address multiMessageReceiver, bytes memory data) = abi.decode(
             _message,
             (bytes32, address, address, bytes)
         );
@@ -67,8 +62,8 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         } else {
             executedMessages[msgId] = true;
         }
-        (bool ok, bytes memory lowLevelData) = multiBridgeReceiver.call(
-            abi.encodePacked(data, msgId, uint256(_srcChainId), multiBridgeSender)
+        (bool ok, bytes memory lowLevelData) = multiMessageReceiver.call(
+            abi.encodePacked(data, msgId, uint256(_srcChainId), multiMessageSender)
         );
         if (!ok) {
             string memory reason = Utils.getRevertMsg(lowLevelData);

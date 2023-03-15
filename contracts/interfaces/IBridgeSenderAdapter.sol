@@ -2,11 +2,10 @@
 
 pragma solidity >=0.8.9;
 
-import "../MessageStruct.sol";
 import "./EIP5164/SingleMessageDispatcher.sol";
 
 /**
- * @dev Adapter that connects MultiBridgeSender and each message bridge.
+ * @dev Adapter that connects MultiMessageSender and each message bridge.
  * Message bridge can implement their favourite encode&decode way for MessageStruct.Message.
  */
 interface IBridgeSenderAdapter is SingleMessageDispatcher {
@@ -28,9 +27,4 @@ interface IBridgeSenderAdapter is SingleMessageDispatcher {
      * @dev Owner update receiver adapter address on dst chain.
      */
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters) external;
-
-    /**
-     * @dev Owner setup MultiBridgeSender.
-     */
-    function setMultiBridgeSender(address _multiBridgeSender) external;
 }

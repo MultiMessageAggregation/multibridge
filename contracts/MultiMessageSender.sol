@@ -10,11 +10,17 @@ contract MultiMessageSender {
     // List of bridge sender adapters
     address[] public senderAdapters;
     // The dApp contract that can use this multi-bridge sender for cross-chain remoteCall.
-    // This means the current MultiBridgeSender is only intended to be used by a single dApp.
+    // This means the current MultiMessageSender is only intended to be used by a single dApp.
     address public immutable caller;
     uint32 public nonce;
 
-    event MultiBridgeMsgSent(uint32 nonce, uint64 dstChainId, address target, bytes callData, address[] senderAdapters);
+    event MultiMessageMsgSent(
+        uint32 nonce,
+        uint64 dstChainId,
+        address target,
+        bytes callData,
+        address[] senderAdapters
+    );
     event SenderAdapterUpdated(address senderAdapter, bool add); // add being false indicates removal of the adapter
     event ErrorSendMessage(address senderAdapters, MessageStruct.Message message);
 
@@ -36,41 +42,33 @@ contract MultiMessageSender {
      * Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
      *
      * @param _dstChainId is the destination chainId.
-     * @param _multiBridgeReceiver is the MultiBridgeReceiver address on destination chain.
+     * @param _multiMessageReceiver is the MultiMessageReceiver address on destination chain.
      * @param _target is the contract address on the destination chain.
      * @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData)).
      */
     function remoteCall(
         uint64 _dstChainId,
-        address _multiBridgeReceiver,
+        address _multiMessageReceiver,
         address _target,
         bytes calldata _callData
     ) external payable onlyCaller {
-        MessageStruct.Message memory message = MessageStruct.Message(
-            uint64(block.chainid),
-            _dstChainId,
-            address(this),
-            nonce,
-            _target,
-            _callData,
-            ""
-        );
+        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, "");
         bytes memory data;
         uint256 totalFee;
         // send copies of the message through multiple bridges
         for (uint256 i = 0; i < senderAdapters.length; i++) {
             message.bridgeName = IBridgeSenderAdapter(senderAdapters[i]).name();
-            data = abi.encodeWithSelector(IMultiBridgeReceiver.receiveMessage.selector, message);
+            data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
             uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(
                 uint256(_dstChainId),
-                _multiBridgeReceiver,
+                _multiMessageReceiver,
                 data
             );
             // if one bridge is paused it shouldn't halt the process
             try
                 IBridgeSenderAdapter(senderAdapters[i]).dispatchMessage{value: fee}(
                     uint256(_dstChainId),
-                    _multiBridgeReceiver,
+                    _multiMessageReceiver,
                     data
                 )
             {
@@ -79,7 +77,7 @@ contract MultiMessageSender {
                 emit ErrorSendMessage(senderAdapters[i], message);
             }
         }
-        emit MultiBridgeMsgSent(nonce, _dstChainId, _target, _callData, senderAdapters);
+        emit MultiMessageMsgSent(nonce, _dstChainId, _target, _callData, senderAdapters);
         nonce++;
         // refund remaining native token to msg.sender
         if (totalFee < msg.value) {
@@ -110,26 +108,19 @@ contract MultiMessageSender {
      */
     function estimateTotalMessageFee(
         uint64 _dstChainId,
-        address _multiBridgeReceiver,
+        address _multiMessageReceiver,
         address _target,
         bytes calldata _callData
     ) public view returns (uint256) {
-        MessageStruct.Message memory message = MessageStruct.Message(
-            uint64(block.chainid),
-            _dstChainId,
-            nonce,
-            _target,
-            _callData,
-            ""
-        );
+        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, "");
         bytes memory data;
         uint256 totalFee;
         for (uint256 i = 0; i < senderAdapters.length; i++) {
             message.bridgeName = IBridgeSenderAdapter(senderAdapters[i]).name();
-            data = abi.encodeWithSelector(IMultiBridgeReceiver.receiveMessage.selector, message);
+            data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
             uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(
                 uint256(_dstChainId),
-                _multiBridgeReceiver,
+                _multiMessageReceiver,
                 data
             );
             totalFee += fee;

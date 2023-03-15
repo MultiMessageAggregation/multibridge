@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import "../MessageStruct.sol";
 
-interface IMultiBridgeReceiver {
+interface IMultiMessageReceiver {
     /**
      * @notice Receive messages from allowed bridge receiver adapters.
      * If the accumulated power of a message has reached the power threshold,

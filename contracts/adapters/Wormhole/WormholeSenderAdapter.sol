@@ -55,7 +55,6 @@ interface ICoreRelayer {
 
 contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
     string public name = "wormhole";
-    address public multiBridgeSender;
     mapping(uint256 => uint16) idMap;
     // dstChainId => receiverAdapter address
     mapping(uint16 => address) public receiverAdapters;
@@ -64,7 +63,6 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
     uint8 consistencyLevel = 1;
 
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
-    event MultiBridgeSenderSet(address multiBridgeSender);
 
     IWormhole private immutable wormhole;
     ICoreRelayer private immutable relayer;
@@ -74,11 +72,6 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
         wormhole = IWormhole(_bridgeAddress);
         relayer = ICoreRelayer(_relayer);
         relayProvider = relayer.getDefaultRelayProvider();
-    }
-
-    modifier onlyMultiBridgeSender() {
-        require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
-        _;
     }
 
     function getMessageFee(
@@ -96,7 +89,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
         uint256 _toChainId,
         address _to,
         bytes calldata _data
-    ) external payable override onlyMultiBridgeSender returns (bytes32) {
+    ) external payable override returns (bytes32) {
         address receiverAdapter = receiverAdapters[idMap[_toChainId]];
         require(receiverAdapter != address(0), "no receiver adapter");
         bytes memory payload = abi.encode(msg.sender, _to, _data, receiverAdapter);
@@ -138,10 +131,5 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
             receiverAdapters[wormholeId] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
         }
-    }
-
-    function setMultiBridgeSender(address _multiBridgeSender) external override onlyOwner {
-        multiBridgeSender = _multiBridgeSender;
-        emit MultiBridgeSenderSet(_multiBridgeSender);
     }
 }
