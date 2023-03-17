@@ -9,15 +9,13 @@ abstract contract BaseSenderAdapter {
      * @notice Get new message Id and increment nonce
      * @param _toChainId is the destination chainId.
      * @param _to is the contract address on the destination chain.
-     * @param _data is the data to be sent to _to by low-level call(eg. address(_to).call(_data)).
      */
 
     function _getNewMessageId(
         uint256 _toChainId,
-        address _to,
-        bytes memory _data
+        address _to
     ) internal returns (bytes32 messageId) {
-        bytes32 messageId = keccak256(abi.encodePacked(getChainId(), _toChainId, nonce, address(this), _to, _data));
+        bytes32 messageId = keccak256(abi.encodePacked(getChainId(), _toChainId, nonce, address(this), _to));
         nonce++;
     }
 

@@ -40,7 +40,7 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
     ) external payable override returns (bytes32) {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
         address receiver = receiverAdapters[_toChainId];
-        bytes32 msgId = _getNewMessageId(_toChainId, _to, _data);
+        bytes32 msgId = _getNewMessageId(_toChainId, _to);
         bytes memory executeMethodData = abi.encodeWithSelector(
             IDeBridgeReceiverAdapter.executeMessage.selector,
             msg.sender,
