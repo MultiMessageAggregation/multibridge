@@ -4,6 +4,7 @@ pragma solidity >=0.8.9;
 
 import "../../interfaces/IBridgeSenderAdapter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../base/BaseSenderAdapter.sol";
 
 interface IWormhole {
     function publishMessage(
@@ -53,12 +54,11 @@ interface ICoreRelayer {
     }
 }
 
-contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
+contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
     string public name = "wormhole";
     mapping(uint256 => uint16) idMap;
     // dstChainId => receiverAdapter address
     mapping(uint16 => address) public receiverAdapters;
-    uint32 public nonce;
 
     uint8 consistencyLevel = 1;
 
@@ -94,7 +94,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
         require(receiverAdapter != address(0), "no receiver adapter");
         bytes memory payload = abi.encode(msg.sender, _to, _data, receiverAdapter);
         uint256 msgFee = wormhole.messageFee();
-        wormhole.publishMessage{value: msgFee}(nonce, payload, consistencyLevel);
+        wormhole.publishMessage{value: msgFee}(uint32(nonce), payload, consistencyLevel);
 
         uint256 relayFee = msg.value - msgFee;
         ICoreRelayer.DeliveryRequest memory request = ICoreRelayer.DeliveryRequest(
@@ -105,16 +105,15 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
             0, //applicationBudget
             relayer.getDefaultRelayParams() //relayerParams
         );
-        relayer.requestDelivery{value: relayFee}(request, nonce, relayProvider);
-        bytes32 msgId = bytes32(uint256(nonce));
+        relayer.requestDelivery{value: relayFee}(request, uint32(nonce), relayProvider);
+        bytes32 msgId = _getNewMessageId(_toChainId, _to);
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
-        nonce++;
         return msgId;
     }
 
     function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyOwner {
         require(_origIds.length == _whIds.length, "mismatch length");
-        for (uint256 i = 0; i < _origIds.length; i++) {
+        for (uint256 i; i < _origIds.length; ++i) {
             idMap[_origIds[i]] = _whIds[i];
         }
     }
@@ -125,7 +124,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable {
         onlyOwner
     {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _dstChainIds.length; i++) {
+        for (uint256 i; i < _dstChainIds.length; ++i) {
             uint16 wormholeId = idMap[_dstChainIds[i]];
             require(wormholeId != 0, "unrecognized dstChainId");
             receiverAdapters[wormholeId] = _receiverAdapters[i];

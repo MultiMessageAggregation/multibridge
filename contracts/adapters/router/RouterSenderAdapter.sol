@@ -6,13 +6,13 @@ import "../../interfaces/IBridgeSenderAdapter.sol";
 import "./interfaces/IRouterGateway.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "../base/BaseSenderAdapter.sol";
 
-contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
+contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
     /* ========== STATE VARIABLES ========== */
 
     string public constant name = "router";
     IRouterGateway public immutable routerGateway;
-    uint32 public nonce;
 
     // dstChainId => receiverAdapter address
     mapping(uint256 => address) public receiverAdapters;
@@ -43,7 +43,7 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
         bytes calldata _data
     ) external payable override returns (bytes32) {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
-        bytes32 msgId = bytes32(uint256(nonce));
+        bytes32 msgId = _getNewMessageId(_toChainId, _to);
 
         Utils.RequestArgs memory requestArgs = Utils.RequestArgs(type(uint64).max, false, Utils.FeePayer.APP);
 
@@ -68,7 +68,6 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
             Utils.ContractCalls(payloads, destContractAddresses)
         );
 
-        nonce++;
         return msgId;
     }
 
@@ -80,7 +79,7 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable {
         onlyOwner
     {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _dstChainIds.length; i++) {
+        for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
         }

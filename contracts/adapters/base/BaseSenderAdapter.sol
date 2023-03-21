@@ -15,7 +15,7 @@ abstract contract BaseSenderAdapter {
         uint256 _toChainId,
         address _to
     ) internal returns (bytes32 messageId) {
-        bytes32 messageId = keccak256(abi.encodePacked(getChainId(), _toChainId, nonce, address(this), _to));
+        messageId = keccak256(abi.encodePacked(getChainId(), _toChainId, nonce, address(this), _to));
         nonce++;
     }
 

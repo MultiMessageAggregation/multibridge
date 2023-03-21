@@ -88,7 +88,7 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
         onlyOwner
     {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _srcChainIds.length; i++) {
+        for (uint256 i; i < _srcChainIds.length; ++i) {
             senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
             emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
         }

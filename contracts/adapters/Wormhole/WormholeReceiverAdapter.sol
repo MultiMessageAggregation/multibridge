@@ -109,7 +109,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, O
 
     function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyOwner {
         require(_origIds.length == _whIds.length, "mismatch length");
-        for (uint256 i = 0; i < _origIds.length; i++) {
+        for (uint256 i; i < _origIds.length; ++i) {
             idMap[_origIds[i]] = _whIds[i];
             reverseIdMap[_whIds[i]] = _origIds[i];
         }
@@ -121,7 +121,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, O
         onlyOwner
     {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _srcChainIds.length; i++) {
+        for (uint256 i; i < _srcChainIds.length; ++i) {
             uint16 wormholeId = idMap[_srcChainIds[i]];
             require(wormholeId != 0, "unrecognized srcChainId");
             senderAdapters[wormholeId] = bytes32(uint256(uint160(_senderAdapters[i])));
