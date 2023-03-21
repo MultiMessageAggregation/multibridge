@@ -73,11 +73,11 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
         require(_receiverAdapters.length > 0, "empty receiver adapter list");
         require(_receiverAdapters.length == _powers.length, "mismatch length");
         require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
-        for (uint256 i = 0; i < _multiMessageSenders.length; i++) {
+        for (uint256 i; i < _multiMessageSenders.length; ++i) {
             require(_multiMessageSenders[i] != address(0), "MultiMessageSender is zero address");
             _updateMultiMessageSender(_srcChainIds[i], _multiMessageSenders[i]);
         }
-        for (uint256 i = 0; i < _receiverAdapters.length; i++) {
+        for (uint256 i; i < _receiverAdapters.length; ++i) {
             require(_receiverAdapters[i] != address(0), "receiver adapter is zero address");
             _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
         }
@@ -117,7 +117,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      */
     function updateReceiverAdapter(address[] calldata _receiverAdapters, uint32[] calldata _powers) external onlySelf {
         require(_receiverAdapters.length == _powers.length, "mismatch length");
-        for (uint256 i = 0; i < _receiverAdapters.length; i++) {
+        for (uint256 i; i < _receiverAdapters.length; ++i) {
             _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
         }
     }
@@ -132,7 +132,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
         onlySelf
     {
         require(_srcChainIds.length == _multiMessageSenders.length, "mismatch length");
-        for (uint256 i = 0; i < _multiMessageSenders.length; i++) {
+        for (uint256 i; i < _multiMessageSenders.length; ++i) {
             _updateMultiMessageSender(_srcChainIds[i], _multiMessageSenders[i]);
         }
     }
@@ -182,7 +182,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
 
     function _computeMessagePower(MsgInfo storage _msgInfo) private view returns (uint64) {
         uint64 msgPower;
-        for (uint32 i = 0; i < receiverAdapters.length; i++) {
+        for (uint256 i; i < receiverAdapters.length; ++i) {
             address adapter = receiverAdapters[i];
             if (_msgInfo.from[adapter]) {
                 msgPower += receiverAdapterPowers[adapter];
@@ -213,7 +213,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
     function _removeReceiverAdapter(address _receiverAdapter) private {
         require(receiverAdapterPowers[_receiverAdapter] > 0, "not a receiver adapter");
         uint256 lastIndex = receiverAdapters.length - 1;
-        for (uint256 i = 0; i < receiverAdapters.length; i++) {
+        for (uint256 i; i < receiverAdapters.length; ++i) {
             if (receiverAdapters[i] == _receiverAdapter) {
                 if (i < lastIndex) {
                     receiverAdapters[i] = receiverAdapters[lastIndex];
