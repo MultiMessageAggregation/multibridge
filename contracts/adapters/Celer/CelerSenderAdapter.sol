@@ -19,11 +19,7 @@ contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter 
         msgBus = _msgBus;
     }
 
-    function getMessageFee(
-        uint256,
-        address _to,
-        bytes calldata _data
-    ) external view override returns (uint256) {
+    function getMessageFee(uint256, address _to, bytes calldata _data) external view override returns (uint256) {
         // fee is depended only on message length
         return IMessageBus(msgBus).calcFee(abi.encode(bytes32(""), msg.sender, _to, _data));
     }
@@ -44,11 +40,10 @@ contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter 
         return msgId;
     }
 
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateReceiverAdapter(
+        uint256[] calldata _dstChainIds,
+        address[] calldata _receiverAdapters
+    ) external override onlyOwner {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
         for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];

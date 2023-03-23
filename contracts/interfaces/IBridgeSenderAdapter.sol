@@ -17,11 +17,7 @@ interface IBridgeSenderAdapter is SingleMessageDispatcher {
     /**
      * @dev Return native token amount in wei required by this message bridge for sending a message.
      */
-    function getMessageFee(
-        uint256 toChainId,
-        address to,
-        bytes calldata data
-    ) external view returns (uint256);
+    function getMessageFee(uint256 toChainId, address to, bytes calldata data) external view returns (uint256);
 
     /**
      * @dev Owner update receiver adapter address on dst chain.

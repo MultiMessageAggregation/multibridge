@@ -11,10 +11,7 @@ abstract contract BaseSenderAdapter {
      * @param _to is the contract address on the destination chain.
      */
 
-    function _getNewMessageId(
-        uint256 _toChainId,
-        address _to
-    ) internal returns (bytes32 messageId) {
+    function _getNewMessageId(uint256 _toChainId, address _to) internal returns (bytes32 messageId) {
         messageId = keccak256(abi.encodePacked(getChainId(), _toChainId, nonce, address(this), _to));
         nonce++;
     }
