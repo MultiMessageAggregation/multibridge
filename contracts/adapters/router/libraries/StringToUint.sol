@@ -11,7 +11,7 @@ library StringToUint {
             uint8 uval = uint8(ival);
             uint256 jval = uval - uint256(0x30);
 
-            val += (uint256(jval) * (10**(exp - 1)));
+            val += (uint256(jval) * (10 ** (exp - 1)));
         }
         return val;
     }

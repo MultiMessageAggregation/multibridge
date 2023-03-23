@@ -29,11 +29,7 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter
 
     /* ========== EXTERNAL METHODS ========== */
 
-    function getMessageFee(
-        uint256,
-        address,
-        bytes calldata
-    ) external view returns (uint256) {
+    function getMessageFee(uint256, address, bytes calldata) external view returns (uint256) {
         return routerGateway.requestToDestDefaultFee();
     }
 
@@ -73,11 +69,10 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter
 
     /* ========== ADMIN METHODS ========== */
 
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateReceiverAdapter(
+        uint256[] calldata _dstChainIds,
+        address[] calldata _receiverAdapters
+    ) external override onlyOwner {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
         for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];

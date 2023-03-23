@@ -79,11 +79,10 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         }
     }
 
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateSenderAdapter(
+        uint256[] calldata _srcChainIds,
+        address[] calldata _senderAdapters
+    ) external override onlyOwner {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
         for (uint256 i; i < _srcChainIds.length; ++i) {
             senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
