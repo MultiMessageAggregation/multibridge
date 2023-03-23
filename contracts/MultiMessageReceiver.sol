@@ -30,7 +30,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
     event ReceiverAdapterUpdated(address receiverAdapter, uint64 power);
     event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
-    event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAddr);
+    event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAdapter);
     event MessageExecuted(uint256 srcChainId, uint32 nonce, address target, bytes callData);
 
     /**
@@ -53,7 +53,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * @notice A modifier used for restricting that only messages sent from MultiMessageSender would be accepted.
      */
     modifier onlyFromMultiMessageSender() {
-        require(_msgSender() == multiMessageSenders[_fromChainId()], "this message is not from MultiMessageSender");
+        require(_messageSender() == multiMessageSenders[_fromChainId()], "this message is not from MultiMessageSender");
         _;
     }
 
@@ -91,12 +91,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * this message will be executed immediately, which will invoke an external function call
      * according to the message content.
      */
-    function receiveMessage(MessageStruct.Message calldata _message)
-        external
-        override
-        onlyReceiverAdapter
-        onlyFromMultiMessageSender
-    {
+    function receiveMessage(
+        MessageStruct.Message calldata _message
+    ) external override onlyReceiverAdapter onlyFromMultiMessageSender {
         uint256 srcChainId = _fromChainId();
         // This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         // Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
@@ -127,10 +124,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
-    function updateMultiMessageSender(uint256[] calldata _srcChainIds, address[] calldata _multiMessageSenders)
-        external
-        onlySelf
-    {
+    function updateMultiMessageSender(
+        uint256[] calldata _srcChainIds,
+        address[] calldata _multiMessageSenders
+    ) external onlySelf {
         require(_srcChainIds.length == _multiMessageSenders.length, "mismatch length");
         for (uint256 i; i < _multiMessageSenders.length; ++i) {
             _updateMultiMessageSender(_srcChainIds[i], _multiMessageSenders[i]);
@@ -233,7 +230,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
 
     // calldata of receiveMessage will be in form of
     // MessageStruct.Message message | bytes32 msgId | uint256 srcChainId | address msgSender
-    function _msgSender() internal pure override returns (address msgSender) {
+    function _messageSender() internal pure returns (address msgSender) {
         if (msg.data.length >= 20) {
             assembly {
                 msgSender := shr(96, calldataload(sub(calldatasize(), 20)))
