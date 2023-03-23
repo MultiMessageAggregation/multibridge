@@ -4,14 +4,14 @@ pragma solidity >=0.8.9;
 
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/EIP5164/ExecutorAware.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
+contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializable {
     uint256 public constant THRESHOLD_DECIMAL = 100;
     // minimum accumulated power precentage for each message to be executed
     uint64 public quorumThreshold;
 
-    address[] public receiverAdapters;
     // receiverAdapter => power of bridge receive adapers
     mapping(address => uint64) public receiverAdapterPowers;
     // total power of all bridge adapters
@@ -53,7 +53,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
      * @notice A modifier used for restricting that only messages sent from MultiMessageSender would be accepted.
      */
     modifier onlyFromMultiMessageSender() {
-        require(_messageSender() == multiMessageSenders[_fromChainId()], "this message is not from MultiMessageSender");
+        require(_msgSender() == multiMessageSenders[_fromChainId()], "this message is not from MultiMessageSender");
         _;
     }
 
@@ -67,7 +67,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
         address[] calldata _receiverAdapters,
         uint32[] calldata _powers,
         uint64 _quorumThreshold
-    ) external onlyOwner {
+    ) external initializer {
         require(_multiMessageSenders.length > 0, "empty MultiMessageSender list");
         require(_multiMessageSenders.length == _srcChainIds.length, "mismatch length");
         require(_receiverAdapters.length > 0, "empty receiver adapter list");
@@ -79,10 +79,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
         }
         for (uint256 i; i < _receiverAdapters.length; ++i) {
             require(_receiverAdapters[i] != address(0), "receiver adapter is zero address");
+            require(_powers[i] > 0, "power of receiver adapter is zero");
             _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
         }
         quorumThreshold = _quorumThreshold;
-        renounceOwnership();
     }
 
     /**
@@ -179,8 +179,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
 
     function _computeMessagePower(MsgInfo storage _msgInfo) private view returns (uint64) {
         uint64 msgPower;
-        for (uint256 i; i < receiverAdapters.length; ++i) {
-            address adapter = receiverAdapters[i];
+        for (uint256 i; i < trustedExecutor.length; ++i) {
+            address adapter = trustedExecutor[i];
             if (_msgInfo.from[adapter]) {
                 msgPower += receiverAdapterPowers[adapter];
             }
@@ -201,49 +201,18 @@ contract MultiMessageReceiver is IMultiMessageReceiver, Ownable {
 
     function _setReceiverAdapter(address _receiverAdapter, uint32 _power) private {
         require(_power > 0, "zero power");
-        if (receiverAdapterPowers[_receiverAdapter] == 0) {
-            receiverAdapters.push(_receiverAdapter);
-        }
+        _addTrustedExecutor(_receiverAdapter);
         receiverAdapterPowers[_receiverAdapter] = _power;
     }
 
     function _removeReceiverAdapter(address _receiverAdapter) private {
         require(receiverAdapterPowers[_receiverAdapter] > 0, "not a receiver adapter");
-        uint256 lastIndex = receiverAdapters.length - 1;
-        for (uint256 i; i < receiverAdapters.length; ++i) {
-            if (receiverAdapters[i] == _receiverAdapter) {
-                if (i < lastIndex) {
-                    receiverAdapters[i] = receiverAdapters[lastIndex];
-                }
-                receiverAdapters.pop();
-                receiverAdapterPowers[_receiverAdapter] = 0;
-                return;
-            }
-        }
-        revert("receiver adapter not found"); // this should never happen
+        receiverAdapterPowers[_receiverAdapter] = 0;
+        _removeTrustedExecutor(_receiverAdapter);
     }
 
     function _updateMultiMessageSender(uint256 _srcChainId, address _multiMessageSender) private {
         multiMessageSenders[_srcChainId] = _multiMessageSender;
         emit MultiMessageSenderUpdated(_srcChainId, _multiMessageSender);
-    }
-
-    // calldata of receiveMessage will be in form of
-    // MessageStruct.Message message | bytes32 msgId | uint256 srcChainId | address msgSender
-    function _messageSender() internal pure returns (address msgSender) {
-        if (msg.data.length >= 20) {
-            assembly {
-                msgSender := shr(96, calldataload(sub(calldatasize(), 20)))
-            }
-        }
-    }
-
-    function _fromChainId() internal pure returns (uint256 fromChainId) {
-        // 52=20+32
-        if (msg.data.length >= 20 + 32) {
-            assembly {
-                fromChainId := calldataload(sub(calldatasize(), 52))
-            }
-        }
     }
 }

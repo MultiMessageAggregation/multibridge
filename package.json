@@ -22,6 +22,7 @@
   "homepage": "https://github.com/celer-network/multibridge#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@openzeppelin/contracts": "4.5.0",
     "@types/chai": "^4.3.4",
