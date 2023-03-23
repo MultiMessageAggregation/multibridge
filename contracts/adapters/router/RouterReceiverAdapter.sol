@@ -83,10 +83,10 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
         _unpause();
     }
 
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        onlyOwner
-    {
+    function updateSenderAdapter(
+        uint256[] calldata _srcChainIds,
+        address[] calldata _senderAdapters
+    ) external onlyOwner {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
         for (uint256 i; i < _srcChainIds.length; ++i) {
             senderAdapters[_srcChainIds[i]] = _senderAdapters[i];

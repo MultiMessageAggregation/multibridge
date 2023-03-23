@@ -15,18 +15,10 @@ interface IMessageBus {
      * @param _dstChainId The destination chain ID.
      * @param _message Arbitrary message bytes to be decoded by the destination app contract.
      */
-    function sendMessage(
-        address _receiver,
-        uint256 _dstChainId,
-        bytes calldata _message
-    ) external payable;
+    function sendMessage(address _receiver, uint256 _dstChainId, bytes calldata _message) external payable;
 
     // same as above, except that receiver is an non-evm chain address,
-    function sendMessage(
-        bytes calldata _receiver,
-        uint256 _dstChainId,
-        bytes calldata _message
-    ) external payable;
+    function sendMessage(bytes calldata _receiver, uint256 _dstChainId, bytes calldata _message) external payable;
 
     /**
      * @notice Send a message associated with a token transfer to a contract on another chain.

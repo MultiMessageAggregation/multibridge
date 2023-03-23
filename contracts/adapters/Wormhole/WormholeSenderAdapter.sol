@@ -74,11 +74,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
         relayProvider = relayer.getDefaultRelayProvider();
     }
 
-    function getMessageFee(
-        uint256 _toChainId,
-        address,
-        bytes calldata
-    ) external view override returns (uint256) {
+    function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
         uint256 fee = wormhole.messageFee();
         uint256 deliveryCost = relayer.quoteGasDeliveryFee(idMap[_toChainId], 500000, relayProvider);
         uint256 applicationBudget = relayer.quoteApplicationBudgetFee(idMap[_toChainId], 100, relayProvider);
@@ -118,11 +114,10 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
         }
     }
 
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateReceiverAdapter(
+        uint256[] calldata _dstChainIds,
+        address[] calldata _receiverAdapters
+    ) external override onlyOwner {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
         for (uint256 i; i < _dstChainIds.length; ++i) {
             uint16 wormholeId = idMap[_dstChainIds[i]];

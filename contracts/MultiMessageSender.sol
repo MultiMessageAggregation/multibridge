@@ -152,7 +152,6 @@ contract MultiMessageSender {
         }
     }
 
-
     /*
      * @dev transfer ETH to an address, revert if it fails.
      * @param to recipient of the transfer
@@ -160,6 +159,6 @@ contract MultiMessageSender {
      */
     function _safeTransferETH(address to, uint256 value) internal {
         (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, 'safeTransferETH: ETH transfer failed');
+        require(success, "safeTransferETH: ETH transfer failed");
     }
 }
