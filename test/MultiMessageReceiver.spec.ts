@@ -20,6 +20,18 @@ describe("MultiMessageReceiver test", function() {
         ({ multiMessageReceiver, mockReceiverAdapter } = await loadFixture(receiverFixture));
     })
 
+    it('only initialize once', async function () {
+        await expect(
+            multiMessageReceiver.initialize(
+                [chainId],
+                [ethers.utils.getAddress("0x0000000000000000000000000000000000000002")],
+                [mockReceiverAdapter.address],
+                [100],
+                [66],
+            )
+        ).to.be.revertedWith("Initializable: contract is already initialized")
+    });
+
     it('not allowed sender adapter', async function () {
         await expect(
             mockReceiverAdapter.executeMessage(
