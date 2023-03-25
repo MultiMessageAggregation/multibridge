@@ -7,6 +7,7 @@ import {IBridgeReceiverAdapter} from "../../interfaces/IBridgeReceiverAdapter.so
 
 import {IMailbox} from "./interfaces/IMailbox.sol";
 import {IMessageRecipient} from "./interfaces/IMessageRecipient.sol";
+import {IInterchainSecurityModule, ISpecifiesInterchainSecurityModule} from "./interfaces/IInterchainSecurityModule.sol";
 import {TypeCasts} from "./libraries/TypeCasts.sol";
 import {Errors} from "./libraries/Errors.sol";
 
@@ -14,9 +15,17 @@ import {Errors} from "./libraries/Errors.sol";
  * @title HyperlaneReceiverAdapter implementation.
  * @notice `IBridgeReceiverAdapter` implementation that uses Hyperlane as the bridge.
  */
-contract HyperlaneReceiverAdapter is IBridgeReceiverAdapter, IMessageRecipient, Ownable {
+contract HyperlaneReceiverAdapter is
+    IBridgeReceiverAdapter,
+    IMessageRecipient,
+    ISpecifiesInterchainSecurityModule,
+    Ownable
+{
     /// @notice `Mailbox` contract reference.
     IMailbox public immutable mailbox;
+
+    /// @notice `ISM` contract reference.
+    IInterchainSecurityModule public ism;
 
     /**
      * @notice Sender adapter address for each source chain.
@@ -29,6 +38,12 @@ contract HyperlaneReceiverAdapter is IBridgeReceiverAdapter, IMessageRecipient, 
      * @dev msgId => isExecuted.
      */
     mapping(bytes32 => bool) public executedMessages;
+
+    /**
+     * @notice Emitted when the ISM is set.
+     * @param module The new ISM for this adapter/recipient.
+     */
+    event IsmSet(address indexed module);
 
     /**
      * @notice Emitted when a sender adapter for a source chain is updated.
@@ -57,19 +72,35 @@ contract HyperlaneReceiverAdapter is IBridgeReceiverAdapter, IMessageRecipient, 
         _;
     }
 
+    /// @inheritdoc ISpecifiesInterchainSecurityModule
+    function interchainSecurityModule() external view returns (IInterchainSecurityModule) {
+        return ism;
+    }
+
+    /**
+     * @notice Sets the ISM for this adapter/recipient.
+     * @param _ism The ISM contract address.
+     */
+    function setIsm(address _ism) external onlyOwner {
+        ism = IInterchainSecurityModule(_ism);
+        emit IsmSet(_ism);
+    }
+
     /**
      * @notice Called by Hyperlane `Mailbox` contract on destination chain to receive cross-chain messages.
-     * @param _origin Source chain identifier.
+     * @dev _origin Source chain domain identifier (not currently used).
      * @param _sender Address of the sender on the source chain.
      * @param _body Body of the message.
      */
-    function handle(uint32 _origin, bytes32 _sender, bytes memory _body) external onlyMailbox {
+    function handle(uint32 /* _origin*/, bytes32 _sender, bytes memory _body) external onlyMailbox {
         address sender = TypeCasts.bytes32ToAddress(_sender);
-        uint256 srcChainId = uint256(_origin);
-        (bytes32 msgId, address multiMessageSender, address multiMessageReceiver, bytes memory data) = abi.decode(
-            _body,
-            (bytes32, address, address, bytes)
-        );
+        (
+            uint256 srcChainId,
+            bytes32 msgId,
+            address multiMessageSender,
+            address multiMessageReceiver,
+            bytes memory data
+        ) = abi.decode(_body, (uint256, bytes32, address, address, bytes));
 
         if (sender != senderAdapters[srcChainId]) {
             revert Errors.UnauthorizedAdapter(srcChainId, sender);

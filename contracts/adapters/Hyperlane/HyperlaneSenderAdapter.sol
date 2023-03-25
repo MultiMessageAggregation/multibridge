@@ -32,11 +32,24 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     mapping(uint256 => address) public receiverAdapters;
 
     /**
+     * @notice Domain identifier for each destination chain.
+     * @dev dstChainId => dstDomainId.
+     */
+    mapping(uint256 => uint32) public destinationDomains;
+
+    /**
      * @notice Emitted when a receiver adapter for a destination chain is updated.
      * @param dstChainId Destination chain identifier.
      * @param receiverAdapter Address of the receiver adapter.
      */
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
+
+    /**
+     * @notice Emitted when a domain identifier for a destination chain is updated.
+     * @param dstChainId Destination chain identifier.
+     * @param dstDomainId Destination domain identifier.
+     */
+    event DestinationDomainUpdated(uint256 dstChainId, uint32 dstDomainId);
 
     /**
      * @notice HyperlaneSenderAdapter constructor.
@@ -50,8 +63,13 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     }
 
     /// @inheritdoc IBridgeSenderAdapter
-    // @dev we narrow mutability (from view to pure) to remove compiler warnings
-    function getMessageFee(uint256, address, bytes calldata) external pure override returns (uint256) {
+    /// @dev we narrow mutability (from view to pure) to remove compiler warnings.
+    /// @dev unused parameters are added as comments for legibility.
+    function getMessageFee(
+        uint256 /* toChainId*/,
+        address /* to*/,
+        bytes calldata /* data*/
+    ) external pure override returns (uint256) {
         // Hyperlane fee can't be calculated based on these inputs, we return 0 and leave fee payment to another transaction/agent
         // See https://docs.hyperlane.xyz/docs/build-with-hyperlane/guides/paying-for-interchain-gas
         return 0;
@@ -69,10 +87,18 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
         }
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
 
+        // Read destination domain id from mapping
+        uint32 dstDomainId = destinationDomains[_toChainId];
+        if (dstDomainId == 0) {
+            // Fallback to using the chain id if mapping isn't set for destination chain
+            dstDomainId = uint32(_toChainId);
+        }
+
         IMailbox(mailbox).dispatch(
-            uint32(_toChainId),
+            dstDomainId,
             TypeCasts.addressToBytes32(receiverAdapter),
-            abi.encode(msgId, msg.sender, _to, _data)
+            // Include the source chain id so that the receiver doesn't have to maintain a srcDomainId => srcChainId mapping
+            abi.encode(getChainId(), msgId, msg.sender, _to, _data)
         );
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
@@ -90,6 +116,24 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
         for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
+        }
+    }
+
+    /**
+     * @notice Updates destination domain identifiers.
+     * @param _dstChainIds Destination chain ids array.
+     * @param _dstDomainIds Destination domain ids array.
+     */
+    function updateDestinationDomainIds(
+        uint256[] calldata _dstChainIds,
+        uint32[] calldata _dstDomainIds
+    ) external onlyOwner {
+        if (_dstChainIds.length != _dstDomainIds.length) {
+            revert Errors.MismatchChainsDomainsLength(_dstChainIds.length, _dstDomainIds.length);
+        }
+        for (uint256 i; i < _dstChainIds.length; ++i) {
+            destinationDomains[_dstChainIds[i]] = _dstDomainIds[i];
+            emit DestinationDomainUpdated(_dstChainIds[i], _dstDomainIds[i]);
         }
     }
 }
