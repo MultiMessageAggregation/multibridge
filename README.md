@@ -3,6 +3,8 @@
 
 > **This is a temporary implementation of EIP5164, does not represent the final MultiBridge resolution**
 
+> **For latest documentation, you can find it here:** https://multi-message-aggregation.gitbook.io/multi-message-aggregation/
+
 
 Multi-Message Aggregation (MMA) is a solution for cross-chain message passing without vendor lock-in and enhanced security beyond any single bridge.
 **A message with multiple copies is sent through different bridges to the destination chains, and will only be executed at the destination chain when the same message has been delivered by a quorum of different bridges.**
