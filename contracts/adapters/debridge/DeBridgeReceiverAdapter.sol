@@ -35,8 +35,8 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
 
     // Called by DeBridge CallProxy on destination chain to receive cross-chain messages.
     function executeMessage(
-        address _multiMessageSender,
-        address _multiMessageReceiver,
+        address _srcSender,
+        address _destReceiver,
         bytes calldata _data,
         bytes32 _msgId
     ) external whenNotPaused {
@@ -55,8 +55,8 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
         } else {
             executedMessages[_msgId] = true;
         }
-        (bool ok, bytes memory lowLevelData) = _multiMessageReceiver.call(
-            abi.encodePacked(_data, _msgId, submissionChainIdFrom, _multiMessageSender)
+        (bool ok, bytes memory lowLevelData) = _destReceiver.call(
+            abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender)
         );
         if (!ok) {
             revert MessageFailure(_msgId, lowLevelData);

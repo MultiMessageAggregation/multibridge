@@ -45,7 +45,7 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
         string memory srcChainId,
         uint64 //srcChainType
     ) external override onlyRouterGateway whenNotPaused returns (bytes memory) {
-        (address _multiMessageSender, address _multiMessageReceiver, bytes memory _data, bytes32 _msgId) = abi.decode(
+        (address _srcSender, address _destReceiver, bytes memory _data, bytes32 _msgId) = abi.decode(
             payload,
             (address, address, bytes, bytes32)
         );
@@ -60,8 +60,8 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
             executedMessages[_msgId] = true;
         }
 
-        (bool ok, bytes memory lowLevelData) = _multiMessageReceiver.call(
-            abi.encodePacked(_data, _msgId, _sourceChainId, _multiMessageSender)
+        (bool ok, bytes memory lowLevelData) = _destReceiver.call(
+            abi.encodePacked(_data, _msgId, _sourceChainId, _srcSender)
         );
 
         if (!ok) {

@@ -52,7 +52,7 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         bytes calldata _message,
         address // executor
     ) external payable override onlyMessageBus whenNotMsgPaused returns (ExecutionStatus) {
-        (bytes32 msgId, address multiMessageSender, address multiMessageReceiver, bytes memory data) = abi.decode(
+        (bytes32 msgId, address srcSender, address destReceiver, bytes memory data) = abi.decode(
             _message,
             (bytes32, address, address, bytes)
         );
@@ -62,8 +62,8 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         } else {
             executedMessages[msgId] = true;
         }
-        (bool ok, bytes memory lowLevelData) = multiMessageReceiver.call(
-            abi.encodePacked(data, msgId, uint256(_srcChainId), multiMessageSender)
+        (bool ok, bytes memory lowLevelData) = destReceiver.call(
+            abi.encodePacked(data, msgId, uint256(_srcChainId), srcSender)
         );
         if (!ok) {
             string memory reason = Utils.getRevertMsg(lowLevelData);
