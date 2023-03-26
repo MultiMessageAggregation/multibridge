@@ -6,6 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IBridgeSenderAdapter} from "../../interfaces/IBridgeSenderAdapter.sol";
 import {BaseSenderAdapter} from "../base/BaseSenderAdapter.sol";
 import {SingleMessageDispatcher} from "../../interfaces/EIP5164/SingleMessageDispatcher.sol";
+import {MultiMessageSender} from "../../MultiMessageSender.sol";
 
 import {IMailbox} from "./interfaces/IMailbox.sol";
 import {IInterchainGasPaymaster} from "./interfaces/IInterchainGasPaymaster.sol";
@@ -82,20 +83,14 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
         bytes calldata /* data*/
     ) external view override returns (uint256) {
         uint32 dstDomainId = _getDestinationDomain(toChainId);
-        // An IGP and dstDomainId has to be properly set for gas quotation to work
+        // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
         // See https://docs.hyperlane.xyz/docs/build-with-hyperlane/guides/paying-for-interchain-gas
-        if (address(igp) != address(0) && dstDomainId != 0) {
-            // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
-            try igp.quoteGasPayment(dstDomainId, 500000) returns (uint256 gasQuote) {
-                return gasQuote;
-            } catch {
-                // catch block is required, so might as well be explicit
-                return 0;
-            }
+        try igp.quoteGasPayment(dstDomainId, 500000) returns (uint256 gasQuote) {
+            return gasQuote;
+        } catch {
+            // Default to zero, MultiMessageSender.estimateTotalMessageFee doesn't expect this function to revert
+            return 0;
         }
-
-        // Default to zero, MultiMessageSender.estimateTotalMessageFee doesn't expect this function to revert
-        return 0;
     }
 
     /**
@@ -130,12 +125,17 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
             abi.encode(getChainId(), msgId, msg.sender, _to, _data)
         );
 
-        // Only make gas payment if igp and dstDomainId (explicit for resilience to changes elsewhere) are set and msg.value is not zero
-        if (address(igp) != address(0) && dstDomainId != 0 && msg.value != 0) {
-            // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
-            // refundAddress is currently set to msg.sender, which isn't ideal
-            igp.payForGas{value: msg.value}(hyperlaneMsgId, dstDomainId, 500000, msg.sender);
-        }
+        // try to make gas payment, ignore failures
+        // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
+        // refundAddress is set from MMS caller state variable
+        try
+            igp.payForGas{value: msg.value}(
+                hyperlaneMsgId,
+                dstDomainId,
+                500000,
+                MultiMessageSender(msg.sender).caller()
+            )
+        {} catch {}
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
         return msgId;
