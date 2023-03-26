@@ -27,6 +27,12 @@ library Errors {
     error UnauthorizedAdapter(uint256 chainId, address addr);
 
     /**
+     * @notice Emitted when the domain identifier for the chain id is unknown (i.e zero).
+     * @dev chainId == 0
+     */
+    error UnknownDomainId(uint256 chainId);
+
+    /**
      * @notice Emitted when the length of the chain ids and adapter arrays doesn't match.
      * @dev chainIds.length != adapters.length.
      * @param chainIdsLength Length of chain ids array.

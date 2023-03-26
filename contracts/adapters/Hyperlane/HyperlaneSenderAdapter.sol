@@ -8,6 +8,7 @@ import {BaseSenderAdapter} from "../base/BaseSenderAdapter.sol";
 import {SingleMessageDispatcher} from "../../interfaces/EIP5164/SingleMessageDispatcher.sol";
 
 import {IMailbox} from "./interfaces/IMailbox.sol";
+import {IInterchainGasPaymaster} from "./interfaces/IInterchainGasPaymaster.sol";
 import {TypeCasts} from "./libraries/TypeCasts.sol";
 import {Errors} from "./libraries/Errors.sol";
 
@@ -25,6 +26,9 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     /// @notice `Mailbox` contract reference.
     IMailbox public immutable mailbox;
 
+    /// @notice `IGP` contract reference.
+    IInterchainGasPaymaster public igp;
+
     /**
      * @notice Receiver adapter address for each destination chain.
      * @dev dstChainId => receiverAdapter address.
@@ -36,6 +40,12 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
      * @dev dstChainId => dstDomainId.
      */
     mapping(uint256 => uint32) public destinationDomains;
+
+    /**
+     * @notice Emitted when the IGP is set.
+     * @param paymaster The new IGP for this adapter.
+     */
+    event IgpSet(address indexed paymaster);
 
     /**
      * @notice Emitted when a receiver adapter for a destination chain is updated.
@@ -55,24 +65,37 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
      * @notice HyperlaneSenderAdapter constructor.
      * @param _mailbox Address of the Hyperlane `Mailbox` contract.
      */
-    constructor(address _mailbox) {
+    constructor(address _mailbox, address _igp) {
         if (_mailbox == address(0)) {
             revert Errors.InvalidMailboxZeroAddress();
         }
         mailbox = IMailbox(_mailbox);
+        _setIgp(_igp);
     }
 
     /// @inheritdoc IBridgeSenderAdapter
     /// @dev we narrow mutability (from view to pure) to remove compiler warnings.
     /// @dev unused parameters are added as comments for legibility.
     function getMessageFee(
-        uint256 /* toChainId*/,
+        uint256 toChainId,
         address /* to*/,
         bytes calldata /* data*/
-    ) external pure override returns (uint256) {
-        // Hyperlane fee can't be calculated based on these inputs, we return 0 and leave fee payment to another transaction/agent
+    ) external view override returns (uint256) {
+        uint32 dstDomainId = _getDestinationDomain(toChainId);
+        // An IGP and dstDomainId has to be properly set for gas quotation to work
         // See https://docs.hyperlane.xyz/docs/build-with-hyperlane/guides/paying-for-interchain-gas
+        if (address(igp) != address(0) && dstDomainId != 0) {
+            // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
+            return igp.quoteGasPayment(dstDomainId, 500000);
+        }
+
+        // Default to zero, MultiMessageSender.estimateTotalMessageFee doesn't expect this function to revert
         return 0;
+    }
+
+    // @inheritdoc _setIgp
+    function setIgp(address _igp) external onlyOwner {
+        _setIgp(_igp);
     }
 
     /// @inheritdoc SingleMessageDispatcher
@@ -86,20 +109,25 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
             revert Errors.InvalidAdapterZeroAddress();
         }
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
+        uint32 dstDomainId = _getDestinationDomain(_toChainId);
 
-        // Read destination domain id from mapping
-        uint32 dstDomainId = destinationDomains[_toChainId];
         if (dstDomainId == 0) {
-            // Fallback to using the chain id if mapping isn't set for destination chain
-            dstDomainId = uint32(_toChainId);
+            revert Errors.UnknownDomainId(_toChainId);
         }
 
-        IMailbox(mailbox).dispatch(
+        bytes32 hyperlaneMsgId = IMailbox(mailbox).dispatch(
             dstDomainId,
             TypeCasts.addressToBytes32(receiverAdapter),
             // Include the source chain id so that the receiver doesn't have to maintain a srcDomainId => srcChainId mapping
             abi.encode(getChainId(), msgId, msg.sender, _to, _data)
         );
+
+        // Only make gas payment if igp and dstDomainId (explicit for resilience to changes elsewhere) are set and msg.value is not zero
+        if (address(igp) != address(0) && dstDomainId != 0 && msg.value != 0) {
+            // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
+            // refundAddress is currently set to msg.sender, which isn't ideal
+            igp.payForGas{value: msg.value}(hyperlaneMsgId, dstDomainId, 500000, msg.sender);
+        }
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
         return msgId;
@@ -135,5 +163,25 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
             destinationDomains[_dstChainIds[i]] = _dstDomainIds[i];
             emit DestinationDomainUpdated(_dstChainIds[i], _dstDomainIds[i]);
         }
+    }
+
+    /**
+     * @notice Returns destination domain identifier for given destination chain id.
+     * @dev dstDomainId is read from destinationDomains mapping
+     * @dev Returned dstDomainId can be zero, reverting should be handled by consumers if necessary.
+     * @param _dstChainId Destination chain id.
+     * @return destination domain identifier.
+     */
+    function _getDestinationDomain(uint256 _dstChainId) internal view returns (uint32) {
+        return destinationDomains[_dstChainId];
+    }
+
+    /**
+     * @notice Sets the IGP for this adapter.
+     * @param _igp The IGP contract address.
+     */
+    function _setIgp(address _igp) internal {
+        igp = IInterchainGasPaymaster(_igp);
+        emit IgpSet(_igp);
     }
 }
