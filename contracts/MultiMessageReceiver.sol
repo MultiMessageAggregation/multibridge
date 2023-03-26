@@ -30,7 +30,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     event ReceiverAdapterUpdated(address receiverAdapter, uint64 power);
     event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
-    event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAddr);
+    event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAdapter);
     event MessageExecuted(uint256 srcChainId, uint32 nonce, address target, bytes callData);
 
     /**
