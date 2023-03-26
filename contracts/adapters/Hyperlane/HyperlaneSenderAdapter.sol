@@ -86,14 +86,22 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
         // See https://docs.hyperlane.xyz/docs/build-with-hyperlane/guides/paying-for-interchain-gas
         if (address(igp) != address(0) && dstDomainId != 0) {
             // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
-            return igp.quoteGasPayment(dstDomainId, 500000);
+            try igp.quoteGasPayment(dstDomainId, 500000) returns (uint256 gasQuote) {
+                return gasQuote;
+            } catch {
+                // catch block is required, so might as well be explicit
+                return 0;
+            }
         }
 
         // Default to zero, MultiMessageSender.estimateTotalMessageFee doesn't expect this function to revert
         return 0;
     }
 
-    // @inheritdoc _setIgp
+    /**
+     * @notice Sets the IGP for this adapter.
+     * @dev See _setIgp.
+     */
     function setIgp(address _igp) external onlyOwner {
         _setIgp(_igp);
     }
@@ -177,7 +185,7 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     }
 
     /**
-     * @notice Sets the IGP for this adapter.
+     * @dev Sets the IGP for this adapter.
      * @param _igp The IGP contract address.
      */
     function _setIgp(address _igp) internal {
