@@ -93,17 +93,14 @@ contract HyperlaneReceiverAdapter is
      * @param _body Body of the message.
      */
     function handle(uint32 /* _origin*/, bytes32 _sender, bytes memory _body) external onlyMailbox {
-        address sender = TypeCasts.bytes32ToAddress(_sender);
-        (
-            uint256 srcChainId,
-            bytes32 msgId,
-            address multiMessageSender,
-            address multiMessageReceiver,
-            bytes memory data
-        ) = abi.decode(_body, (uint256, bytes32, address, address, bytes));
+        address adapter = TypeCasts.bytes32ToAddress(_sender);
+        (uint256 srcChainId, bytes32 msgId, address sender, address receiver, bytes memory data) = abi.decode(
+            _body,
+            (uint256, bytes32, address, address, bytes)
+        );
 
-        if (sender != senderAdapters[srcChainId]) {
-            revert Errors.UnauthorizedAdapter(srcChainId, sender);
+        if (adapter != senderAdapters[srcChainId]) {
+            revert Errors.UnauthorizedAdapter(srcChainId, adapter);
         }
         if (executedMessages[msgId]) {
             revert MessageIdAlreadyExecuted(msgId);
@@ -111,9 +108,7 @@ contract HyperlaneReceiverAdapter is
             executedMessages[msgId] = true;
         }
 
-        (bool success, bytes memory returnData) = multiMessageReceiver.call(
-            abi.encodePacked(data, msgId, srcChainId, multiMessageSender)
-        );
+        (bool success, bytes memory returnData) = receiver.call(abi.encodePacked(data, msgId, srcChainId, sender));
 
         if (!success) {
             revert MessageFailure(msgId, returnData);
