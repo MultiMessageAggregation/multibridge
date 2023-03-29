@@ -26,7 +26,6 @@ describe("MultiMessageReceiver test", function() {
                 [chainId],
                 [ethers.utils.getAddress("0x0000000000000000000000000000000000000002")],
                 [mockReceiverAdapter.address],
-                [100],
                 [66],
             )
         ).to.be.revertedWith("Initializable: contract is already initialized")
@@ -115,9 +114,8 @@ describe("MultiMessageReceiver test", function() {
         await mockReceiverAdapter2.updateSenderAdapter([chainId], [mockReceiverAdapter2.address]);
 
         const bridgeName = await mockReceiverAdapter.name();
-        const power2 = 100;
         const dataForAdd = multiMessageReceiver.interface.encodeFunctionData("updateReceiverAdapter",
-            [[mockReceiverAdapter2.address], [power2]]);
+            [[mockReceiverAdapter2.address], [true]]);
         let dataDispatched = multiMessageReceiver.interface.encodeFunctionData("receiveMessage",
             [ {
                 dstChainId: chainId,
@@ -140,7 +138,7 @@ describe("MultiMessageReceiver test", function() {
             .to.emit(multiMessageReceiver, "MessageExecuted")
             .withArgs(chainId, 0, multiMessageReceiver.address, dataForAdd)
             .to.emit(multiMessageReceiver, "ReceiverAdapterUpdated")
-            .withArgs(mockReceiverAdapter2.address, power2)
+            .withArgs(mockReceiverAdapter2.address, true)
 
         const newQuorumThreshold = 67;
         const dataForUpdateQuorum = multiMessageReceiver.interface.encodeFunctionData("updateQuorumThreshold",

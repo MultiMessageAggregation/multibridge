@@ -12,11 +12,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     // minimum accumulated power precentage for each message to be executed
     uint64 public quorumThreshold;
 
-    // receiverAdapter => power of bridge receive adapers
-    mapping(address => uint64) public receiverAdapterPowers;
-    // total power of all bridge adapters
-    uint64 public totalPower;
-
     // srcChainId => multiMessageSender
     mapping(uint256 => address) public multiMessageSenders;
 
@@ -27,7 +22,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     // msgId => MsgInfo
     mapping(bytes32 => MsgInfo) public msgInfos;
 
-    event ReceiverAdapterUpdated(address receiverAdapter, uint64 power);
+    event ReceiverAdapterUpdated(address receiverAdapter, bool add);
     event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
     event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAdapter);
@@ -37,7 +32,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
      * @notice A modifier used for restricting the caller of some functions to be configured receiver adapters.
      */
     modifier onlyReceiverAdapter() {
-        require(receiverAdapterPowers[msg.sender] > 0, "not allowed bridge receiver adapter");
+        require(isTrustedExecutor(msg.sender), "not allowed bridge receiver adapter");
         _;
     }
 
@@ -58,20 +53,17 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /**
-     * @notice A one-time function to initialize contract states by the owner.
-     * The contract ownership will be renounced at the end of this call.
+     * @notice A one-time function to initialize contract states.
      */
     function initialize(
         uint256[] calldata _srcChainIds,
         address[] calldata _multiMessageSenders,
         address[] calldata _receiverAdapters,
-        uint32[] calldata _powers,
         uint64 _quorumThreshold
     ) external initializer {
         require(_multiMessageSenders.length > 0, "empty MultiMessageSender list");
         require(_multiMessageSenders.length == _srcChainIds.length, "mismatch length");
         require(_receiverAdapters.length > 0, "empty receiver adapter list");
-        require(_receiverAdapters.length == _powers.length, "mismatch length");
         require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
         for (uint256 i; i < _multiMessageSenders.length; ++i) {
             require(_multiMessageSenders[i] != address(0), "MultiMessageSender is zero address");
@@ -79,8 +71,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
         for (uint256 i; i < _receiverAdapters.length; ++i) {
             require(_receiverAdapters[i] != address(0), "receiver adapter is zero address");
-            require(_powers[i] > 0, "power of receiver adapter is zero");
-            _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
+            _updateReceiverAdapter(_receiverAdapters[i], true);
         }
         quorumThreshold = _quorumThreshold;
     }
@@ -112,10 +103,13 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
      * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
-    function updateReceiverAdapter(address[] calldata _receiverAdapters, uint32[] calldata _powers) external onlySelf {
-        require(_receiverAdapters.length == _powers.length, "mismatch length");
+    function updateReceiverAdapter(
+        address[] calldata _receiverAdapters,
+        bool[] calldata _operations
+    ) external onlySelf {
+        require(_receiverAdapters.length == _operations.length, "mismatch length");
         for (uint256 i; i < _receiverAdapters.length; ++i) {
-            _updateReceiverAdapter(_receiverAdapters[i], _powers[i]);
+            _updateReceiverAdapter(_receiverAdapters[i], _operations[i]);
         }
     }
 
@@ -169,7 +163,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             return;
         }
         uint64 msgPower = _computeMessagePower(_msgInfo);
-        if (msgPower >= (totalPower * quorumThreshold) / THRESHOLD_DECIMAL) {
+        if (msgPower * THRESHOLD_DECIMAL >= trustedExecutor.length * quorumThreshold) {
             _msgInfo.executed = true;
             (bool ok, ) = _message.target.call(_message.callData);
             require(ok, "external message execution failed");
@@ -182,33 +176,19 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         for (uint256 i; i < trustedExecutor.length; ++i) {
             address adapter = trustedExecutor[i];
             if (_msgInfo.from[adapter]) {
-                msgPower += receiverAdapterPowers[adapter];
+                ++msgPower;
             }
         }
         return msgPower;
     }
 
-    function _updateReceiverAdapter(address _receiverAdapter, uint32 _power) private {
-        totalPower -= receiverAdapterPowers[_receiverAdapter];
-        totalPower += _power;
-        if (_power > 0) {
-            _setReceiverAdapter(_receiverAdapter, _power);
+    function _updateReceiverAdapter(address _receiverAdapter, bool _add) private {
+        if (_add) {
+            _addTrustedExecutor(_receiverAdapter);
         } else {
-            _removeReceiverAdapter(_receiverAdapter);
+            _removeTrustedExecutor(_receiverAdapter);
         }
-        emit ReceiverAdapterUpdated(_receiverAdapter, _power);
-    }
-
-    function _setReceiverAdapter(address _receiverAdapter, uint32 _power) private {
-        require(_power > 0, "zero power");
-        _addTrustedExecutor(_receiverAdapter);
-        receiverAdapterPowers[_receiverAdapter] = _power;
-    }
-
-    function _removeReceiverAdapter(address _receiverAdapter) private {
-        require(receiverAdapterPowers[_receiverAdapter] > 0, "not a receiver adapter");
-        receiverAdapterPowers[_receiverAdapter] = 0;
-        _removeTrustedExecutor(_receiverAdapter);
+        emit ReceiverAdapterUpdated(_receiverAdapter, _add);
     }
 
     function _updateMultiMessageSender(uint256 _srcChainId, address _multiMessageSender) private {
