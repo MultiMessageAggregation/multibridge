@@ -61,7 +61,7 @@ export async function receiverFixture(): Promise<ReceiverFixture> {
         [network.chainId],
         [ethers.utils.getAddress("0x0000000000000000000000000000000000000001")],
         [mockReceiverAdapter.address],
-        [66],
+        [1],
         );
     await tx.wait();
 

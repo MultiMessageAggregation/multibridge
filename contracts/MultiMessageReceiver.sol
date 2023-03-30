@@ -8,7 +8,6 @@ import "./interfaces/EIP5164/ExecutorAware.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializable {
-    uint256 public constant THRESHOLD_DECIMAL = 100;
     // minimum accumulated power precentage for each message to be executed
     uint64 public quorumThreshold;
 
@@ -64,7 +63,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         require(_multiMessageSenders.length > 0, "empty MultiMessageSender list");
         require(_multiMessageSenders.length == _srcChainIds.length, "mismatch length");
         require(_receiverAdapters.length > 0, "empty receiver adapter list");
-        require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
+        require(_quorumThreshold <= _receiverAdapters.length, "invalid threshold");
         for (uint256 i; i < _multiMessageSenders.length; ++i) {
             require(_multiMessageSenders[i] != address(0), "MultiMessageSender is zero address");
             _updateMultiMessageSender(_srcChainIds[i], _multiMessageSenders[i]);
@@ -134,7 +133,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
     function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
-        require(_quorumThreshold <= THRESHOLD_DECIMAL, "invalid threshold");
+        require(_quorumThreshold <= trustedExecutor.length
+            && _quorumThreshold > 0, "invalid threshold");
         quorumThreshold = _quorumThreshold;
         emit QuorumThresholdUpdated(_quorumThreshold);
     }
@@ -163,7 +163,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             return;
         }
         uint64 msgPower = _computeMessagePower(_msgInfo);
-        if (msgPower * THRESHOLD_DECIMAL >= trustedExecutor.length * quorumThreshold) {
+        if (msgPower >= quorumThreshold) {
             _msgInfo.executed = true;
             (bool ok, ) = _message.target.call(_message.callData);
             require(ok, "external message execution failed");
@@ -187,6 +187,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             _addTrustedExecutor(_receiverAdapter);
         } else {
             _removeTrustedExecutor(_receiverAdapter);
+            require(quorumThreshold <= trustedExecutor.length, "insufficient total power after removal");
         }
         emit ReceiverAdapterUpdated(_receiverAdapter, _add);
     }
