@@ -45,7 +45,7 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
         returns (bytes32)
     {
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
-        bytes memory message = abi.encodePacked(msgId, msg.sender, _to, _data);
+        bytes memory message = abi.encode(msgId, msg.sender, _to, _data);
 
         ITelepathyRouter(telepathyRouter).send(uint32(_toChainId), receiverAdapters[_toChainId], message);
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
