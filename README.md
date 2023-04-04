@@ -25,18 +25,20 @@ Instead of relying on a single AMB, MMA allows the message sender to relay the m
 Assume, we use 3 bridges to relay governance message from Ethereum mainnet to a destination chain. (This number can be changed during actual deployment or via a later governance vote.)
 
 
-On the destination chain, if 2 of the 3 bridges agree with each other, we would consider the message.
+On the destination chain, if 2 of the 3 AMB agree with each other, we would consider the message.
 
 The flow of the message and how it is transformed and relayed is detailed below:
 
 1. Uniswap Ethereum governance structure, `src`, approves to execute a message `msg` on destination chain `dst`.
 2. Uniswap governance sends `msg` to `MultiMessageSender`. 
 3. `MultiMessageSender` relays `msg` to different adapters `adapter`.
-4. `adapter` encodes `msg` into the corresponding formatted message, `formatted_msg`, and sends it to the hardcoded bridge contracts `bridge`.
-5. Each `bridge` independently carries `formatted_msg` to `dst`.
+4. `adapter` encodes `msg` into the corresponding formatted message, `formatted_msg`, and sends it to the hardcoded AMB contracts `AMB`.
+5. Each `AMB` independently carries `formatted_msg` to `dst`.
 6. On the destination chain, another set of `adapters` decodes `formatted_msgs` into the original `msg`.
 7. `msg` is collected inside the `MultiMessageReceiver` contract.
 8. If 2 out of 3 `msg` is the same, the `msg` will be executed on `dst`.
+
+![Illustration of ](https://files.gitbook.com/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FyWOfgotvwuIBhzylK0ud%2Fuploads%2Fco073eKSrR7xUmhObi7v%2FMMA_Highlevel.png?alt=media&token=bff8ec55-c04f-4ab9-b362-caae601154db)
 
 ## Development
 ### Installation
