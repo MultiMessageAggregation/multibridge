@@ -2,34 +2,24 @@
 
 pragma solidity 0.8.17;
 
-import "../../interfaces/IBridgeSenderAdapter.sol";
-import "../../MessageStruct.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../base/BaseSenderAdapter.sol";
+import "../../interfaces/IBridgeSenderAdapter.sol";
 import "./interfaces/IDeBridgeGate.sol";
 import "./interfaces/IDeBridgeReceiverAdapter.sol";
 
-contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
+contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
     /* ========== STATE VARIABLES ========== */
 
     string public constant name = "deBridge";
-    address public multiBridgeSender;
     IDeBridgeGate public immutable deBridgeGate;
 
     // dstChainId => receiverAdapter address
-    mapping(uint64 => address) public receiverAdapters;
+    mapping(uint256 => address) public receiverAdapters;
 
     /* ========== EVENTS ========== */
 
-    event SentMessage(bytes32 submissionId, MessageStruct.Message _message);
-    event ReceiverAdapterUpdated(uint64 dstChainId, address receiverAdapter);
-    event MultiBridgeSenderSet(address multiBridgeSender);
-
-    /* ========== MODIFIERS ========== */
-
-    modifier onlyMultiBridgeSender() {
-        require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
-        _;
-    }
+    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
 
     /* ========== CONSTRUCTOR  ========== */
 
@@ -39,44 +29,47 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable {
 
     /* ========== PUBLIC METHODS ========== */
 
-    function getMessageFee(MessageStruct.Message memory) external view returns (uint256) {
+    function getMessageFee(uint256, address, bytes calldata) external view returns (uint256) {
         return deBridgeGate.globalFixedNativeFee();
     }
 
-    function sendMessage(MessageStruct.Message memory _message) external payable onlyMultiBridgeSender {
-        _message.bridgeName = name;
-        require(receiverAdapters[_message.dstChainId] != address(0), "no receiver adapter");
-        address receiver = receiverAdapters[_message.dstChainId];
+    function dispatchMessage(
+        uint256 _toChainId,
+        address _to,
+        bytes calldata _data
+    ) external payable override returns (bytes32) {
+        require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
+        address receiver = receiverAdapters[_toChainId];
+        bytes32 msgId = _getNewMessageId(_toChainId, _to);
         bytes memory executeMethodData = abi.encodeWithSelector(
             IDeBridgeReceiverAdapter.executeMessage.selector,
-            _message
+            msg.sender,
+            _to,
+            _data,
+            msgId
         );
 
-        bytes32 submissionId = deBridgeGate.sendMessage{value: msg.value}(
-            _message.dstChainId, //_dstChainId,
+        deBridgeGate.sendMessage{value: msg.value}(
+            _toChainId, //_dstChainId,
             abi.encodePacked(receiver), //_targetContractAddress
             executeMethodData //_targetContractCalldata,
         );
 
-        emit SentMessage(submissionId, _message);
+        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+
+        return msgId;
     }
 
     /* ========== ADMIN METHODS ========== */
 
-    function updateReceiverAdapter(uint64[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateReceiverAdapter(
+        uint256[] calldata _dstChainIds,
+        address[] calldata _receiverAdapters
+    ) external override onlyOwner {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _dstChainIds.length; i++) {
+        for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
         }
-    }
-
-    function setMultiBridgeSender(address _multiBridgeSender) external override onlyOwner {
-        multiBridgeSender = _multiBridgeSender;
-        emit MultiBridgeSenderSet(_multiBridgeSender);
     }
 }

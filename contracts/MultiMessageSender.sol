@@ -3,17 +3,24 @@
 pragma solidity >=0.8.9;
 
 import "./interfaces/IBridgeSenderAdapter.sol";
+import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 
-contract MultiBridgeSender {
+contract MultiMessageSender {
     // List of bridge sender adapters
     address[] public senderAdapters;
     // The dApp contract that can use this multi-bridge sender for cross-chain remoteCall.
-    // This means the current MultiBridgeSender is only intended to be used by a single dApp.
+    // This means the current MultiMessageSender is only intended to be used by a single dApp.
     address public immutable caller;
     uint32 public nonce;
 
-    event MultiBridgeMsgSent(uint32 nonce, uint64 dstChainId, address target, bytes callData, address[] senderAdapters);
+    event MultiMessageMsgSent(
+        uint32 nonce,
+        uint64 dstChainId,
+        address target,
+        bytes callData,
+        address[] senderAdapters
+    );
     event SenderAdapterUpdated(address senderAdapter, bool add); // add being false indicates removal of the adapter
     event ErrorSendMessage(address senderAdapters, MessageStruct.Message message);
 
@@ -35,38 +42,46 @@ contract MultiBridgeSender {
      * Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
      *
      * @param _dstChainId is the destination chainId.
+     * @param _multiMessageReceiver is the MultiMessageReceiver address on destination chain.
      * @param _target is the contract address on the destination chain.
      * @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData)).
      */
     function remoteCall(
         uint64 _dstChainId,
+        address _multiMessageReceiver,
         address _target,
         bytes calldata _callData
     ) external payable onlyCaller {
-        MessageStruct.Message memory message = MessageStruct.Message(
-            uint64(block.chainid),
-            _dstChainId,
-            nonce,
-            _target,
-            _callData,
-            ""
-        );
+        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, "");
+        bytes memory data;
         uint256 totalFee;
         // send copies of the message through multiple bridges
-        for (uint256 i = 0; i < senderAdapters.length; i++) {
-            uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(message);
+        for (uint256 i; i < senderAdapters.length; ++i) {
+            message.bridgeName = IBridgeSenderAdapter(senderAdapters[i]).name();
+            data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
+            uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(
+                uint256(_dstChainId),
+                _multiMessageReceiver,
+                data
+            );
             // if one bridge is paused it shouldn't halt the process
-            try IBridgeSenderAdapter(senderAdapters[i]).sendMessage{value: fee}(message) {
+            try
+                IBridgeSenderAdapter(senderAdapters[i]).dispatchMessage{value: fee}(
+                    uint256(_dstChainId),
+                    _multiMessageReceiver,
+                    data
+                )
+            {
                 totalFee += fee;
             } catch {
                 emit ErrorSendMessage(senderAdapters[i], message);
             }
         }
-        emit MultiBridgeMsgSent(nonce, _dstChainId, _target, _callData, senderAdapters);
+        emit MultiMessageMsgSent(nonce, _dstChainId, _target, _callData, senderAdapters);
         nonce++;
         // refund remaining native token to msg.sender
         if (totalFee < msg.value) {
-            payable(msg.sender).transfer(msg.value - totalFee);
+            _safeTransferETH(msg.sender, msg.value - totalFee);
         }
     }
 
@@ -74,7 +89,7 @@ contract MultiBridgeSender {
      * @notice Add bridge sender adapters
      */
     function addSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
-        for (uint256 i = 0; i < _senderAdapters.length; i++) {
+        for (uint256 i; i < _senderAdapters.length; ++i) {
             _addSenderAdapter(_senderAdapters[i]);
         }
     }
@@ -83,7 +98,7 @@ contract MultiBridgeSender {
      * @notice Remove bridge sender adapters
      */
     function removeSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
-        for (uint256 i = 0; i < _senderAdapters.length; i++) {
+        for (uint256 i; i < _senderAdapters.length; ++i) {
             _removeSenderAdapter(_senderAdapters[i]);
         }
     }
@@ -93,27 +108,28 @@ contract MultiBridgeSender {
      */
     function estimateTotalMessageFee(
         uint64 _dstChainId,
+        address _multiMessageReceiver,
         address _target,
         bytes calldata _callData
     ) public view returns (uint256) {
-        MessageStruct.Message memory message = MessageStruct.Message(
-            uint64(block.chainid),
-            _dstChainId,
-            nonce,
-            _target,
-            _callData,
-            ""
-        );
+        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, "");
+        bytes memory data;
         uint256 totalFee;
-        for (uint256 i = 0; i < senderAdapters.length; i++) {
-            uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(message);
+        for (uint256 i; i < senderAdapters.length; ++i) {
+            message.bridgeName = IBridgeSenderAdapter(senderAdapters[i]).name();
+            data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
+            uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(
+                uint256(_dstChainId),
+                _multiMessageReceiver,
+                data
+            );
             totalFee += fee;
         }
         return totalFee;
     }
 
     function _addSenderAdapter(address _senderAdapter) private {
-        for (uint256 i = 0; i < senderAdapters.length; i++) {
+        for (uint256 i; i < senderAdapters.length; ++i) {
             if (senderAdapters[i] == _senderAdapter) {
                 return;
             }
@@ -124,7 +140,7 @@ contract MultiBridgeSender {
 
     function _removeSenderAdapter(address _senderAdapter) private {
         uint256 lastIndex = senderAdapters.length - 1;
-        for (uint256 i = 0; i < senderAdapters.length; i++) {
+        for (uint256 i; i < senderAdapters.length; ++i) {
             if (senderAdapters[i] == _senderAdapter) {
                 if (i < lastIndex) {
                     senderAdapters[i] = senderAdapters[lastIndex];
@@ -134,5 +150,15 @@ contract MultiBridgeSender {
                 return;
             }
         }
+    }
+
+    /*
+     * @dev transfer ETH to an address, revert if it fails.
+     * @param to recipient of the transfer
+     * @param value the amount to send
+     */
+    function _safeTransferETH(address to, uint256 value) internal {
+        (bool success, ) = to.call{value: value}(new bytes(0));
+        require(success, "safeTransferETH: ETH transfer failed");
     }
 }

@@ -4,57 +4,50 @@ pragma solidity 0.8.17;
 
 import "./interfaces/IMessageBus.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
-import "../../MessageStruct.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../base/BaseSenderAdapter.sol";
 
-contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable {
+contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
     string public constant name = "celer";
-    address public multiBridgeSender;
     address public immutable msgBus;
     // dstChainId => receiverAdapter address
-    mapping(uint64 => address) public receiverAdapters;
+    mapping(uint256 => address) public receiverAdapters;
 
-    event ReceiverAdapterUpdated(uint64 dstChainId, address receiverAdapter);
-    event MultiBridgeSenderSet(address multiBridgeSender);
-
-    modifier onlyMultiBridgeSender() {
-        require(msg.sender == multiBridgeSender, "not multi-bridge msg sender");
-        _;
-    }
+    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
 
     constructor(address _msgBus) {
         msgBus = _msgBus;
     }
 
-    function getMessageFee(MessageStruct.Message memory _message) external view override returns (uint256) {
-        _message.bridgeName = name;
-        return IMessageBus(msgBus).calcFee(abi.encode(_message));
+    function getMessageFee(uint256, address _to, bytes calldata _data) external view override returns (uint256) {
+        // fee is depended only on message length
+        return IMessageBus(msgBus).calcFee(abi.encode(bytes32(""), msg.sender, _to, _data));
     }
 
-    function sendMessage(MessageStruct.Message memory _message) external payable override onlyMultiBridgeSender {
-        _message.bridgeName = name;
-        require(receiverAdapters[_message.dstChainId] != address(0), "no receiver adapter");
+    function dispatchMessage(
+        uint256 _toChainId,
+        address _to,
+        bytes calldata _data
+    ) external payable override returns (bytes32) {
+        require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
+        bytes32 msgId = _getNewMessageId(_toChainId, _to);
         IMessageBus(msgBus).sendMessage{value: msg.value}(
-            receiverAdapters[_message.dstChainId],
-            _message.dstChainId,
-            abi.encode(_message)
+            receiverAdapters[_toChainId],
+            _toChainId,
+            abi.encode(msgId, msg.sender, _to, _data)
         );
+        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+        return msgId;
     }
 
-    function updateReceiverAdapter(uint64[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateReceiverAdapter(
+        uint256[] calldata _dstChainIds,
+        address[] calldata _receiverAdapters
+    ) external override onlyOwner {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
-        for (uint256 i = 0; i < _dstChainIds.length; i++) {
+        for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
         }
-    }
-
-    function setMultiBridgeSender(address _multiBridgeSender) external override onlyOwner {
-        multiBridgeSender = _multiBridgeSender;
-        emit MultiBridgeSenderSet(_multiBridgeSender);
     }
 }
