@@ -69,8 +69,8 @@ contract AxelarReceiverAdapter is
         // Decode the payload
         (
             bytes32 msgId,
-            address multibridgeSender,
-            address multibridgeReceiver,
+            address srcSender,
+            address destReceiver,
             bytes memory data
         ) = abi.decode(payload, (bytes32, address, address, bytes));
 
@@ -81,8 +81,8 @@ contract AxelarReceiverAdapter is
         executeMsgs[msgId] = true;
 
         // Call MultiBridgeReceiver contract to execute the message
-        (bool ok, bytes memory lowLevelData) = multibridgeReceiver.call(
-            abi.encodePacked(data, msgId, srcChainId, multibridgeSender)
+        (bool ok, bytes memory lowLevelData) = destReceiver.call(
+            abi.encodePacked(data, msgId, srcChainId, srcSender)
         );
 
         if (!ok) {
