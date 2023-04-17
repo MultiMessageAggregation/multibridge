@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 abstract contract Pauser is Ownable, Pausable {
     mapping(address => bool) public pausers;
+    bool public ownerUnpauseOnly;
 
     event PauserAdded(address account);
     event PauserRemoved(address account);
@@ -25,6 +26,9 @@ abstract contract Pauser is Ownable, Pausable {
     }
 
     function unpause() public onlyPauser {
+        if (ownerUnpauseOnly) {
+            require(owner() == msg.sender, "Caller is not owner");
+        }
         _unpause();
     }
 
@@ -42,6 +46,10 @@ abstract contract Pauser is Ownable, Pausable {
 
     function renouncePauser() public {
         _removePauser(msg.sender);
+    }
+
+    function setOwnerUnpauseOnly(bool enable) public onlyOwner {
+        ownerUnpauseOnly = enable;
     }
 
     function _addPauser(address account) private {
