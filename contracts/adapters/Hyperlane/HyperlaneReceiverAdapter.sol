@@ -108,7 +108,9 @@ contract HyperlaneReceiverAdapter is
             executedMessages[msgId] = true;
         }
 
-        (bool success, bytes memory returnData) = destReceiver.call(abi.encodePacked(data, msgId, srcChainId, srcSender));
+        (bool success, bytes memory returnData) = destReceiver.call(
+            abi.encodePacked(data, msgId, srcChainId, srcSender)
+        );
 
         if (!success) {
             revert MessageFailure(msgId, returnData);

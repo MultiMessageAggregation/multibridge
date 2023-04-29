@@ -33,15 +33,17 @@ contract TelepathyReceiverAdapter is IBridgeReceiverAdapter, ITelepathyHandler, 
     }
 
     /* ========== EXTERNAL METHODS ========== */
-    
+
     /// @dev The checks for MessageIdAlreadyExecuted
     function handleTelepathy(uint32 _srcChainId, address _srcAddress, bytes memory _message) external returns (bytes4) {
         // Validation
         if (msg.sender != telepathyRouter) {
             revert NotFromTelepathyRouter(msg.sender);
         }
-        (bytes32 msgId, address multiMessageSender, address multiMessageReceiver, bytes memory data) =
-            abi.decode(_message, (bytes32, address, address, bytes));
+        (bytes32 msgId, address multiMessageSender, address multiMessageReceiver, bytes memory data) = abi.decode(
+            _message,
+            (bytes32, address, address, bytes)
+        );
         if (_srcAddress != senderAdapters[uint256(_srcChainId)]) {
             revert InvalidSenderAdapter(_srcAddress);
         }
@@ -51,8 +53,9 @@ contract TelepathyReceiverAdapter is IBridgeReceiverAdapter, ITelepathyHandler, 
         executedMessages[msgId] = true;
 
         // Pass message on to the MultiMessageReceiver
-        (bool success, bytes memory lowLevelData) =
-            multiMessageReceiver.call(abi.encodePacked(data, msgId, uint256(_srcChainId), multiMessageSender));
+        (bool success, bytes memory lowLevelData) = multiMessageReceiver.call(
+            abi.encodePacked(data, msgId, uint256(_srcChainId), multiMessageSender)
+        );
         if (!success) {
             revert MessageFailure(msgId, lowLevelData);
         }
@@ -63,11 +66,10 @@ contract TelepathyReceiverAdapter is IBridgeReceiverAdapter, ITelepathyHandler, 
 
     /* ========== ADMIN METHODS ========== */
 
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        override
-        onlyOwner
-    {
+    function updateSenderAdapter(
+        uint256[] calldata _srcChainIds,
+        address[] calldata _senderAdapters
+    ) external override onlyOwner {
         if (_srcChainIds.length != _senderAdapters.length) {
             revert MismatchAdapterArrLength(_srcChainIds.length, _senderAdapters.length);
         }

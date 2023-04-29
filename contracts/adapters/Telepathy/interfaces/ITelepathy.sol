@@ -5,26 +5,38 @@ pragma solidity 0.8.17;
 interface ITelepathyRouter {
     event SentMessage(uint64 indexed nonce, bytes32 indexed msgHash, bytes message);
 
-    function send(uint32 destinationChainId, bytes32 destinationAddress, bytes calldata data)
-        external
-        returns (bytes32);
+    function send(
+        uint32 destinationChainId,
+        bytes32 destinationAddress,
+        bytes calldata data
+    ) external returns (bytes32);
 
-    function send(uint32 destinationChainId, address destinationAddress, bytes calldata data)
-        external
-        returns (bytes32);
+    function send(
+        uint32 destinationChainId,
+        address destinationAddress,
+        bytes calldata data
+    ) external returns (bytes32);
 
-    function sendViaStorage(uint32 destinationChainId, bytes32 destinationAddress, bytes calldata data)
-        external
-        returns (bytes32);
+    function sendViaStorage(
+        uint32 destinationChainId,
+        bytes32 destinationAddress,
+        bytes calldata data
+    ) external returns (bytes32);
 
-    function sendViaStorage(uint32 destinationChainId, address destinationAddress, bytes calldata data)
-        external
-        returns (bytes32);
+    function sendViaStorage(
+        uint32 destinationChainId,
+        address destinationAddress,
+        bytes calldata data
+    ) external returns (bytes32);
 }
 
 interface ITelepathyReceiver {
     event ExecutedMessage(
-        uint32 indexed sourceChainId, uint64 indexed nonce, bytes32 indexed msgHash, bytes message, bool status
+        uint32 indexed sourceChainId,
+        uint64 indexed nonce,
+        bytes32 indexed msgHash,
+        bytes message,
+        bool status
     );
 
     function executeMessage(
@@ -46,7 +58,9 @@ interface ITelepathyReceiver {
 }
 
 interface ITelepathyHandler {
-    function handleTelepathy(uint32 _sourceChainId, address _sourceAddress, bytes memory _data)
-        external
-        returns (bytes4);
+    function handleTelepathy(
+        uint32 _sourceChainId,
+        address _sourceAddress,
+        bytes memory _data
+    ) external returns (bytes4);
 }

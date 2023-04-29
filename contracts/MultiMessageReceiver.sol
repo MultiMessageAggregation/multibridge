@@ -133,8 +133,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
     function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
-        require(_quorumThreshold <= trustedExecutor.length
-            && _quorumThreshold > 0, "invalid threshold");
+        require(_quorumThreshold <= trustedExecutor.length && _quorumThreshold > 0, "invalid threshold");
         quorumThreshold = _quorumThreshold;
         emit QuorumThresholdUpdated(_quorumThreshold);
     }

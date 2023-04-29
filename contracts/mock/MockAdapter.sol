@@ -57,8 +57,6 @@ contract MockAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter, IBridg
         }
     }
 
-
-
     function updateReceiverAdapter(
         uint256[] calldata _dstChainIds,
         address[] calldata _receiverAdapters

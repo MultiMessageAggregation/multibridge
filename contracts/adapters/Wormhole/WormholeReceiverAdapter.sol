@@ -79,8 +79,10 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, O
         // Ensure the emitterAddress of this VAA is the Uniswap message sender
         require(senderAdapters[vm.emitterChainId] == vm.emitterAddress, "Invalid Emitter Address!");
         //verify destination
-        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) = abi
-            .decode(vm.payload, (address, address, bytes, address));
+        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) = abi.decode(
+            vm.payload,
+            (address, address, bytes, address)
+        );
         require(receiverAdapter == address(this), "Message not for this dest");
         // replay protection
         bytes32 msgId = bytes32(uint256(vm.nonce));
