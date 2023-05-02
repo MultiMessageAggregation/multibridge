@@ -15,6 +15,7 @@ contract MultiMessageSender {
     uint32 public nonce;
 
     event MultiMessageMsgSent(
+        bytes32 msgId,
         uint32 nonce,
         uint64 dstChainId,
         address target,
@@ -87,7 +88,8 @@ contract MultiMessageSender {
                 emit ErrorSendMessage(senderAdapters[i], message);
             }
         }
-        emit MultiMessageMsgSent(nonce, _dstChainId, _target, _callData, _expiration, senderAdapters);
+        bytes32 msgId = MessageStruct.computeMsgId(message, block.chainid);
+        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, _expiration, senderAdapters);
         nonce++;
         // refund remaining native token to msg.sender
         if (totalFee < msg.value) {

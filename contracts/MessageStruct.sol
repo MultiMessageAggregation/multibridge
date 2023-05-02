@@ -21,4 +21,22 @@ library MessageStruct {
         uint64 expiration;
         string bridgeName;
     }
+
+    /**
+     * @notice Compute message Id.
+     * message.bridgeName is not included in the message id.
+     */
+    function computeMsgId(MessageStruct.Message memory _message, uint256 _srcChainId) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    _srcChainId,
+                    _message.dstChainId,
+                    _message.nonce,
+                    _message.target,
+                    _message.callData,
+                    _message.expiration
+                )
+            );
+    }
 }

@@ -24,8 +24,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
     event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
-    event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAdapter);
-    event MessageExecuted(uint256 srcChainId, uint32 nonce, address target, bytes callData);
+    event SingleBridgeMsgReceived(
+        bytes32 msgId,
+        uint256 srcChainId,
+        string indexed bridgeName,
+        uint32 nonce,
+        address receiverAdapter
+    );
+    event MessageExecuted(bytes32 msgId, uint256 srcChainId, uint32 nonce, address target, bytes callData);
 
     /**
      * @notice A modifier used for restricting the caller of some functions to be configured receiver adapters.
@@ -88,12 +94,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint256 srcChainId = _fromChainId();
         // This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         // Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
-        bytes32 msgId = getMsgId(_message, srcChainId);
+        bytes32 msgId = MessageStruct.computeMsgId(_message, srcChainId);
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(msgInfo.from[msg.sender] == false, "already received from this bridge adapter");
 
         msgInfo.from[msg.sender] = true;
-        emit SingleBridgeMsgReceived(srcChainId, _message.bridgeName, _message.nonce, msg.sender);
+        emit SingleBridgeMsgReceived(msgId, srcChainId, _message.bridgeName, _message.nonce, msg.sender);
     }
 
     /**
@@ -117,7 +123,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             _expiration,
             ""
         );
-        bytes32 msgId = getMsgId(message, _srcChainId);
+        bytes32 msgId = MessageStruct.computeMsgId(message, _srcChainId);
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(!msgInfo.executed, "message already executed");
         msgInfo.executed = true;
@@ -127,7 +133,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         (bool ok, ) = _target.call(_callData);
         require(ok, "external message execution failed");
-        emit MessageExecuted(_srcChainId, _nonce, _target, _callData);
+        emit MessageExecuted(msgId, _srcChainId, _nonce, _target, _callData);
     }
 
     /**
@@ -169,24 +175,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         require(_quorumThreshold <= trustedExecutor.length && _quorumThreshold > 0, "invalid threshold");
         quorumThreshold = _quorumThreshold;
         emit QuorumThresholdUpdated(_quorumThreshold);
-    }
-
-    /**
-     * @notice Compute message Id.
-     * message.bridgeName is not included in the message id.
-     */
-    function getMsgId(MessageStruct.Message memory _message, uint256 _srcChainId) public pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    _srcChainId,
-                    _message.dstChainId,
-                    _message.nonce,
-                    _message.target,
-                    _message.callData,
-                    _message.expiration
-                )
-            );
     }
 
     function _computeMessagePower(MsgInfo storage _msgInfo) private view returns (uint64) {
