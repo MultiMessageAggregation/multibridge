@@ -19,6 +19,7 @@ contract MultiMessageSender {
         uint64 dstChainId,
         address target,
         bytes callData,
+        uint64 _expiration,
         address[] senderAdapters
     );
     event SenderAdapterUpdated(address senderAdapter, bool add); // add being false indicates removal of the adapter
@@ -45,14 +46,23 @@ contract MultiMessageSender {
      * @param _multiMessageReceiver is the MultiMessageReceiver address on destination chain.
      * @param _target is the contract address on the destination chain.
      * @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData)).
+     * @param _expiration is the unix time when the message expires, zero means never expire.
      */
     function remoteCall(
         uint64 _dstChainId,
         address _multiMessageReceiver,
         address _target,
-        bytes calldata _callData
+        bytes calldata _callData,
+        uint64 _expiration
     ) external payable onlyCaller {
-        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, "");
+        MessageStruct.Message memory message = MessageStruct.Message(
+            _dstChainId,
+            nonce,
+            _target,
+            _callData,
+            _expiration,
+            ""
+        );
         bytes memory data;
         uint256 totalFee;
         // send copies of the message through multiple bridges
@@ -77,7 +87,7 @@ contract MultiMessageSender {
                 emit ErrorSendMessage(senderAdapters[i], message);
             }
         }
-        emit MultiMessageMsgSent(nonce, _dstChainId, _target, _callData, senderAdapters);
+        emit MultiMessageMsgSent(nonce, _dstChainId, _target, _callData, _expiration, senderAdapters);
         nonce++;
         // refund remaining native token to msg.sender
         if (totalFee < msg.value) {
@@ -112,7 +122,7 @@ contract MultiMessageSender {
         address _target,
         bytes calldata _callData
     ) public view returns (uint256) {
-        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, "");
+        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, 0, "");
         bytes memory data;
         uint256 totalFee;
         for (uint256 i; i < senderAdapters.length; ++i) {

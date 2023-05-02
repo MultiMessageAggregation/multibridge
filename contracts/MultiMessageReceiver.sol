@@ -105,9 +105,18 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint64 _dstChainId,
         uint32 _nonce,
         address _target,
-        bytes calldata _callData
+        bytes calldata _callData,
+        uint64 _expiration
     ) external {
-        MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, _nonce, _target, _callData, "");
+        require(_expiration < block.timestamp || _expiration == 0, "message expired");
+        MessageStruct.Message memory message = MessageStruct.Message(
+            _dstChainId,
+            _nonce,
+            _target,
+            _callData,
+            _expiration,
+            ""
+        );
         bytes32 msgId = getMsgId(message, _srcChainId);
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(!msgInfo.executed, "message already executed");
@@ -169,7 +178,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     function getMsgId(MessageStruct.Message memory _message, uint256 _srcChainId) public pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(_srcChainId, _message.dstChainId, _message.nonce, _message.target, _message.callData)
+                abi.encodePacked(
+                    _srcChainId,
+                    _message.dstChainId,
+                    _message.nonce,
+                    _message.target,
+                    _message.callData,
+                    _message.expiration
+                )
             );
     }
 
