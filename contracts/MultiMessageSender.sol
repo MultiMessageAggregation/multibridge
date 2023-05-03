@@ -20,7 +20,7 @@ contract MultiMessageSender {
         uint64 dstChainId,
         address target,
         bytes callData,
-        uint64 _expiration,
+        uint64 expiration,
         address[] senderAdapters
     );
     event SenderAdapterUpdated(address senderAdapter, bool add); // add being false indicates removal of the adapter

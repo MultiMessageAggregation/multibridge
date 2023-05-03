@@ -105,6 +105,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /**
      * @notice Execute the message (invoke external call according to the message content) if the message
      * has reached the power threshold (the same message has been delivered by enough multiple bridges).
+     * Param values can be found in the MultiMessageMsgSent event from the source chain MultiMessageSender contract.
      */
     function executeMessage(
         uint64 _srcChainId,
@@ -125,11 +126,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         );
         bytes32 msgId = MessageStruct.computeMsgId(message, _srcChainId);
         MsgInfo storage msgInfo = msgInfos[msgId];
+
         require(!msgInfo.executed, "message already executed");
         msgInfo.executed = true;
-
-        uint64 msgPower = _computeMessagePower(msgInfo);
-        require(msgPower >= quorumThreshold, "threshold not met");
+        require(_computeMessagePower(msgInfo) >= quorumThreshold, "threshold not met");
 
         (bool ok, ) = _target.call(_callData);
         require(ok, "external message execution failed");
@@ -175,6 +175,26 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         require(_quorumThreshold <= trustedExecutor.length && _quorumThreshold > 0, "invalid threshold");
         quorumThreshold = _quorumThreshold;
         emit QuorumThresholdUpdated(_quorumThreshold);
+    }
+
+    /**
+     * @notice View message info, return (executed, msgPower, delivered adapters)
+     *
+     */
+    function getMessageInfo(bytes32 msgId) public view returns (bool, uint64, address[] memory) {
+        MsgInfo storage msgInfo = msgInfos[msgId];
+        uint64 msgPower = _computeMessagePower(msgInfo);
+        address[] memory adapters = new address[](msgPower);
+        if (msgPower > 0) {
+            uint32 n = 0;
+            for (uint64 i = 0; i < trustedExecutor.length; i++) {
+                address adapter = trustedExecutor[i];
+                if (msgInfo.from[adapter]) {
+                    adapters[n++] = adapter;
+                }
+            }
+        }
+        return (msgInfo.executed, msgPower, adapters);
     }
 
     function _computeMessagePower(MsgInfo storage _msgInfo) private view returns (uint64) {
