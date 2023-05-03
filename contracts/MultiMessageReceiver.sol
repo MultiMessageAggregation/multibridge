@@ -94,7 +94,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint256 srcChainId = _fromChainId();
         // This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         // Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
-        bytes32 msgId = MessageStruct.computeMsgId(_message, srcChainId);
+        bytes32 msgId = MessageStruct.computeMsgId(_message, uint64(srcChainId));
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(msgInfo.from[msg.sender] == false, "already received from this bridge adapter");
 

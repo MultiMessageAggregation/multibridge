@@ -2,6 +2,7 @@ import { senderFixture } from './fixtures';
 import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { expect } from 'chai';
+import { keccak256 } from '@ethersproject/solidity';
 import { MockCaller, MockAdapter, MultiMessageSender } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
@@ -14,7 +15,7 @@ describe('MultiMessageSender test', function () {
 
   before('preparation', async () => {
     [wallet] = await (ethers as any).getSigners();
-    chainId = (await ethers.getDefaultProvider().getNetwork()).chainId;
+    chainId = (await ethers.provider.getNetwork()).chainId;
   });
 
   beforeEach('deploy fixture', async () => {
@@ -32,7 +33,8 @@ describe('MultiMessageSender test', function () {
         0,
         ethers.constants.AddressZero,
         ethers.constants.AddressZero,
-        ethers.utils.randomBytes(1)
+        ethers.utils.randomBytes(1),
+        0
       )
     ).to.be.revertedWith('not caller');
   });
@@ -51,11 +53,17 @@ describe('MultiMessageSender test', function () {
       ethers.constants.AddressZero,
       data
     );
+    const msgId = keccak256(
+      ['uint64', 'uint64', 'uint32', 'address', 'bytes', 'uint64'],
+      [chainId, chainId, 0, ethers.constants.AddressZero, data, 0]
+    );
     await expect(
       mockCaller.remoteCall(chainId, ethers.constants.AddressZero, ethers.constants.AddressZero, data, { value: fee })
     )
       .to.emit(multiMessageSender, 'MultiMessageMsgSent')
-      .withArgs(0, chainId, ethers.constants.AddressZero, ethers.utils.hexlify(data), [mockSenderAdapter.address]);
+      .withArgs(msgId, 0, chainId, ethers.constants.AddressZero, ethers.utils.hexlify(data), 0, [
+        mockSenderAdapter.address
+      ]);
   });
 
   it('should successfully remove mock senderAdapter ', async function () {

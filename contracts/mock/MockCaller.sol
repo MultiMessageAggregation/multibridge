@@ -39,7 +39,7 @@ contract MockCaller is AccessControl {
         bytes calldata _callData
     ) external payable onlyCaller {
         uint256 totalFee = bridgeSender.estimateTotalMessageFee(_dstChainId, _multiMessageReceiver, _target, _callData);
-        bridgeSender.remoteCall{value: totalFee}(_dstChainId, _multiMessageReceiver, _target, _callData);
+        bridgeSender.remoteCall{value: totalFee}(_dstChainId, _multiMessageReceiver, _target, _callData, 0);
     }
 
     function addSenderAdapters(address[] calldata _senderAdapters) external onlyAdmin {

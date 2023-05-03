@@ -26,7 +26,7 @@ library MessageStruct {
      * @notice Compute message Id.
      * message.bridgeName is not included in the message id.
      */
-    function computeMsgId(MessageStruct.Message memory _message, uint256 _srcChainId) public pure returns (bytes32) {
+    function computeMsgId(MessageStruct.Message memory _message, uint64 _srcChainId) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(

@@ -88,7 +88,7 @@ contract MultiMessageSender {
                 emit ErrorSendMessage(senderAdapters[i], message);
             }
         }
-        bytes32 msgId = MessageStruct.computeMsgId(message, block.chainid);
+        bytes32 msgId = MessageStruct.computeMsgId(message, uint64(block.chainid));
         emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, _expiration, senderAdapters);
         nonce++;
         // refund remaining native token to msg.sender
