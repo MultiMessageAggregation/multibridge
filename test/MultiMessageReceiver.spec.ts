@@ -2,6 +2,7 @@ import { receiverFixture } from './fixtures';
 import { ethers } from 'hardhat';
 import { Wallet } from 'ethers';
 import { expect } from 'chai';
+import { keccak256 } from '@ethersproject/solidity';
 import { MockAdapter, MultiMessageReceiver } from '../typechain';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 
@@ -16,12 +17,13 @@ describe('MultiMessageReceiver test', function () {
 
   before('preparation', async () => {
     [wallet] = await (ethers as any).getSigners();
-    chainId = (await ethers.getDefaultProvider().getNetwork()).chainId;
+    chainId = (await ethers.provider.getNetwork()).chainId;
   });
 
   beforeEach('deploy fixture', async () => {
     ({ multiMessageReceiver, mockReceiverAdapter } = await loadFixture(receiverFixture));
     bridgeName = await mockReceiverAdapter.name();
+    await mockReceiverAdapter.updateSenderAdapter([chainId], [mockReceiverAdapter.address]);
   });
 
   it('only initialize once', async function () {
@@ -30,7 +32,7 @@ describe('MultiMessageReceiver test', function () {
         [chainId],
         [ethers.utils.getAddress('0x0000000000000000000000000000000000000002')],
         [mockReceiverAdapter.address],
-        [66]
+        [2]
       )
     ).to.be.revertedWith('Initializable: contract is already initialized');
   });
@@ -65,6 +67,7 @@ describe('MultiMessageReceiver test', function () {
         nonce: nonce,
         target: target,
         callData: callData,
+        expiration: 0,
         bridgeName: bridgeName
       }
     ]);
@@ -81,6 +84,10 @@ describe('MultiMessageReceiver test', function () {
     });
 
     it('should successfully update', async function () {
+      const msgId = keccak256(
+        ['uint64', 'uint64', 'uint32', 'address', 'bytes', 'uint64'],
+        [chainId, chainId, 0, multiMessageReceiver.address, dataForTarget, 0]
+      );
       await expect(
         mockReceiverAdapter.executeMessage(
           mockReceiverAdapter.address,
@@ -92,9 +99,13 @@ describe('MultiMessageReceiver test', function () {
         )
       )
         .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
-        .withArgs(chainId, bridgeName, 0, mockReceiverAdapter.address)
+        .withArgs(msgId, chainId, bridgeName, 0, mockReceiverAdapter.address);
+
+      await expect(
+        multiMessageReceiver.executeMessage(chainId, chainId, 0, multiMessageReceiver.address, dataForTarget, 0)
+      )
         .to.emit(multiMessageReceiver, 'MessageExecuted')
-        .withArgs(chainId, 0, multiMessageReceiver.address, dataForTarget)
+        .withArgs(msgId, chainId, 0, multiMessageReceiver.address, dataForTarget)
         .to.emit(multiMessageReceiver, 'QuorumThresholdUpdated')
         .withArgs(newQuorumThreshold);
 
@@ -132,7 +143,6 @@ describe('MultiMessageReceiver test', function () {
       newQuorumThreshold = 2;
       dataForTarget = multiMessageReceiver.interface.encodeFunctionData('updateQuorumThreshold', [newQuorumThreshold]);
       dataDispatched = generateDispatchedMessage(chainId, 1, multiMessageReceiver.address, dataForTarget, bridgeName);
-      const error = errInterface.encodeFunctionData('Error', ['external message execution failed']);
       const nonce = ethers.utils.hexZeroPad('0x01', 32);
       await expect(
         mockReceiverAdapter.executeMessage(
@@ -143,9 +153,10 @@ describe('MultiMessageReceiver test', function () {
           multiMessageReceiver.address,
           dataDispatched
         )
-      )
-        .to.be.revertedWithCustomError(mockReceiverAdapter, 'MessageFailure')
-        .withArgs(nonce, error);
+      );
+      await expect(
+        multiMessageReceiver.executeMessage(chainId, chainId, nonce, multiMessageReceiver.address, dataForTarget, 0)
+      ).to.be.revertedWith('external message execution failed');
     });
   });
 
@@ -161,6 +172,11 @@ describe('MultiMessageReceiver test', function () {
     ]);
     let dataDispatched = generateDispatchedMessage(chainId, 0, multiMessageReceiver.address, dataForAdd, bridgeName);
 
+    let msgId = keccak256(
+      ['uint64', 'uint64', 'uint32', 'address', 'bytes', 'uint64'],
+      [chainId, chainId, 0, multiMessageReceiver.address, dataForAdd, 0]
+    );
+
     // add MockAdapter2
     await expect(
       mockReceiverAdapter.executeMessage(
@@ -173,9 +189,11 @@ describe('MultiMessageReceiver test', function () {
       )
     )
       .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
-      .withArgs(chainId, bridgeName, 0, mockReceiverAdapter.address)
+      .withArgs(msgId, chainId, bridgeName, 0, mockReceiverAdapter.address);
+
+    await expect(multiMessageReceiver.executeMessage(chainId, chainId, 0, multiMessageReceiver.address, dataForAdd, 0))
       .to.emit(multiMessageReceiver, 'MessageExecuted')
-      .withArgs(chainId, 0, multiMessageReceiver.address, dataForAdd)
+      .withArgs(msgId, chainId, 0, multiMessageReceiver.address, dataForAdd)
       .to.emit(multiMessageReceiver, 'ReceiverAdapterUpdated')
       .withArgs(mockReceiverAdapter2.address, true);
 
@@ -191,6 +209,10 @@ describe('MultiMessageReceiver test', function () {
       bridgeName
     );
 
+    msgId = keccak256(
+      ['uint64', 'uint64', 'uint32', 'address', 'bytes', 'uint64'],
+      [chainId, chainId, 1, multiMessageReceiver.address, dataForUpdateQuorum, 0]
+    );
     // update quorum threshold to 2 with 1 adapter
     await expect(
       mockReceiverAdapter2.executeMessage(
@@ -203,9 +225,13 @@ describe('MultiMessageReceiver test', function () {
       )
     )
       .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
-      .withArgs(chainId, bridgeName, 1, mockReceiverAdapter2.address)
+      .withArgs(msgId, chainId, bridgeName, 1, mockReceiverAdapter2.address);
+
+    await expect(
+      multiMessageReceiver.executeMessage(chainId, chainId, 1, multiMessageReceiver.address, dataForUpdateQuorum, 0)
+    )
       .to.emit(multiMessageReceiver, 'MessageExecuted')
-      .withArgs(chainId, 1, multiMessageReceiver.address, dataForUpdateQuorum)
+      .withArgs(msgId, chainId, 1, multiMessageReceiver.address, dataForUpdateQuorum)
       .to.emit(multiMessageReceiver, 'QuorumThresholdUpdated')
       .withArgs(newQuorumThreshold);
 
@@ -231,6 +257,11 @@ describe('MultiMessageReceiver test', function () {
         bridgeName
       );
 
+      const msgId = keccak256(
+        ['uint64', 'uint64', 'uint32', 'address', 'bytes', 'uint64'],
+        [chainId, chainId, 2, multiMessageReceiver.address, dataForUpdateQuorum, 0]
+      );
+
       // update quorum threshold to 2 with 2 adapters
       await expect(
         mockReceiverAdapter.executeMessage(
@@ -243,8 +274,12 @@ describe('MultiMessageReceiver test', function () {
         )
       )
         .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
-        .withArgs(chainId, bridgeName, 2, mockReceiverAdapter.address)
-        .not.to.emit(multiMessageReceiver, 'MessageExecuted');
+        .withArgs(msgId, chainId, bridgeName, 2, mockReceiverAdapter.address);
+
+      await expect(
+        multiMessageReceiver.executeMessage(chainId, chainId, 2, multiMessageReceiver.address, dataForUpdateQuorum, 0)
+      ).to.be.revertedWith('threshold not met');
+
       await expect(
         mockReceiverAdapter2.executeMessage(
           mockReceiverAdapter2.address,
@@ -256,9 +291,13 @@ describe('MultiMessageReceiver test', function () {
         )
       )
         .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
-        .withArgs(chainId, bridgeName, 2, mockReceiverAdapter2.address)
+        .withArgs(msgId, chainId, bridgeName, 2, mockReceiverAdapter2.address);
+
+      await expect(
+        multiMessageReceiver.executeMessage(chainId, chainId, 2, multiMessageReceiver.address, dataForUpdateQuorum, 0)
+      )
         .to.emit(multiMessageReceiver, 'MessageExecuted')
-        .withArgs(chainId, 2, multiMessageReceiver.address, dataForUpdateQuorum)
+        .withArgs(msgId, chainId, 2, multiMessageReceiver.address, dataForUpdateQuorum)
         .to.emit(multiMessageReceiver, 'QuorumThresholdUpdated')
         .withArgs(newQuorumThreshold);
     });
@@ -276,6 +315,11 @@ describe('MultiMessageReceiver test', function () {
         bridgeName
       );
 
+      const msgId = keccak256(
+        ['uint64', 'uint64', 'uint32', 'address', 'bytes', 'uint64'],
+        [chainId, chainId, 2, multiMessageReceiver.address, dataForRemoveAdapter2, 0]
+      );
+
       await expect(
         mockReceiverAdapter.executeMessage(
           mockReceiverAdapter.address,
@@ -287,9 +331,8 @@ describe('MultiMessageReceiver test', function () {
         )
       )
         .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
-        .withArgs(chainId, bridgeName, 2, mockReceiverAdapter.address)
-        .not.to.emit(multiMessageReceiver, 'MessageExecuted');
-      const error = errInterface.encodeFunctionData('Error', ['external message execution failed']);
+        .withArgs(msgId, chainId, bridgeName, 2, mockReceiverAdapter.address);
+
       await expect(
         mockReceiverAdapter2.executeMessage(
           mockReceiverAdapter2.address,
@@ -300,8 +343,12 @@ describe('MultiMessageReceiver test', function () {
           dataDispatched
         )
       )
-        .to.be.revertedWithCustomError(mockReceiverAdapter, 'MessageFailure')
-        .withArgs(ethers.utils.hexZeroPad('0x01', 32), error);
+        .to.emit(multiMessageReceiver, 'SingleBridgeMsgReceived')
+        .withArgs(msgId, chainId, bridgeName, 2, mockReceiverAdapter2.address);
+
+      await expect(
+        multiMessageReceiver.executeMessage(chainId, chainId, 2, multiMessageReceiver.address, dataForRemoveAdapter2, 0)
+      ).to.be.revertedWith('external message execution failed');
     });
   });
 });

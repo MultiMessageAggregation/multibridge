@@ -24,8 +24,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
     event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
-    event SingleBridgeMsgReceived(uint256 srcChainId, string indexed bridgeName, uint32 nonce, address receiverAdapter);
-    event MessageExecuted(uint256 srcChainId, uint32 nonce, address target, bytes callData);
+    event SingleBridgeMsgReceived(
+        bytes32 msgId,
+        uint256 srcChainId,
+        string indexed bridgeName,
+        uint32 nonce,
+        address receiverAdapter
+    );
+    event MessageExecuted(bytes32 msgId, uint256 srcChainId, uint32 nonce, address target, bytes callData);
 
     /**
      * @notice A modifier used for restricting the caller of some functions to be configured receiver adapters.
@@ -84,22 +90,55 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     function receiveMessage(
         MessageStruct.Message calldata _message
     ) external override onlyReceiverAdapter onlyFromMultiMessageSender {
+        require(_message.dstChainId == block.chainid, "dest chainId not match");
         uint256 srcChainId = _fromChainId();
         // This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         // Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
-        bytes32 msgId = getMsgId(_message, srcChainId);
+        bytes32 msgId = MessageStruct.computeMsgId(_message, uint64(srcChainId));
         MsgInfo storage msgInfo = msgInfos[msgId];
         require(msgInfo.from[msg.sender] == false, "already received from this bridge adapter");
 
         msgInfo.from[msg.sender] = true;
-        emit SingleBridgeMsgReceived(srcChainId, _message.bridgeName, _message.nonce, msg.sender);
+        emit SingleBridgeMsgReceived(msgId, srcChainId, _message.bridgeName, _message.nonce, msg.sender);
+    }
 
-        _executeMessage(_message, srcChainId, msgInfo);
+    /**
+     * @notice Execute the message (invoke external call according to the message content) if the message
+     * has reached the power threshold (the same message has been delivered by enough multiple bridges).
+     * Param values can be found in the MultiMessageMsgSent event from the source chain MultiMessageSender contract.
+     */
+    function executeMessage(
+        uint64 _srcChainId,
+        uint64 _dstChainId,
+        uint32 _nonce,
+        address _target,
+        bytes calldata _callData,
+        uint64 _expiration
+    ) external {
+        require(_expiration < block.timestamp || _expiration == 0, "message expired");
+        MessageStruct.Message memory message = MessageStruct.Message(
+            _dstChainId,
+            _nonce,
+            _target,
+            _callData,
+            _expiration,
+            ""
+        );
+        bytes32 msgId = MessageStruct.computeMsgId(message, _srcChainId);
+        MsgInfo storage msgInfo = msgInfos[msgId];
+
+        require(!msgInfo.executed, "message already executed");
+        msgInfo.executed = true;
+        require(_computeMessagePower(msgInfo) >= quorumThreshold, "threshold not met");
+
+        (bool ok, ) = _target.call(_callData);
+        require(ok, "external message execution failed");
+        emit MessageExecuted(msgId, _srcChainId, _nonce, _target, _callData);
     }
 
     /**
      * @notice Update bridge receiver adapters.
-     * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
+     * This function can only be called by executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
     function updateReceiverAdapter(
@@ -114,7 +153,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /**
      * @notice Update MultiMessageSender on source chain.
-     * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
+     * This function can only be called by executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
     function updateMultiMessageSender(
@@ -129,7 +168,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /**
      * @notice Update power quorum threshold of message execution.
-     * This function can only be called by _executeMessage() invoked within receiveMessage() of this contract,
+     * This function can only be called by executeMessage() invoked within receiveMessage() of this contract,
      * which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
      */
     function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
@@ -139,35 +178,23 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /**
-     * @notice Compute message Id.
-     * message.bridgeName is not included in the message id.
+     * @notice View message info, return (executed, msgPower, delivered adapters)
+     *
      */
-    function getMsgId(MessageStruct.Message calldata _message, uint256 _srcChainId) public pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(_srcChainId, _message.dstChainId, _message.nonce, _message.target, _message.callData)
-            );
-    }
-
-    /**
-     * @notice Execute the message (invoke external call according to the message content) if the message
-     * has reached the power threshold (the same message has been delivered by enough multiple bridges).
-     */
-    function _executeMessage(
-        MessageStruct.Message calldata _message,
-        uint256 _srcChainId,
-        MsgInfo storage _msgInfo
-    ) private {
-        if (_msgInfo.executed) {
-            return;
+    function getMessageInfo(bytes32 msgId) public view returns (bool, uint64, address[] memory) {
+        MsgInfo storage msgInfo = msgInfos[msgId];
+        uint64 msgPower = _computeMessagePower(msgInfo);
+        address[] memory adapters = new address[](msgPower);
+        if (msgPower > 0) {
+            uint32 n = 0;
+            for (uint64 i = 0; i < trustedExecutor.length; i++) {
+                address adapter = trustedExecutor[i];
+                if (msgInfo.from[adapter]) {
+                    adapters[n++] = adapter;
+                }
+            }
         }
-        uint64 msgPower = _computeMessagePower(_msgInfo);
-        if (msgPower >= quorumThreshold) {
-            _msgInfo.executed = true;
-            (bool ok, ) = _message.target.call(_message.callData);
-            require(ok, "external message execution failed");
-            emit MessageExecuted(_srcChainId, _message.nonce, _message.target, _message.callData);
-        }
+        return (msgInfo.executed, msgPower, adapters);
     }
 
     function _computeMessagePower(MsgInfo storage _msgInfo) private view returns (uint64) {

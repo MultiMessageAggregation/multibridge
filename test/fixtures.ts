@@ -33,7 +33,7 @@ export async function senderFixture(): Promise<SenderFixture> {
 
   const mockSenderAdapter = await deployMockAdapter();
 
-  const network = await ethers.getDefaultProvider().getNetwork();
+  const network = await ethers.provider.getNetwork();
   tx = await mockSenderAdapter.updateReceiverAdapter([network.chainId], [mockSenderAdapter.address]);
   await tx.wait();
 
@@ -53,7 +53,7 @@ export async function receiverFixture(): Promise<ReceiverFixture> {
 
   const mockReceiverAdapter = await deployMockAdapter();
 
-  const network = await ethers.getDefaultProvider().getNetwork();
+  const network = await ethers.provider.getNetwork();
   let tx = await mockReceiverAdapter.updateSenderAdapter([network.chainId], [mockReceiverAdapter.address]);
   await tx.wait();
 

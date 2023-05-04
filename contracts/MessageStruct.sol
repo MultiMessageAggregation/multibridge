@@ -10,6 +10,7 @@ library MessageStruct {
      * @param nonce is an incrementing number held by MultiMessageSender to ensure msgId uniqueness
      * @param target is the contract to be called on dst chain.
      * @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData)).
+     * @param expiration is the unix time when the message expires, zero means never expire.
      * @param bridgeName is the message bridge name used for sending this message.
      */
     struct Message {
@@ -17,6 +18,25 @@ library MessageStruct {
         uint32 nonce;
         address target;
         bytes callData;
+        uint64 expiration;
         string bridgeName;
+    }
+
+    /**
+     * @notice Compute message Id.
+     * message.bridgeName is not included in the message id.
+     */
+    function computeMsgId(MessageStruct.Message memory _message, uint64 _srcChainId) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    _srcChainId,
+                    _message.dstChainId,
+                    _message.nonce,
+                    _message.target,
+                    _message.callData,
+                    _message.expiration
+                )
+            );
     }
 }
