@@ -7,8 +7,10 @@ import "./interfaces/IMultiMessageReceiver.sol";
 import "./MessageStruct.sol";
 
 contract MultiMessageSender {
-    // List of bridge sender adapters
-    address[] public senderAdapters;
+    // dst chainId -> list of bridge sender adapters
+    // index 0 stores the default adapters to be used if senderAdapters[dstChainId] is empty
+    mapping(uint256 => address[]) public senderAdapters;
+
     // The dApp contract that can use this multi-bridge sender for cross-chain remoteCall.
     // This means the current MultiMessageSender is only intended to be used by a single dApp.
     address public immutable caller;
@@ -66,18 +68,25 @@ contract MultiMessageSender {
         );
         bytes memory data;
         uint256 totalFee;
+
+        uint256 adaptersChainId = 0; // default adapters
+        if (senderAdapters[_dstChainId].length > 0) {
+            // if different set of adapters are configured for this desitnation chain
+            adaptersChainId = _dstChainId;
+        }
+        address[] storage adapters = senderAdapters[adaptersChainId];
         // send copies of the message through multiple bridges
-        for (uint256 i; i < senderAdapters.length; ++i) {
-            message.bridgeName = IBridgeSenderAdapter(senderAdapters[i]).name();
+        for (uint256 i; i < adapters.length; ++i) {
+            message.bridgeName = IBridgeSenderAdapter(adapters[i]).name();
             data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
-            uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(
+            uint256 fee = IBridgeSenderAdapter(adapters[i]).getMessageFee(
                 uint256(_dstChainId),
                 _multiMessageReceiver,
                 data
             );
             // if one bridge is paused it shouldn't halt the process
             try
-                IBridgeSenderAdapter(senderAdapters[i]).dispatchMessage{value: fee}(
+                IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
                     uint256(_dstChainId),
                     _multiMessageReceiver,
                     data
@@ -85,11 +94,11 @@ contract MultiMessageSender {
             {
                 totalFee += fee;
             } catch {
-                emit ErrorSendMessage(senderAdapters[i], message);
+                emit ErrorSendMessage(adapters[i], message);
             }
         }
         bytes32 msgId = MessageStruct.computeMsgId(message, uint64(block.chainid));
-        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, _expiration, senderAdapters);
+        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, _expiration, adapters);
         nonce++;
         // refund remaining native token to msg.sender
         if (totalFee < msg.value) {
@@ -99,19 +108,23 @@ contract MultiMessageSender {
 
     /**
      * @notice Add bridge sender adapters
+     * @param _chainId is the destination chainId. Use 0 to add default adapers
+     * @param _senderAdapters is the adapter address to add
      */
-    function addSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
+    function addSenderAdapters(uint256 _chainId, address[] calldata _senderAdapters) external onlyCaller {
         for (uint256 i; i < _senderAdapters.length; ++i) {
-            _addSenderAdapter(_senderAdapters[i]);
+            _addSenderAdapter(_chainId, _senderAdapters[i]);
         }
     }
 
     /**
      * @notice Remove bridge sender adapters
+     * @param _chainId is the destination chainId. Use 0 to remove default adapers
+     * @param _senderAdapters is the adapter address to remove
      */
-    function removeSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
+    function removeSenderAdapters(uint256 _chainId, address[] calldata _senderAdapters) external onlyCaller {
         for (uint256 i; i < _senderAdapters.length; ++i) {
-            _removeSenderAdapter(_senderAdapters[i]);
+            _removeSenderAdapter(_chainId, _senderAdapters[i]);
         }
     }
 
@@ -127,10 +140,17 @@ contract MultiMessageSender {
         MessageStruct.Message memory message = MessageStruct.Message(_dstChainId, nonce, _target, _callData, 0, "");
         bytes memory data;
         uint256 totalFee;
-        for (uint256 i; i < senderAdapters.length; ++i) {
-            message.bridgeName = IBridgeSenderAdapter(senderAdapters[i]).name();
+
+        uint256 adaptersChainId = 0; // default adapters
+        if (senderAdapters[_dstChainId].length > 0) {
+            // if different set of adapters are configured for this desitnation chain
+            adaptersChainId = _dstChainId;
+        }
+        address[] storage adapters = senderAdapters[adaptersChainId];
+        for (uint256 i; i < adapters.length; ++i) {
+            message.bridgeName = IBridgeSenderAdapter(adapters[i]).name();
             data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
-            uint256 fee = IBridgeSenderAdapter(senderAdapters[i]).getMessageFee(
+            uint256 fee = IBridgeSenderAdapter(adapters[i]).getMessageFee(
                 uint256(_dstChainId),
                 _multiMessageReceiver,
                 data
@@ -140,24 +160,24 @@ contract MultiMessageSender {
         return totalFee;
     }
 
-    function _addSenderAdapter(address _senderAdapter) private {
-        for (uint256 i; i < senderAdapters.length; ++i) {
-            if (senderAdapters[i] == _senderAdapter) {
+    function _addSenderAdapter(uint256 _chainId, address _senderAdapter) private {
+        for (uint256 i; i < senderAdapters[_chainId].length; ++i) {
+            if (senderAdapters[_chainId][i] == _senderAdapter) {
                 return;
             }
         }
-        senderAdapters.push(_senderAdapter);
+        senderAdapters[_chainId].push(_senderAdapter);
         emit SenderAdapterUpdated(_senderAdapter, true);
     }
 
-    function _removeSenderAdapter(address _senderAdapter) private {
-        uint256 lastIndex = senderAdapters.length - 1;
-        for (uint256 i; i < senderAdapters.length; ++i) {
-            if (senderAdapters[i] == _senderAdapter) {
+    function _removeSenderAdapter(uint256 _chainId, address _senderAdapter) private {
+        uint256 lastIndex = senderAdapters[_chainId].length - 1;
+        for (uint256 i; i < senderAdapters[_chainId].length; ++i) {
+            if (senderAdapters[_chainId][i] == _senderAdapter) {
                 if (i < lastIndex) {
-                    senderAdapters[i] = senderAdapters[lastIndex];
+                    senderAdapters[_chainId][i] = senderAdapters[_chainId][lastIndex];
                 }
-                senderAdapters.pop();
+                senderAdapters[_chainId].pop();
                 emit SenderAdapterUpdated(_senderAdapter, false);
                 return;
             }

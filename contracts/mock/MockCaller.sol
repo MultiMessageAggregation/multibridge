@@ -43,11 +43,11 @@ contract MockCaller is AccessControl {
     }
 
     function addSenderAdapters(address[] calldata _senderAdapters) external onlyAdmin {
-        bridgeSender.addSenderAdapters(_senderAdapters);
+        bridgeSender.addSenderAdapters(0, _senderAdapters);
     }
 
     function removeSenderAdapters(address[] calldata _senderAdapters) external onlyAdmin {
-        bridgeSender.removeSenderAdapters(_senderAdapters);
+        bridgeSender.removeSenderAdapters(0, _senderAdapters);
     }
 
     function drainNativeToken() external onlyAdmin {
