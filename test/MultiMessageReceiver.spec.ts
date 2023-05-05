@@ -29,8 +29,8 @@ describe('MultiMessageReceiver test', function () {
   it('only initialize once', async function () {
     await expect(
       multiMessageReceiver.initialize(
-        [chainId],
-        [ethers.utils.getAddress('0x0000000000000000000000000000000000000002')],
+        chainId,
+        ethers.utils.getAddress('0x0000000000000000000000000000000000000002'),
         [mockReceiverAdapter.address],
         [2]
       )
@@ -124,7 +124,7 @@ describe('MultiMessageReceiver test', function () {
     });
 
     it('should revert with customer error MessageFailure(not from MultiMessageSender)', async function () {
-      const error = errInterface.encodeFunctionData('Error', ['this message is not from MultiMessageSender']);
+      const error = errInterface.encodeFunctionData('Error', ['not from MultiMessageSender']);
       await expect(
         mockReceiverAdapter.executeMessage(
           mockReceiverAdapter.address,

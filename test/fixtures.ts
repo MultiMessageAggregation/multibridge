@@ -58,8 +58,8 @@ export async function receiverFixture(): Promise<ReceiverFixture> {
   await tx.wait();
 
   tx = await multiMessageReceiver.initialize(
-    [network.chainId],
-    [ethers.utils.getAddress('0x0000000000000000000000000000000000000001')],
+    network.chainId,
+    ethers.utils.getAddress('0x0000000000000000000000000000000000000001'),
     [mockReceiverAdapter.address],
     [1]
   );
