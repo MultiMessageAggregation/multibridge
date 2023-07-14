@@ -62,7 +62,7 @@ $  forge install
 $  forge compile
 ```
 
-**Step 3:** Run Tests
+**Step 4:** Run Tests
 
 ```sh
 $  forge test
