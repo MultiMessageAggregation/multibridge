@@ -14,6 +14,7 @@ abstract contract MessageAppPauser is Pauser {
      * work with the Celer IM MessageBus contract, so that the message execution
      * can be retried later when the contract is unpaused.
      */
+
     modifier whenNotMsgPaused() {
         require(!paused(), string.concat(ABORT_PREFIX, "Pausable: paused"));
         _;

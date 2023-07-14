@@ -33,21 +33,17 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
         return deBridgeGate.globalFixedNativeFee();
     }
 
-    function dispatchMessage(
-        uint256 _toChainId,
-        address _to,
-        bytes calldata _data
-    ) external payable override returns (bytes32) {
+    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+        external
+        payable
+        override
+        returns (bytes32)
+    {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
         address receiver = receiverAdapters[_toChainId];
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
-        bytes memory executeMethodData = abi.encodeWithSelector(
-            IDeBridgeReceiverAdapter.executeMessage.selector,
-            msg.sender,
-            _to,
-            _data,
-            msgId
-        );
+        bytes memory executeMethodData =
+            abi.encodeWithSelector(IDeBridgeReceiverAdapter.executeMessage.selector, msg.sender, _to, _data, msgId);
 
         deBridgeGate.sendMessage{value: msg.value}(
             _toChainId, //_dstChainId,
@@ -62,10 +58,11 @@ contract DeBridgeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
 
     /* ========== ADMIN METHODS ========== */
 
-    function updateReceiverAdapter(
-        uint256[] calldata _dstChainIds,
-        address[] calldata _receiverAdapters
-    ) external override onlyOwner {
+    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
+        external
+        override
+        onlyOwner
+    {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
         for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];

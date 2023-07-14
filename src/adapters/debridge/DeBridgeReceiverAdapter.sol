@@ -34,12 +34,10 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
     /* ========== PUBLIC METHODS ========== */
 
     // Called by DeBridge CallProxy on destination chain to receive cross-chain messages.
-    function executeMessage(
-        address _srcSender,
-        address _destReceiver,
-        bytes calldata _data,
-        bytes32 _msgId
-    ) external whenNotPaused {
+    function executeMessage(address _srcSender, address _destReceiver, bytes calldata _data, bytes32 _msgId)
+        external
+        whenNotPaused
+    {
         ICallProxy callProxy = ICallProxy(deBridgeGate.callProxy());
         if (address(callProxy) != msg.sender) revert CallProxyBadRole();
 
@@ -55,9 +53,8 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
         } else {
             executedMessages[_msgId] = true;
         }
-        (bool ok, bytes memory lowLevelData) = _destReceiver.call(
-            abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender)
-        );
+        (bool ok, bytes memory lowLevelData) =
+            _destReceiver.call(abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender));
         if (!ok) {
             revert MessageFailure(_msgId, lowLevelData);
         } else {
@@ -75,10 +72,11 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
         _unpause();
     }
 
-    function updateSenderAdapter(
-        uint256[] calldata _srcChainIds,
-        address[] calldata _senderAdapters
-    ) external override onlyOwner {
+    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
+        external
+        override
+        onlyOwner
+    {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
         for (uint256 i; i < _srcChainIds.length; ++i) {
             senderAdapters[uint256(_srcChainIds[i])] = _senderAdapters[i];

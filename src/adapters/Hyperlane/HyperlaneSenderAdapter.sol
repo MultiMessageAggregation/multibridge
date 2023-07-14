@@ -77,11 +77,12 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     /// @inheritdoc IBridgeSenderAdapter
     /// @dev we narrow mutability (from view to pure) to remove compiler warnings.
     /// @dev unused parameters are added as comments for legibility.
-    function getMessageFee(
-        uint256 toChainId,
-        address /* to*/,
-        bytes calldata /* data*/
-    ) external view override returns (uint256) {
+    function getMessageFee(uint256 toChainId, address, /* to*/ bytes calldata /* data*/ )
+        external
+        view
+        override
+        returns (uint256)
+    {
         uint32 dstDomainId = _getDestinationDomain(toChainId);
         // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
         // See https://docs.hyperlane.xyz/docs/build-with-hyperlane/guides/paying-for-interchain-gas
@@ -102,11 +103,12 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     }
 
     /// @inheritdoc SingleMessageDispatcher
-    function dispatchMessage(
-        uint256 _toChainId,
-        address _to,
-        bytes calldata _data
-    ) external payable override returns (bytes32) {
+    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+        external
+        payable
+        override
+        returns (bytes32)
+    {
         address receiverAdapter = receiverAdapters[_toChainId]; // read value into memory once
         if (receiverAdapter == address(0)) {
             revert Errors.InvalidAdapterZeroAddress();
@@ -128,24 +130,20 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
         // try to make gas payment, ignore failures
         // destination gasAmount is hardcoded to 500k similar to Wormhole implementation
         // refundAddress is set from MMS caller state variable
-        try
-            igp.payForGas{value: msg.value}(
-                hyperlaneMsgId,
-                dstDomainId,
-                500000,
-                MultiMessageSender(msg.sender).caller()
-            )
-        {} catch {}
+        try igp.payForGas{value: msg.value}(
+            hyperlaneMsgId, dstDomainId, 500000, MultiMessageSender(msg.sender).caller()
+        ) {} catch {}
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
         return msgId;
     }
 
     /// @inheritdoc IBridgeSenderAdapter
-    function updateReceiverAdapter(
-        uint256[] calldata _dstChainIds,
-        address[] calldata _receiverAdapters
-    ) external override onlyOwner {
+    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
+        external
+        override
+        onlyOwner
+    {
         if (_dstChainIds.length != _receiverAdapters.length) {
             revert Errors.MismatchChainsAdaptersLength(_dstChainIds.length, _receiverAdapters.length);
         }
@@ -160,10 +158,10 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
      * @param _dstChainIds Destination chain ids array.
      * @param _dstDomainIds Destination domain ids array.
      */
-    function updateDestinationDomainIds(
-        uint256[] calldata _dstChainIds,
-        uint32[] calldata _dstDomainIds
-    ) external onlyOwner {
+    function updateDestinationDomainIds(uint256[] calldata _dstChainIds, uint32[] calldata _dstDomainIds)
+        external
+        onlyOwner
+    {
         if (_dstChainIds.length != _dstDomainIds.length) {
             revert Errors.MismatchChainsDomainsLength(_dstChainIds.length, _dstDomainIds.length);
         }

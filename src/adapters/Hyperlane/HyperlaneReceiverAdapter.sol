@@ -7,7 +7,9 @@ import {IBridgeReceiverAdapter} from "../../interfaces/IBridgeReceiverAdapter.so
 
 import {IMailbox} from "./interfaces/IMailbox.sol";
 import {IMessageRecipient} from "./interfaces/IMessageRecipient.sol";
-import {IInterchainSecurityModule, ISpecifiesInterchainSecurityModule} from "./interfaces/IInterchainSecurityModule.sol";
+import {
+    IInterchainSecurityModule, ISpecifiesInterchainSecurityModule
+} from "./interfaces/IInterchainSecurityModule.sol";
 import {TypeCasts} from "./libraries/TypeCasts.sol";
 import {Errors} from "./libraries/Errors.sol";
 
@@ -92,12 +94,10 @@ contract HyperlaneReceiverAdapter is
      * @param _sender Address of the sender on the source chain.
      * @param _body Body of the message.
      */
-    function handle(uint32 /* _origin*/, bytes32 _sender, bytes memory _body) external onlyMailbox {
+    function handle(uint32, /* _origin*/ bytes32 _sender, bytes memory _body) external onlyMailbox {
         address adapter = TypeCasts.bytes32ToAddress(_sender);
-        (uint256 srcChainId, bytes32 msgId, address srcSender, address destReceiver, bytes memory data) = abi.decode(
-            _body,
-            (uint256, bytes32, address, address, bytes)
-        );
+        (uint256 srcChainId, bytes32 msgId, address srcSender, address destReceiver, bytes memory data) =
+            abi.decode(_body, (uint256, bytes32, address, address, bytes));
 
         if (adapter != senderAdapters[srcChainId]) {
             revert Errors.UnauthorizedAdapter(srcChainId, adapter);
@@ -108,9 +108,8 @@ contract HyperlaneReceiverAdapter is
             executedMessages[msgId] = true;
         }
 
-        (bool success, bytes memory returnData) = destReceiver.call(
-            abi.encodePacked(data, msgId, srcChainId, srcSender)
-        );
+        (bool success, bytes memory returnData) =
+            destReceiver.call(abi.encodePacked(data, msgId, srcChainId, srcSender));
 
         if (!success) {
             revert MessageFailure(msgId, returnData);
@@ -120,10 +119,11 @@ contract HyperlaneReceiverAdapter is
     }
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(
-        uint256[] calldata _srcChainIds,
-        address[] calldata _senderAdapters
-    ) external override onlyOwner {
+    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
+        external
+        override
+        onlyOwner
+    {
         if (_srcChainIds.length != _senderAdapters.length) {
             revert Errors.MismatchChainsAdaptersLength(_srcChainIds.length, _senderAdapters.length);
         }

@@ -45,10 +45,8 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
         string memory srcChainId,
         uint64 //srcChainType
     ) external override onlyRouterGateway whenNotPaused returns (bytes memory) {
-        (address _srcSender, address _destReceiver, bytes memory _data, bytes32 _msgId) = abi.decode(
-            payload,
-            (address, address, bytes, bytes32)
-        );
+        (address _srcSender, address _destReceiver, bytes memory _data, bytes32 _msgId) =
+            abi.decode(payload, (address, address, bytes, bytes32));
 
         uint256 _sourceChainId = StringToUint.st2num(srcChainId);
 
@@ -60,9 +58,8 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
             executedMessages[_msgId] = true;
         }
 
-        (bool ok, bytes memory lowLevelData) = _destReceiver.call(
-            abi.encodePacked(_data, _msgId, _sourceChainId, _srcSender)
-        );
+        (bool ok, bytes memory lowLevelData) =
+            _destReceiver.call(abi.encodePacked(_data, _msgId, _sourceChainId, _srcSender));
 
         if (!ok) {
             revert MessageFailure(_msgId, lowLevelData);
@@ -83,10 +80,10 @@ contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeRec
         _unpause();
     }
 
-    function updateSenderAdapter(
-        uint256[] calldata _srcChainIds,
-        address[] calldata _senderAdapters
-    ) external onlyOwner {
+    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
+        external
+        onlyOwner
+    {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
         for (uint256 i; i < _srcChainIds.length; ++i) {
             senderAdapters[_srcChainIds[i]] = _senderAdapters[i];

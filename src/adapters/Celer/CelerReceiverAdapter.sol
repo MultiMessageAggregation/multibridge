@@ -20,12 +20,10 @@ interface IMessageReceiverApp {
      * @param _message Arbitrary message bytes originated from and encoded by the source app contract
      * @param _executor Address who called the MessageBus execution function
      */
-    function executeMessage(
-        address _sender,
-        uint64 _srcChainId,
-        bytes calldata _message,
-        address _executor
-    ) external payable returns (ExecutionStatus);
+    function executeMessage(address _sender, uint64 _srcChainId, bytes calldata _message, address _executor)
+        external
+        payable
+        returns (ExecutionStatus);
 }
 
 contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMessageReceiverApp {
@@ -52,25 +50,21 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         bytes calldata _message,
         address // executor
     ) external payable override onlyMessageBus whenNotMsgPaused returns (ExecutionStatus) {
-        (bytes32 msgId, address srcSender, address destReceiver, bytes memory data) = abi.decode(
-            _message,
-            (bytes32, address, address, bytes)
-        );
+        (bytes32 msgId, address srcSender, address destReceiver, bytes memory data) =
+            abi.decode(_message, (bytes32, address, address, bytes));
         require(_srcContract == senderAdapters[uint256(_srcChainId)], "not allowed message sender");
         if (executedMessages[msgId]) {
             revert MessageIdAlreadyExecuted(msgId);
         } else {
             executedMessages[msgId] = true;
         }
-        (bool ok, bytes memory lowLevelData) = destReceiver.call(
-            abi.encodePacked(data, msgId, uint256(_srcChainId), srcSender)
-        );
+        (bool ok, bytes memory lowLevelData) =
+            destReceiver.call(abi.encodePacked(data, msgId, uint256(_srcChainId), srcSender));
         if (!ok) {
             string memory reason = Utils.getRevertMsg(lowLevelData);
             revert(
                 string.concat(
-                    ABORT_PREFIX,
-                    string(abi.encodeWithSelector(MessageFailure.selector, msgId, bytes(reason)))
+                    ABORT_PREFIX, string(abi.encodeWithSelector(MessageFailure.selector, msgId, bytes(reason)))
                 )
             );
         } else {
@@ -79,10 +73,11 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMess
         }
     }
 
-    function updateSenderAdapter(
-        uint256[] calldata _srcChainIds,
-        address[] calldata _senderAdapters
-    ) external override onlyOwner {
+    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
+        external
+        override
+        onlyOwner
+    {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
         for (uint256 i; i < _srcChainIds.length; ++i) {
             senderAdapters[_srcChainIds[i]] = _senderAdapters[i];

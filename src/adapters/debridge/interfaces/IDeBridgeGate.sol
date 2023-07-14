@@ -95,11 +95,10 @@ interface IDeBridgeGate {
     /// @param _dstChainId ID of the destination chain.
     /// @param _targetContractAddress A contract address to be called on the destination chain
     /// @param _targetContractCalldata Calldata to execute against the target contract on the destination chain
-    function sendMessage(
-        uint256 _dstChainId,
-        bytes memory _targetContractAddress,
-        bytes memory _targetContractCalldata
-    ) external payable returns (bytes32 submissionId);
+    function sendMessage(uint256 _dstChainId, bytes memory _targetContractAddress, bytes memory _targetContractCalldata)
+        external
+        payable
+        returns (bytes32 submissionId);
 
     /// @dev Submits the message to the deBridge infrastructure to be broadcasted to another supported blockchain (identified by _dstChainId)
     ///      with the instructions to call the _targetContractAddress contract using the given _targetContractCalldata
@@ -187,8 +186,8 @@ interface IDeBridgeGate {
         FeeParams feeParams,
         bytes autoParams,
         address nativeSender
-        // bool isNativeToken //added to feeParams
     );
+    // bool isNativeToken //added to feeParams
 
     /// @dev Emitted once the tokens are transferred and withdrawn on a target chain
     event Claimed(

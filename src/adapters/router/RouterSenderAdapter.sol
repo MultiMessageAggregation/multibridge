@@ -33,22 +33,19 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter
         return routerGateway.requestToDestDefaultFee();
     }
 
-    function dispatchMessage(
-        uint256 _toChainId,
-        address _to,
-        bytes calldata _data
-    ) external payable override returns (bytes32) {
+    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+        external
+        payable
+        override
+        returns (bytes32)
+    {
         require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
 
         Utils.RequestArgs memory requestArgs = Utils.RequestArgs(type(uint64).max, false, Utils.FeePayer.APP);
 
-        Utils.DestinationChainParams memory destChainParams = Utils.DestinationChainParams(
-            350000,
-            0,
-            0,
-            Strings.toString(uint256(_toChainId))
-        );
+        Utils.DestinationChainParams memory destChainParams =
+            Utils.DestinationChainParams(350000, 0, 0, Strings.toString(uint256(_toChainId)));
 
         bytes[] memory payloads = new bytes[](1);
         payloads[0] = abi.encode(msg.sender, _to, _data, msgId);
@@ -69,10 +66,11 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter
 
     /* ========== ADMIN METHODS ========== */
 
-    function updateReceiverAdapter(
-        uint256[] calldata _dstChainIds,
-        address[] calldata _receiverAdapters
-    ) external override onlyOwner {
+    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
+        external
+        override
+        onlyOwner
+    {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
         for (uint256 i; i < _dstChainIds.length; ++i) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];

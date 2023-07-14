@@ -40,9 +40,10 @@ interface Structs {
 }
 
 interface IWormhole {
-    function parseAndVerifyVM(
-        bytes calldata encodedVM
-    ) external view returns (Structs.VM memory vm, bool valid, string memory reason);
+    function parseAndVerifyVM(bytes calldata encodedVM)
+        external
+        view
+        returns (Structs.VM memory vm, bool valid, string memory reason);
 }
 
 interface IWormholeReceiver {
@@ -69,20 +70,20 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, O
         _;
     }
 
-    function receiveWormholeMessages(
-        bytes[] memory whMessages,
-        bytes[] memory
-    ) public payable override onlyRelayerContract {
+    function receiveWormholeMessages(bytes[] memory whMessages, bytes[] memory)
+        public
+        payable
+        override
+        onlyRelayerContract
+    {
         (Structs.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(whMessages[0]);
         //validate
         require(valid, reason);
         // Ensure the emitterAddress of this VAA is the Uniswap message sender
         require(senderAdapters[vm.emitterChainId] == vm.emitterAddress, "Invalid Emitter Address!");
         //verify destination
-        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) = abi.decode(
-            vm.payload,
-            (address, address, bytes, address)
-        );
+        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) =
+            abi.decode(vm.payload, (address, address, bytes, address));
         require(receiverAdapter == address(this), "Message not for this dest");
         // replay protection
         bytes32 msgId = bytes32(uint256(vm.nonce));
@@ -92,9 +93,8 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, O
             processedMessages[vm.hash] = true;
         }
         //send message to destReceiver
-        (bool ok, bytes memory lowLevelData) = destReceiver.call(
-            abi.encodePacked(data, msgId, uint256(reverseIdMap[vm.emitterChainId]), srcSender)
-        );
+        (bool ok, bytes memory lowLevelData) =
+            destReceiver.call(abi.encodePacked(data, msgId, uint256(reverseIdMap[vm.emitterChainId]), srcSender));
         if (!ok) {
             revert MessageFailure(msgId, lowLevelData);
         } else {
@@ -110,10 +110,11 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, O
         }
     }
 
-    function updateSenderAdapter(
-        uint256[] calldata _srcChainIds,
-        address[] calldata _senderAdapters
-    ) external override onlyOwner {
+    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
+        external
+        override
+        onlyOwner
+    {
         require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
         for (uint256 i; i < _srcChainIds.length; ++i) {
             uint16 wormholeId = idMap[_srcChainIds[i]];

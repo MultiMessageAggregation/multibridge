@@ -38,11 +38,12 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
     }
 
     /// @notice Send a message message to the Telepathy Router.
-    function dispatchMessage(
-        uint256 _toChainId,
-        address _to,
-        bytes calldata _data
-    ) external payable override returns (bytes32) {
+    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+        external
+        payable
+        override
+        returns (bytes32)
+    {
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
         bytes memory message = abi.encode(msgId, msg.sender, _to, _data);
 
@@ -54,10 +55,11 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Owna
 
     /* ========== ADMIN METHODS ========== */
 
-    function updateReceiverAdapter(
-        uint256[] calldata _dstChainIds,
-        address[] calldata _receiverAdapters
-    ) external override onlyOwner {
+    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
+        external
+        override
+        onlyOwner
+    {
         if (_dstChainIds.length != _receiverAdapters.length) {
             revert MismatchAdapterArrLength(_dstChainIds.length, _receiverAdapters.length);
         }

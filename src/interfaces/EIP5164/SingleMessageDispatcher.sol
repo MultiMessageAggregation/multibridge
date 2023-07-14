@@ -13,9 +13,8 @@ interface SingleMessageDispatcher is MessageDispatcher {
     /**
      * @dev A method for dispatching an individual message to be executed on the toChainId.
      */
-    function dispatchMessage(
-        uint256 toChainId,
-        address to,
-        bytes calldata data
-    ) external payable returns (bytes32 messageId);
+    function dispatchMessage(uint256 toChainId, address to, bytes calldata data)
+        external
+        payable
+        returns (bytes32 messageId);
 }

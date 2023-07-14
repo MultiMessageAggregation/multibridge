@@ -7,11 +7,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../base/BaseSenderAdapter.sol";
 
 interface IWormhole {
-    function publishMessage(
-        uint32 nonce,
-        bytes memory payload,
-        uint8 consistencyLevel
-    ) external payable returns (uint64 sequence);
+    function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
+        external
+        payable
+        returns (uint64 sequence);
 
     function messageFee() external view returns (uint256);
 }
@@ -22,27 +21,24 @@ interface ICoreRelayer {
     /**
      * @dev This is the basic function for requesting delivery
      */
-    function requestDelivery(
-        DeliveryRequest memory request,
-        uint32 nonce,
-        IRelayProvider provider
-    ) external payable returns (uint64 sequence);
+    function requestDelivery(DeliveryRequest memory request, uint32 nonce, IRelayProvider provider)
+        external
+        payable
+        returns (uint64 sequence);
 
     function getDefaultRelayProvider() external returns (IRelayProvider);
 
     function getDefaultRelayParams() external pure returns (bytes memory relayParams);
 
-    function quoteGasDeliveryFee(
-        uint16 targetChain,
-        uint32 gasLimit,
-        IRelayProvider relayProvider
-    ) external pure returns (uint256 deliveryQuote);
+    function quoteGasDeliveryFee(uint16 targetChain, uint32 gasLimit, IRelayProvider relayProvider)
+        external
+        pure
+        returns (uint256 deliveryQuote);
 
-    function quoteApplicationBudgetFee(
-        uint16 targetChain,
-        uint256 targetAmount,
-        IRelayProvider provider
-    ) external pure returns (uint256 nativeQuote);
+    function quoteApplicationBudgetFee(uint16 targetChain, uint256 targetAmount, IRelayProvider provider)
+        external
+        pure
+        returns (uint256 nativeQuote);
 
     struct DeliveryRequest {
         uint16 targetChain;
@@ -81,11 +77,12 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
         return fee + deliveryCost + applicationBudget;
     }
 
-    function dispatchMessage(
-        uint256 _toChainId,
-        address _to,
-        bytes calldata _data
-    ) external payable override returns (bytes32) {
+    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+        external
+        payable
+        override
+        returns (bytes32)
+    {
         address receiverAdapter = receiverAdapters[idMap[_toChainId]];
         require(receiverAdapter != address(0), "no receiver adapter");
         bytes memory payload = abi.encode(msg.sender, _to, _data, receiverAdapter);
@@ -114,10 +111,11 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapt
         }
     }
 
-    function updateReceiverAdapter(
-        uint256[] calldata _dstChainIds,
-        address[] calldata _receiverAdapters
-    ) external override onlyOwner {
+    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
+        external
+        override
+        onlyOwner
+    {
         require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
         for (uint256 i; i < _dstChainIds.length; ++i) {
             uint16 wormholeId = idMap[_dstChainIds[i]];
