@@ -1,0 +1,566 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "messageId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "messageIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "errorData",
+          "type": "bytes"
+        }
+      ],
+      "name": "MessageBatchFailure",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "messageId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "errorData",
+          "type": "bytes"
+        }
+      ],
+      "name": "MessageFailure",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "messageId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "MessageIdAlreadyExecuted",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "fromChainId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "messageId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "MessageIdExecuted",
+      "type": "event"
+    }
+  ],
+  "bytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "methodIdentifiers": {},
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.17+commit.8df45f5f\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"messageId\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"messageIndex\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"errorData\",\"type\":\"bytes\"}],\"name\":\"MessageBatchFailure\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"messageId\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"errorData\",\"type\":\"bytes\"}],\"name\":\"MessageFailure\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"messageId\",\"type\":\"bytes32\"}],\"name\":\"MessageIdAlreadyExecuted\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"fromChainId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"messageId\",\"type\":\"bytes32\"}],\"name\":\"MessageIdExecuted\",\"type\":\"event\"}],\"devdoc\":{\"details\":\"The MessageExecutor executes dispatched messages and message batches. MessageExecutor MUST append the ABI-packed (messageId, fromChainId, from) to the calldata for each message being executed. This allows the receiver of the message to verify the cross-chain sender and the chain that the message is coming from. ``` to.call(abi.encodePacked(data, messageId, fromChainId, from)); ``` More about MessageExecutor of EIP5164, see https://eips.ethereum.org/EIPS/eip-5164#messageexecutor.\",\"errors\":{\"MessageBatchFailure(bytes32,uint256,bytes)\":[{\"details\":\"MessageExecutor MUST revert the entire batch if any message in a batch fails and SHOULD emit a MessageBatchFailure custom error.\"}],\"MessageFailure(bytes32,bytes)\":[{\"details\":\"MessageExecutor MUST revert if an individual message fails and SHOULD emit a MessageFailure custom error.\"}],\"MessageIdAlreadyExecuted(bytes32)\":[{\"details\":\"MessageExecutor MUST revert if a messageId has already been executed and SHOULD emit a MessageIdAlreadyExecuted custom error.\"}]},\"events\":{\"MessageIdExecuted(uint256,bytes32)\":{\"details\":\"MessageIdExecuted MUST be emitted once a message or message batch has been executed.\"}},\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/interfaces/EIP5164/MessageExecutor.sol\":\"MessageExecutor\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@openzeppelin/=lib/openzeppelin-contracts/\",\":ds-test/=lib/forge-std/lib/ds-test/src/\",\":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/\",\":forge-std/=lib/forge-std/src/\",\":openzeppelin-contracts/=lib/openzeppelin-contracts/\",\":openzeppelin/=lib/openzeppelin-contracts/contracts/\"]},\"sources\":{\"src/interfaces/EIP5164/MessageExecutor.sol\":{\"keccak256\":\"0x0c8c1eb56f3d284f9e978da276b258c53812bfac76f32a8787e606b10983d153\",\"license\":\"GPL-3.0-only\",\"urls\":[\"bzz-raw://323b312fe5139aef4aa9daeb2c6476e430ec30a5f08ccda564b49997e9827e3c\",\"dweb:/ipfs/QmPRoxYzciqFvA4aN1qgmptUwE1918xeBzDmSpN99dzngD\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": {
+      "version": "0.8.17+commit.8df45f5f"
+    },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "messageId",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "messageIndex",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "errorData",
+              "type": "bytes"
+            }
+          ],
+          "type": "error",
+          "name": "MessageBatchFailure"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "messageId",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "errorData",
+              "type": "bytes"
+            }
+          ],
+          "type": "error",
+          "name": "MessageFailure"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "bytes32",
+              "name": "messageId",
+              "type": "bytes32"
+            }
+          ],
+          "type": "error",
+          "name": "MessageIdAlreadyExecuted"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "fromChainId",
+              "type": "uint256",
+              "indexed": true
+            },
+            {
+              "internalType": "bytes32",
+              "name": "messageId",
+              "type": "bytes32",
+              "indexed": true
+            }
+          ],
+          "type": "event",
+          "name": "MessageIdExecuted",
+          "anonymous": false
+        }
+      ],
+      "devdoc": {
+        "kind": "dev",
+        "methods": {},
+        "version": 1
+      },
+      "userdoc": {
+        "kind": "user",
+        "methods": {},
+        "version": 1
+      }
+    },
+    "settings": {
+      "remappings": [
+        ":@openzeppelin/=lib/openzeppelin-contracts/",
+        ":ds-test/=lib/forge-std/lib/ds-test/src/",
+        ":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+        ":forge-std/=lib/forge-std/src/",
+        ":openzeppelin-contracts/=lib/openzeppelin-contracts/",
+        ":openzeppelin/=lib/openzeppelin-contracts/contracts/"
+      ],
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "compilationTarget": {
+        "src/interfaces/EIP5164/MessageExecutor.sol": "MessageExecutor"
+      },
+      "libraries": {}
+    },
+    "sources": {
+      "src/interfaces/EIP5164/MessageExecutor.sol": {
+        "keccak256": "0x0c8c1eb56f3d284f9e978da276b258c53812bfac76f32a8787e606b10983d153",
+        "urls": [
+          "bzz-raw://323b312fe5139aef4aa9daeb2c6476e430ec30a5f08ccda564b49997e9827e3c",
+          "dweb:/ipfs/QmPRoxYzciqFvA4aN1qgmptUwE1918xeBzDmSpN99dzngD"
+        ],
+        "license": "GPL-3.0-only"
+      }
+    },
+    "version": 1
+  },
+  "ast": {
+    "absolutePath": "src/interfaces/EIP5164/MessageExecutor.sol",
+    "id": 47463,
+    "exportedSymbols": {
+      "MessageExecutor": [
+        47462
+      ]
+    },
+    "nodeType": "SourceUnit",
+    "src": "42:1449:63",
+    "nodes": [
+      {
+        "id": 47432,
+        "nodeType": "PragmaDirective",
+        "src": "42:24:63",
+        "nodes": [],
+        "literals": [
+          "solidity",
+          ">=",
+          "0.8",
+          ".9"
+        ]
+      },
+      {
+        "id": 47462,
+        "nodeType": "ContractDefinition",
+        "src": "595:895:63",
+        "nodes": [
+          {
+            "id": 47438,
+            "nodeType": "ErrorDefinition",
+            "src": "788:50:63",
+            "nodes": [],
+            "documentation": {
+              "id": 47434,
+              "nodeType": "StructuredDocumentation",
+              "src": "627:156:63",
+              "text": " @dev MessageExecutor MUST revert if a messageId has already been executed and SHOULD emit a\n MessageIdAlreadyExecuted custom error."
+            },
+            "errorSelector": "a9dfc098",
+            "name": "MessageIdAlreadyExecuted",
+            "nameLocation": "794:24:63",
+            "parameters": {
+              "id": 47437,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47436,
+                  "mutability": "mutable",
+                  "name": "messageId",
+                  "nameLocation": "827:9:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47438,
+                  "src": "819:17:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 47435,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "819:7:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "818:19:63"
+            }
+          },
+          {
+            "id": 47445,
+            "nodeType": "ErrorDefinition",
+            "src": "978:57:63",
+            "nodes": [],
+            "documentation": {
+              "id": 47439,
+              "nodeType": "StructuredDocumentation",
+              "src": "844:129:63",
+              "text": " @dev MessageExecutor MUST revert if an individual message fails and SHOULD emit a MessageFailure custom error."
+            },
+            "errorSelector": "be72113c",
+            "name": "MessageFailure",
+            "nameLocation": "984:14:63",
+            "parameters": {
+              "id": 47444,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47441,
+                  "mutability": "mutable",
+                  "name": "messageId",
+                  "nameLocation": "1007:9:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47445,
+                  "src": "999:17:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 47440,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "999:7:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47443,
+                  "mutability": "mutable",
+                  "name": "errorData",
+                  "nameLocation": "1024:9:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47445,
+                  "src": "1018:15:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_memory_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 47442,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1018:5:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "998:36:63"
+            }
+          },
+          {
+            "id": 47454,
+            "nodeType": "ErrorDefinition",
+            "src": "1205:84:63",
+            "nodes": [],
+            "documentation": {
+              "id": 47446,
+              "nodeType": "StructuredDocumentation",
+              "src": "1041:159:63",
+              "text": " @dev MessageExecutor MUST revert the entire batch if any message in a batch fails and SHOULD emit a\n MessageBatchFailure custom error."
+            },
+            "errorSelector": "3f705838",
+            "name": "MessageBatchFailure",
+            "nameLocation": "1211:19:63",
+            "parameters": {
+              "id": 47453,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47448,
+                  "mutability": "mutable",
+                  "name": "messageId",
+                  "nameLocation": "1239:9:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47454,
+                  "src": "1231:17:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 47447,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1231:7:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47450,
+                  "mutability": "mutable",
+                  "name": "messageIndex",
+                  "nameLocation": "1258:12:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47454,
+                  "src": "1250:20:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 47449,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1250:7:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47452,
+                  "mutability": "mutable",
+                  "name": "errorData",
+                  "nameLocation": "1278:9:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47454,
+                  "src": "1272:15:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_memory_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 47451,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1272:5:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1230:58:63"
+            }
+          },
+          {
+            "id": 47461,
+            "nodeType": "EventDefinition",
+            "src": "1408:80:63",
+            "nodes": [],
+            "anonymous": false,
+            "documentation": {
+              "id": 47455,
+              "nodeType": "StructuredDocumentation",
+              "src": "1295:108:63",
+              "text": " @dev MessageIdExecuted MUST be emitted once a message or message batch has been executed."
+            },
+            "eventSelector": "00769f3f82cb2a521c5b72f211aff687dae3cebd0b4631790417d1b17e15689a",
+            "name": "MessageIdExecuted",
+            "nameLocation": "1414:17:63",
+            "parameters": {
+              "id": 47460,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47457,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "fromChainId",
+                  "nameLocation": "1448:11:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47461,
+                  "src": "1432:27:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 47456,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1432:7:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47459,
+                  "indexed": true,
+                  "mutability": "mutable",
+                  "name": "messageId",
+                  "nameLocation": "1477:9:63",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47461,
+                  "src": "1461:25:63",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 47458,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1461:7:63",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1431:56:63"
+            }
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "MessageExecutor",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "documentation": {
+          "id": 47433,
+          "nodeType": "StructuredDocumentation",
+          "src": "68:526:63",
+          "text": " @dev The MessageExecutor executes dispatched messages and message batches.\n MessageExecutor MUST append the ABI-packed (messageId, fromChainId, from) to the calldata for each message\n being executed. This allows the receiver of the message to verify the cross-chain sender and the chain that\n the message is coming from.\n ```\n to.call(abi.encodePacked(data, messageId, fromChainId, from));\n ```\n More about MessageExecutor of EIP5164, see https://eips.ethereum.org/EIPS/eip-5164#messageexecutor."
+        },
+        "fullyImplemented": true,
+        "linearizedBaseContracts": [
+          47462
+        ],
+        "name": "MessageExecutor",
+        "nameLocation": "605:15:63",
+        "scope": 47463,
+        "usedErrors": [
+          47438,
+          47445,
+          47454
+        ]
+      }
+    ],
+    "license": "GPL-3.0-only"
+  },
+  "id": 63
+}

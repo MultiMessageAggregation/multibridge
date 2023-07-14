@@ -1,0 +1,1159 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint64",
+              "name": "expTimestamp",
+              "type": "uint64"
+            },
+            {
+              "internalType": "bool",
+              "name": "isAtomicCalls",
+              "type": "bool"
+            },
+            {
+              "internalType": "enum Utils.FeePayer",
+              "name": "feePayerEnum",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct Utils.RequestArgs",
+          "name": "requestArgs",
+          "type": "tuple"
+        },
+        {
+          "internalType": "enum Utils.AckType",
+          "name": "ackType",
+          "type": "uint8"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint64",
+              "name": "gasLimit",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "gasPrice",
+              "type": "uint64"
+            }
+          ],
+          "internalType": "struct Utils.AckGasParams",
+          "name": "ackGasParams",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint64",
+              "name": "gasLimit",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "gasPrice",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "destChainType",
+              "type": "uint64"
+            },
+            {
+              "internalType": "string",
+              "name": "destChainId",
+              "type": "string"
+            }
+          ],
+          "internalType": "struct Utils.DestinationChainParams",
+          "name": "destChainParams",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "bytes[]",
+              "name": "payloads",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "destContractAddresses",
+              "type": "bytes[]"
+            }
+          ],
+          "internalType": "struct Utils.ContractCalls",
+          "name": "contractCalls",
+          "type": "tuple"
+        }
+      ],
+      "name": "requestToDest",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "requestToDestDefaultFee",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "fees",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "deployedBytecode": {
+    "object": "0x",
+    "sourceMap": "",
+    "linkReferences": {}
+  },
+  "methodIdentifiers": {
+    "requestToDest((uint64,bool,uint8),uint8,(uint64,uint64),(uint64,uint64,uint64,string),(bytes[],bytes[]))": "fac1f4af",
+    "requestToDestDefaultFee()": "3827bf8b"
+  },
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.17+commit.8df45f5f\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"components\":[{\"internalType\":\"uint64\",\"name\":\"expTimestamp\",\"type\":\"uint64\"},{\"internalType\":\"bool\",\"name\":\"isAtomicCalls\",\"type\":\"bool\"},{\"internalType\":\"enum Utils.FeePayer\",\"name\":\"feePayerEnum\",\"type\":\"uint8\"}],\"internalType\":\"struct Utils.RequestArgs\",\"name\":\"requestArgs\",\"type\":\"tuple\"},{\"internalType\":\"enum Utils.AckType\",\"name\":\"ackType\",\"type\":\"uint8\"},{\"components\":[{\"internalType\":\"uint64\",\"name\":\"gasLimit\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"gasPrice\",\"type\":\"uint64\"}],\"internalType\":\"struct Utils.AckGasParams\",\"name\":\"ackGasParams\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"uint64\",\"name\":\"gasLimit\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"gasPrice\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"destChainType\",\"type\":\"uint64\"},{\"internalType\":\"string\",\"name\":\"destChainId\",\"type\":\"string\"}],\"internalType\":\"struct Utils.DestinationChainParams\",\"name\":\"destChainParams\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"bytes[]\",\"name\":\"payloads\",\"type\":\"bytes[]\"},{\"internalType\":\"bytes[]\",\"name\":\"destContractAddresses\",\"type\":\"bytes[]\"}],\"internalType\":\"struct Utils.ContractCalls\",\"name\":\"contractCalls\",\"type\":\"tuple\"}],\"name\":\"requestToDest\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"requestToDestDefaultFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"fees\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"requestToDest((uint64,bool,uint8),uint8,(uint64,uint64),(uint64,uint64,uint64,string),(bytes[],bytes[]))\":{\"params\":{\"ackGasParams\":\"This includes the gas limit required for the execution of handler function for crosstalk acknowledgement on the source chain and the gas price of the source chain.\",\"ackType\":\"type of acknowledgement you want: ACK_ON_SUCCESS, ACK_ON_ERR, ACK_ON_BOTH.\",\"contractCalls\":\"Array of struct ContractCalls containing the multiple payloads to be sent to multiple contract addresses (in bytes format) on the destination chain.\",\"destChainParams\":\"dest chain params include the destChainType, destChainId, the gas limit required to execute handler function on the destination chain and the gas price of destination chain.\",\"requestArgs\":\"the struct request args containing expiry timestamp, isAtomicCalls and the fee payer.\"},\"returns\":{\"_0\":\"Returns the nonce from the gateway contract.\"}},\"requestToDestDefaultFee()\":{\"returns\":{\"fees\":\"fees\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"requestToDest((uint64,bool,uint8),uint8,(uint64,uint64),(uint64,uint64,uint64,string),(bytes[],bytes[]))\":{\"notice\":\"Function to send a message to the destination chain\"},\"requestToDestDefaultFee()\":{\"notice\":\"Function to fetch the fees for cross-chain message transfer.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/adapters/router/interfaces/IRouterGateway.sol\":\"IRouterGateway\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@openzeppelin/=lib/openzeppelin-contracts/\",\":ds-test/=lib/forge-std/lib/ds-test/src/\",\":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/\",\":forge-std/=lib/forge-std/src/\",\":openzeppelin-contracts/=lib/openzeppelin-contracts/\",\":openzeppelin/=lib/openzeppelin-contracts/contracts/\"]},\"sources\":{\"src/adapters/router/interfaces/IRouterGateway.sol\":{\"keccak256\":\"0x5c9d5498c10ab422a1a0150afe1ca8fc117fafaecaf5201b1aae0de9354ecbba\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://b22a762f5da436cbf5de49f7c7580d152ac08ae4607d3a66bccea84946daaa22\",\"dweb:/ipfs/QmdEbSFfa2tQ6gNznG67S4Mhhq5bA7fZdSx68XS67HzrLt\"]}},\"version\":1}",
+  "metadata": {
+    "compiler": {
+      "version": "0.8.17+commit.8df45f5f"
+    },
+    "language": "Solidity",
+    "output": {
+      "abi": [
+        {
+          "inputs": [
+            {
+              "internalType": "struct Utils.RequestArgs",
+              "name": "requestArgs",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "uint64",
+                  "name": "expTimestamp",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "isAtomicCalls",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "enum Utils.FeePayer",
+                  "name": "feePayerEnum",
+                  "type": "uint8"
+                }
+              ]
+            },
+            {
+              "internalType": "enum Utils.AckType",
+              "name": "ackType",
+              "type": "uint8"
+            },
+            {
+              "internalType": "struct Utils.AckGasParams",
+              "name": "ackGasParams",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "uint64",
+                  "name": "gasLimit",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "gasPrice",
+                  "type": "uint64"
+                }
+              ]
+            },
+            {
+              "internalType": "struct Utils.DestinationChainParams",
+              "name": "destChainParams",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "uint64",
+                  "name": "gasLimit",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "gasPrice",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "destChainType",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "string",
+                  "name": "destChainId",
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "internalType": "struct Utils.ContractCalls",
+              "name": "contractCalls",
+              "type": "tuple",
+              "components": [
+                {
+                  "internalType": "bytes[]",
+                  "name": "payloads",
+                  "type": "bytes[]"
+                },
+                {
+                  "internalType": "bytes[]",
+                  "name": "destContractAddresses",
+                  "type": "bytes[]"
+                }
+              ]
+            }
+          ],
+          "stateMutability": "payable",
+          "type": "function",
+          "name": "requestToDest",
+          "outputs": [
+            {
+              "internalType": "uint64",
+              "name": "",
+              "type": "uint64"
+            }
+          ]
+        },
+        {
+          "inputs": [],
+          "stateMutability": "view",
+          "type": "function",
+          "name": "requestToDestDefaultFee",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "fees",
+              "type": "uint256"
+            }
+          ]
+        }
+      ],
+      "devdoc": {
+        "kind": "dev",
+        "methods": {
+          "requestToDest((uint64,bool,uint8),uint8,(uint64,uint64),(uint64,uint64,uint64,string),(bytes[],bytes[]))": {
+            "params": {
+              "ackGasParams": "This includes the gas limit required for the execution of handler function for crosstalk acknowledgement on the source chain and the gas price of the source chain.",
+              "ackType": "type of acknowledgement you want: ACK_ON_SUCCESS, ACK_ON_ERR, ACK_ON_BOTH.",
+              "contractCalls": "Array of struct ContractCalls containing the multiple payloads to be sent to multiple contract addresses (in bytes format) on the destination chain.",
+              "destChainParams": "dest chain params include the destChainType, destChainId, the gas limit required to execute handler function on the destination chain and the gas price of destination chain.",
+              "requestArgs": "the struct request args containing expiry timestamp, isAtomicCalls and the fee payer."
+            },
+            "returns": {
+              "_0": "Returns the nonce from the gateway contract."
+            }
+          },
+          "requestToDestDefaultFee()": {
+            "returns": {
+              "fees": "fees"
+            }
+          }
+        },
+        "version": 1
+      },
+      "userdoc": {
+        "kind": "user",
+        "methods": {
+          "requestToDest((uint64,bool,uint8),uint8,(uint64,uint64),(uint64,uint64,uint64,string),(bytes[],bytes[]))": {
+            "notice": "Function to send a message to the destination chain"
+          },
+          "requestToDestDefaultFee()": {
+            "notice": "Function to fetch the fees for cross-chain message transfer."
+          }
+        },
+        "version": 1
+      }
+    },
+    "settings": {
+      "remappings": [
+        ":@openzeppelin/=lib/openzeppelin-contracts/",
+        ":ds-test/=lib/forge-std/lib/ds-test/src/",
+        ":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+        ":forge-std/=lib/forge-std/src/",
+        ":openzeppelin-contracts/=lib/openzeppelin-contracts/",
+        ":openzeppelin/=lib/openzeppelin-contracts/contracts/"
+      ],
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "metadata": {
+        "bytecodeHash": "ipfs"
+      },
+      "compilationTarget": {
+        "src/adapters/router/interfaces/IRouterGateway.sol": "IRouterGateway"
+      },
+      "libraries": {}
+    },
+    "sources": {
+      "src/adapters/router/interfaces/IRouterGateway.sol": {
+        "keccak256": "0x5c9d5498c10ab422a1a0150afe1ca8fc117fafaecaf5201b1aae0de9354ecbba",
+        "urls": [
+          "bzz-raw://b22a762f5da436cbf5de49f7c7580d152ac08ae4607d3a66bccea84946daaa22",
+          "dweb:/ipfs/QmdEbSFfa2tQ6gNznG67S4Mhhq5bA7fZdSx68XS67HzrLt"
+        ],
+        "license": "MIT"
+      }
+    },
+    "version": 1
+  },
+  "ast": {
+    "absolutePath": "src/adapters/router/interfaces/IRouterGateway.sol",
+    "id": 47143,
+    "exportedSymbols": {
+      "IRouterGateway": [
+        47142
+      ],
+      "Utils": [
+        47114
+      ]
+    },
+    "nodeType": "SourceUnit",
+    "src": "32:2125:58",
+    "nodes": [
+      {
+        "id": 47075,
+        "nodeType": "PragmaDirective",
+        "src": "32:23:58",
+        "nodes": [],
+        "literals": [
+          "solidity",
+          "0.8",
+          ".17"
+        ]
+      },
+      {
+        "id": 47114,
+        "nodeType": "ContractDefinition",
+        "src": "57:650:58",
+        "nodes": [
+          {
+            "id": 47083,
+            "nodeType": "StructDefinition",
+            "src": "77:120:58",
+            "nodes": [],
+            "canonicalName": "Utils.RequestArgs",
+            "members": [
+              {
+                "constant": false,
+                "id": 47077,
+                "mutability": "mutable",
+                "name": "expTimestamp",
+                "nameLocation": "113:12:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47083,
+                "src": "106:19:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint64",
+                  "typeString": "uint64"
+                },
+                "typeName": {
+                  "id": 47076,
+                  "name": "uint64",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "106:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47079,
+                "mutability": "mutable",
+                "name": "isAtomicCalls",
+                "nameLocation": "140:13:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47083,
+                "src": "135:18:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_bool",
+                  "typeString": "bool"
+                },
+                "typeName": {
+                  "id": 47078,
+                  "name": "bool",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "135:4:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47082,
+                "mutability": "mutable",
+                "name": "feePayerEnum",
+                "nameLocation": "178:12:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47083,
+                "src": "163:27:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_enum$_FeePayer_$47087",
+                  "typeString": "enum Utils.FeePayer"
+                },
+                "typeName": {
+                  "id": 47081,
+                  "nodeType": "UserDefinedTypeName",
+                  "pathNode": {
+                    "id": 47080,
+                    "name": "Utils.FeePayer",
+                    "nameLocations": [
+                      "163:5:58",
+                      "169:8:58"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 47087,
+                    "src": "163:14:58"
+                  },
+                  "referencedDeclaration": 47087,
+                  "src": "163:14:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_enum$_FeePayer_$47087",
+                    "typeString": "enum Utils.FeePayer"
+                  }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "RequestArgs",
+            "nameLocation": "84:11:58",
+            "scope": 47114,
+            "visibility": "public"
+          },
+          {
+            "id": 47087,
+            "nodeType": "EnumDefinition",
+            "src": "203:61:58",
+            "nodes": [],
+            "canonicalName": "Utils.FeePayer",
+            "members": [
+              {
+                "id": 47084,
+                "name": "APP",
+                "nameLocation": "227:3:58",
+                "nodeType": "EnumValue",
+                "src": "227:3:58"
+              },
+              {
+                "id": 47085,
+                "name": "USER",
+                "nameLocation": "240:4:58",
+                "nodeType": "EnumValue",
+                "src": "240:4:58"
+              },
+              {
+                "id": 47086,
+                "name": "NONE",
+                "nameLocation": "254:4:58",
+                "nodeType": "EnumValue",
+                "src": "254:4:58"
+              }
+            ],
+            "name": "FeePayer",
+            "nameLocation": "208:8:58"
+          },
+          {
+            "id": 47092,
+            "nodeType": "StructDefinition",
+            "src": "270:77:58",
+            "nodes": [],
+            "canonicalName": "Utils.AckGasParams",
+            "members": [
+              {
+                "constant": false,
+                "id": 47089,
+                "mutability": "mutable",
+                "name": "gasLimit",
+                "nameLocation": "307:8:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47092,
+                "src": "300:15:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint64",
+                  "typeString": "uint64"
+                },
+                "typeName": {
+                  "id": 47088,
+                  "name": "uint64",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "300:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47091,
+                "mutability": "mutable",
+                "name": "gasPrice",
+                "nameLocation": "332:8:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47092,
+                "src": "325:15:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint64",
+                  "typeString": "uint64"
+                },
+                "typeName": {
+                  "id": 47090,
+                  "name": "uint64",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "325:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "AckGasParams",
+            "nameLocation": "277:12:58",
+            "scope": 47114,
+            "visibility": "public"
+          },
+          {
+            "id": 47101,
+            "nodeType": "StructDefinition",
+            "src": "353:145:58",
+            "nodes": [],
+            "canonicalName": "Utils.DestinationChainParams",
+            "members": [
+              {
+                "constant": false,
+                "id": 47094,
+                "mutability": "mutable",
+                "name": "gasLimit",
+                "nameLocation": "400:8:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47101,
+                "src": "393:15:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint64",
+                  "typeString": "uint64"
+                },
+                "typeName": {
+                  "id": 47093,
+                  "name": "uint64",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "393:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47096,
+                "mutability": "mutable",
+                "name": "gasPrice",
+                "nameLocation": "425:8:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47101,
+                "src": "418:15:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint64",
+                  "typeString": "uint64"
+                },
+                "typeName": {
+                  "id": 47095,
+                  "name": "uint64",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "418:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47098,
+                "mutability": "mutable",
+                "name": "destChainType",
+                "nameLocation": "450:13:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47101,
+                "src": "443:20:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint64",
+                  "typeString": "uint64"
+                },
+                "typeName": {
+                  "id": 47097,
+                  "name": "uint64",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "443:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47100,
+                "mutability": "mutable",
+                "name": "destChainId",
+                "nameLocation": "480:11:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47101,
+                "src": "473:18:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_string_storage_ptr",
+                  "typeString": "string"
+                },
+                "typeName": {
+                  "id": 47099,
+                  "name": "string",
+                  "nodeType": "ElementaryTypeName",
+                  "src": "473:6:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_storage_ptr",
+                    "typeString": "string"
+                  }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "DestinationChainParams",
+            "nameLocation": "360:22:58",
+            "scope": 47114,
+            "visibility": "public"
+          },
+          {
+            "id": 47108,
+            "nodeType": "StructDefinition",
+            "src": "504:93:58",
+            "nodes": [],
+            "canonicalName": "Utils.ContractCalls",
+            "members": [
+              {
+                "constant": false,
+                "id": 47104,
+                "mutability": "mutable",
+                "name": "payloads",
+                "nameLocation": "543:8:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47108,
+                "src": "535:16:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                  "typeString": "bytes[]"
+                },
+                "typeName": {
+                  "baseType": {
+                    "id": 47102,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "535:5:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "id": 47103,
+                  "nodeType": "ArrayTypeName",
+                  "src": "535:7:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                    "typeString": "bytes[]"
+                  }
+                },
+                "visibility": "internal"
+              },
+              {
+                "constant": false,
+                "id": 47107,
+                "mutability": "mutable",
+                "name": "destContractAddresses",
+                "nameLocation": "569:21:58",
+                "nodeType": "VariableDeclaration",
+                "scope": 47108,
+                "src": "561:29:58",
+                "stateVariable": false,
+                "storageLocation": "default",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                  "typeString": "bytes[]"
+                },
+                "typeName": {
+                  "baseType": {
+                    "id": 47105,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "561:5:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "id": 47106,
+                  "nodeType": "ArrayTypeName",
+                  "src": "561:7:58",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                    "typeString": "bytes[]"
+                  }
+                },
+                "visibility": "internal"
+              }
+            ],
+            "name": "ContractCalls",
+            "nameLocation": "511:13:58",
+            "scope": 47114,
+            "visibility": "public"
+          },
+          {
+            "id": 47113,
+            "nodeType": "EnumDefinition",
+            "src": "603:102:58",
+            "nodes": [],
+            "canonicalName": "Utils.AckType",
+            "members": [
+              {
+                "id": 47109,
+                "name": "NO_ACK",
+                "nameLocation": "626:6:58",
+                "nodeType": "EnumValue",
+                "src": "626:6:58"
+              },
+              {
+                "id": 47110,
+                "name": "ACK_ON_SUCCESS",
+                "nameLocation": "642:14:58",
+                "nodeType": "EnumValue",
+                "src": "642:14:58"
+              },
+              {
+                "id": 47111,
+                "name": "ACK_ON_ERROR",
+                "nameLocation": "666:12:58",
+                "nodeType": "EnumValue",
+                "src": "666:12:58"
+              },
+              {
+                "id": 47112,
+                "name": "ACK_ON_BOTH",
+                "nameLocation": "688:11:58",
+                "nodeType": "EnumValue",
+                "src": "688:11:58"
+              }
+            ],
+            "name": "AckType",
+            "nameLocation": "608:7:58"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "Utils",
+        "contractDependencies": [],
+        "contractKind": "library",
+        "fullyImplemented": true,
+        "linearizedBaseContracts": [
+          47114
+        ],
+        "name": "Utils",
+        "nameLocation": "65:5:58",
+        "scope": 47143,
+        "usedErrors": []
+      },
+      {
+        "id": 47142,
+        "nodeType": "ContractDefinition",
+        "src": "709:1447:58",
+        "nodes": [
+          {
+            "id": 47135,
+            "nodeType": "FunctionDefinition",
+            "src": "1679:299:58",
+            "nodes": [],
+            "documentation": {
+              "id": 47115,
+              "nodeType": "StructuredDocumentation",
+              "src": "740:934:58",
+              "text": "@notice Function to send a message to the destination chain\n @param requestArgs the struct request args containing expiry timestamp, isAtomicCalls and the fee payer.\n @param ackType type of acknowledgement you want: ACK_ON_SUCCESS, ACK_ON_ERR, ACK_ON_BOTH.\n @param ackGasParams This includes the gas limit required for the execution of handler function for\n crosstalk acknowledgement on the source chain and the gas price of the source chain.\n @param destChainParams dest chain params include the destChainType, destChainId, the gas limit\n required to execute handler function on the destination chain and the gas price of destination chain.\n @param contractCalls Array of struct ContractCalls containing the multiple payloads to be sent to multiple\n contract addresses (in bytes format) on the destination chain.\n @return Returns the nonce from the gateway contract."
+            },
+            "functionSelector": "fac1f4af",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "requestToDest",
+            "nameLocation": "1688:13:58",
+            "parameters": {
+              "id": 47131,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47118,
+                  "mutability": "mutable",
+                  "name": "requestArgs",
+                  "nameLocation": "1736:11:58",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47135,
+                  "src": "1711:36:58",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_RequestArgs_$47083_memory_ptr",
+                    "typeString": "struct Utils.RequestArgs"
+                  },
+                  "typeName": {
+                    "id": 47117,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 47116,
+                      "name": "Utils.RequestArgs",
+                      "nameLocations": [
+                        "1711:5:58",
+                        "1717:11:58"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 47083,
+                      "src": "1711:17:58"
+                    },
+                    "referencedDeclaration": 47083,
+                    "src": "1711:17:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_RequestArgs_$47083_storage_ptr",
+                      "typeString": "struct Utils.RequestArgs"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47121,
+                  "mutability": "mutable",
+                  "name": "ackType",
+                  "nameLocation": "1771:7:58",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47135,
+                  "src": "1757:21:58",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_enum$_AckType_$47113",
+                    "typeString": "enum Utils.AckType"
+                  },
+                  "typeName": {
+                    "id": 47120,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 47119,
+                      "name": "Utils.AckType",
+                      "nameLocations": [
+                        "1757:5:58",
+                        "1763:7:58"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 47113,
+                      "src": "1757:13:58"
+                    },
+                    "referencedDeclaration": 47113,
+                    "src": "1757:13:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_enum$_AckType_$47113",
+                      "typeString": "enum Utils.AckType"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47124,
+                  "mutability": "mutable",
+                  "name": "ackGasParams",
+                  "nameLocation": "1814:12:58",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47135,
+                  "src": "1788:38:58",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_AckGasParams_$47092_memory_ptr",
+                    "typeString": "struct Utils.AckGasParams"
+                  },
+                  "typeName": {
+                    "id": 47123,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 47122,
+                      "name": "Utils.AckGasParams",
+                      "nameLocations": [
+                        "1788:5:58",
+                        "1794:12:58"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 47092,
+                      "src": "1788:18:58"
+                    },
+                    "referencedDeclaration": 47092,
+                    "src": "1788:18:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_AckGasParams_$47092_storage_ptr",
+                      "typeString": "struct Utils.AckGasParams"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47127,
+                  "mutability": "mutable",
+                  "name": "destChainParams",
+                  "nameLocation": "1872:15:58",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47135,
+                  "src": "1836:51:58",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_DestinationChainParams_$47101_memory_ptr",
+                    "typeString": "struct Utils.DestinationChainParams"
+                  },
+                  "typeName": {
+                    "id": 47126,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 47125,
+                      "name": "Utils.DestinationChainParams",
+                      "nameLocations": [
+                        "1836:5:58",
+                        "1842:22:58"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 47101,
+                      "src": "1836:28:58"
+                    },
+                    "referencedDeclaration": 47101,
+                    "src": "1836:28:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_DestinationChainParams_$47101_storage_ptr",
+                      "typeString": "struct Utils.DestinationChainParams"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 47130,
+                  "mutability": "mutable",
+                  "name": "contractCalls",
+                  "nameLocation": "1924:13:58",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47135,
+                  "src": "1897:40:58",
+                  "stateVariable": false,
+                  "storageLocation": "memory",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_ContractCalls_$47108_memory_ptr",
+                    "typeString": "struct Utils.ContractCalls"
+                  },
+                  "typeName": {
+                    "id": 47129,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 47128,
+                      "name": "Utils.ContractCalls",
+                      "nameLocations": [
+                        "1897:5:58",
+                        "1903:13:58"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 47108,
+                      "src": "1897:19:58"
+                    },
+                    "referencedDeclaration": 47108,
+                    "src": "1897:19:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_ContractCalls_$47108_storage_ptr",
+                      "typeString": "struct Utils.ContractCalls"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1701:242:58"
+            },
+            "returnParameters": {
+              "id": 47134,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47133,
+                  "mutability": "mutable",
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47135,
+                  "src": "1970:6:58",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint64",
+                    "typeString": "uint64"
+                  },
+                  "typeName": {
+                    "id": 47132,
+                    "name": "uint64",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1970:6:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint64",
+                      "typeString": "uint64"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1969:8:58"
+            },
+            "scope": 47142,
+            "stateMutability": "payable",
+            "virtual": false,
+            "visibility": "external"
+          },
+          {
+            "id": 47141,
+            "nodeType": "FunctionDefinition",
+            "src": "2082:72:58",
+            "nodes": [],
+            "documentation": {
+              "id": 47136,
+              "nodeType": "StructuredDocumentation",
+              "src": "1984:93:58",
+              "text": "@notice Function to fetch the fees for cross-chain message transfer.\n @return fees"
+            },
+            "functionSelector": "3827bf8b",
+            "implemented": false,
+            "kind": "function",
+            "modifiers": [],
+            "name": "requestToDestDefaultFee",
+            "nameLocation": "2091:23:58",
+            "parameters": {
+              "id": 47137,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "2114:2:58"
+            },
+            "returnParameters": {
+              "id": 47140,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 47139,
+                  "mutability": "mutable",
+                  "name": "fees",
+                  "nameLocation": "2148:4:58",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 47141,
+                  "src": "2140:12:58",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 47138,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "2140:7:58",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "src": "2139:14:58"
+            },
+            "scope": 47142,
+            "stateMutability": "view",
+            "virtual": false,
+            "visibility": "external"
+          }
+        ],
+        "abstract": false,
+        "baseContracts": [],
+        "canonicalName": "IRouterGateway",
+        "contractDependencies": [],
+        "contractKind": "interface",
+        "fullyImplemented": false,
+        "linearizedBaseContracts": [
+          47142
+        ],
+        "name": "IRouterGateway",
+        "nameLocation": "719:14:58",
+        "scope": 47143,
+        "usedErrors": []
+      }
+    ],
+    "license": "MIT"
+  },
+  "id": 58
+}
