@@ -135,8 +135,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /// @notice Update bridge receiver adapters.
-    /// @dev This function can only be called by executeMessage() invoked within receiveMessage() of this contract,
-    /// which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
+    /// @dev called by admin to update receiver bridge adapters on all other chains
     function updateReceiverAdapter(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
         onlySelf
@@ -147,16 +146,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
     }
 
-    /// @notice Update MultiMessageSender on source chain.
-    /// @dev This function can only be called by executeMessage() invoked within receiveMessage() of this contract,
-    /// which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
+    /// @notice update MultiMessageSender on source chain.
     function updateMultiMessageSender(uint256 _srcChainId, address _multiMessageSender) external onlySelf {
         _updateMultiMessageSender(_srcChainId, _multiMessageSender);
     }
 
     /// @notice Update power quorum threshold of message execution.
-    /// @dev This function can only be called by executeMessage() invoked within receiveMessage() of this contract,
-    /// which means the only party who can make these updates is the caller of the MultiMessageSender at the source chain.
     function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
         require(_quorumThreshold <= trustedExecutor.length && _quorumThreshold > 0, "invalid threshold");
         quorumThreshold = _quorumThreshold;
