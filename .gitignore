@@ -7,6 +7,7 @@ genfiles/
 failing_metadata/
 node_modules/
 typechain/
+out/
 
 *.pid
 *.log

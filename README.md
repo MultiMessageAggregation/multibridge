@@ -59,7 +59,7 @@ $  forge install
 **Step 3:** Compile
 
 ```sh
-$  forge compile
+$  forge build
 ```
 
 **Step 4:** Run Tests
