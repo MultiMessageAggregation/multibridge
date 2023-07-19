@@ -40,20 +40,35 @@ The flow of the message and how it is transformed and relayed is detailed below:
 
 ![Illustration of ](https://files.gitbook.com/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FyWOfgotvwuIBhzylK0ud%2Fuploads%2Fco073eKSrR7xUmhObi7v%2FMMA_Highlevel.png?alt=media&token=bff8ec55-c04f-4ab9-b362-caae601154db)
 
-## Development
-### Installation
+## Local Development
+
+**Step 1:** Clone the repository
+
+```sh
+$   git clone https://github.com/MultiMessageAggregation/multibridge
 ```
-npm i
+
+**note:** Please make sure [foundry](https://github.com/foundry-rs/foundry) is installed to proceed further.
+
+**Step 2:** Install required forge submodules 
+
+```sh
+$  forge install
 ```
-### Compile
+
+**Step 3:** Compile
+
+```sh
+$  forge build
 ```
-npx hardhat compile
+
+**Step 4:** Run Tests
+
+```sh
+$  forge test
 ```
-### Run test
-We use Hardhat to test MultiMessageSender and MultiMessageReceiver contracts on simple behaviors.
-```
-npx hardhat test
-```
+
+**note:** We use [pigeon](https://github.com/exp-table/pigeon/tree/docs) to simulate the cross-chain behavior on forked mainnets.
 
 ## Contribution guidelines
 Thank you for your interest in contributing to MMA! We welcome all contributions to make our project better!
