@@ -2,10 +2,11 @@
 pragma solidity >=0.8.9;
 
 /// library imports
-import "./Setup.t.sol";
+import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import {MultiMessageSender} from "../src/MultiMessageSender.sol";
+import "../Setup.t.sol";
+import {MultiMessageSender} from "../../src/MultiMessageSender.sol";
 
 contract MMA is Setup {
     /// @dev intializes the setup
@@ -13,16 +14,22 @@ contract MMA is Setup {
         super.setUp();
     }
 
-    function test_mma_send() public virtual {
+    /// @dev just sends a message
+    function test_mma_send_receive() public {
         vm.selectFork(fork[1]);
         vm.startPrank(caller);
 
+        vm.recordLogs();
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             137,
             contractAddress[137][bytes("MMA_RECEIVER")],
-            contractAddress[137][bytes("MMA_RECEIVER")],    /// FIXME: move to uniswap timelock
+            address(0),    /// FIXME: move to uniswap timelock
             bytes(""),
             uint64(block.timestamp + 2 days)
         );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        vm.stopPrank();
+        _simulatePayloadDelivery(1, 137, logs);
     }
 } 
