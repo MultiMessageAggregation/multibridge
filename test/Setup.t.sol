@@ -57,11 +57,17 @@ abstract contract Setup is Test {
         /// @notice chain id: 137
         /// @notice chain id: 56
         /// @notice chain id: 42161
-
         fork[1] = vm.createSelectFork(vm.envString("ETH_FORK_URL"));
+        vm.deal(caller, 100 ether);
+
         fork[56] = vm.createSelectFork(vm.envString("BSC_FORK_URL"));
+        vm.deal(caller, 100 ether);
+
         fork[137] = vm.createSelectFork(vm.envString("POLYGON_FORK_URL"));
+        vm.deal(caller, 100 ether);
+
         fork[42161] = vm.createSelectFork(vm.envString("ARB_FORK_URL"));
+        vm.deal(caller, 100 ether);
 
         /// @dev deploys amb adapters
         /// note: now added only hyperlane & celer
@@ -74,6 +80,9 @@ abstract contract Setup is Test {
 
         /// @dev deploys mma sender and receiver adapters
         _deployCoreContracts();
+
+        /// @dev setup core contracts
+        _setupCoreContracts();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -81,11 +90,6 @@ abstract contract Setup is Test {
     //////////////////////////////////////////////////////////////*/
     /// @dev deployes the hyperlane adapters to all configured chains
     function _deployHyperlaneAdapters() internal {
-        /// @notice deploy source adapter to Ethereum
-        vm.selectFork(fork[1]);
-        contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")] =
-            address(new HyperlaneSenderAdapter(HYPERLANE_MAILBOX, HYPERLANE_IGP));
-
         /// @notice deploy receiver adapters to BSC, POLYGON & ARB
         for (uint256 i; i < DST_CHAINS.length; i++) {
             vm.selectFork(fork[DST_CHAINS[i]]);
@@ -93,14 +97,30 @@ abstract contract Setup is Test {
             contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")] =
                 address(new HyperlaneReceiverAdapter(HYPERLANE_MAILBOX));
         }
-    }
+
+        /// @notice deploy source adapter to Ethereum
+        vm.selectFork(fork[1]);
+
+        contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")] =
+            address(new HyperlaneSenderAdapter(HYPERLANE_MAILBOX, HYPERLANE_IGP));
+
+        address[] memory _receiverAdapters = new address[](3);
+        _receiverAdapters[0] = contractAddress[56][bytes("HYPERLANE_RECEIVER_ADAPTER")];
+        _receiverAdapters[1] = contractAddress[137][bytes("HYPERLANE_RECEIVER_ADAPTER")];
+        _receiverAdapters[2] = contractAddress[42161][bytes("HYPERLANE_RECEIVER_ADAPTER")];
+
+        HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateReceiverAdapter(DST_CHAINS, _receiverAdapters);
+        
+        uint32[] memory _receiverDomains = new uint32[](3);
+        _receiverDomains[0] = uint32(56);
+        _receiverDomains[1] = uint32(137);
+        _receiverDomains[2] = uint32(42161);
+
+        HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateDestinationDomainIds(DST_CHAINS, _receiverDomains);
+    }   
 
     /// @dev deploys the celer adapters to all configured chains
     function _deployCelerAdapters() internal {
-        /// @notice deploy source adapter to Ethereum
-        vm.selectFork(fork[1]);
-        contractAddress[1][bytes("CELER_SENDER_ADAPTER")] = address(new CelerSenderAdapter(ETH_CELER_MSG_BUS));
-
         /// @notice deploy receiver adapters to BSC, POLYGON & ARB
         vm.selectFork(fork[56]);
         contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(BSC_CELER_MSG_BUS));
@@ -110,6 +130,17 @@ abstract contract Setup is Test {
 
         vm.selectFork(fork[42161]);
         contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(ARB_CELER_MSG_BUS));
+
+        /// @notice deploy source adapter to Ethereum
+        vm.selectFork(fork[1]);
+        contractAddress[1][bytes("CELER_SENDER_ADAPTER")] = address(new CelerSenderAdapter(ETH_CELER_MSG_BUS));
+        
+        address[] memory _receiverAdapters = new address[](3);
+        _receiverAdapters[0] = contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")];
+        _receiverAdapters[1] = contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")];
+        _receiverAdapters[2] = contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")];
+
+        CelerSenderAdapter(contractAddress[1][bytes("CELER_SENDER_ADAPTER")]).updateReceiverAdapter(DST_CHAINS, _receiverAdapters);
     }
 
     /// @dev deploys the amb helpers to all configured chains
@@ -137,6 +168,35 @@ abstract contract Setup is Test {
         for (uint256 i; i < DST_CHAINS.length; i++) {
             vm.selectFork(fork[DST_CHAINS[i]]);
             contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver());
+        }
+    }
+
+    /// @dev setup core contracts
+    function _setupCoreContracts() internal {
+        /// setup mma sender adapters
+        vm.selectFork(fork[1]);
+        vm.startPrank(caller);
+
+        address[] memory _senderAdapters = new address[](2);
+        _senderAdapters[0] = contractAddress[1][bytes("CELER_SENDER_ADAPTER")];
+        _senderAdapters[1] = contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")];
+
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(56, _senderAdapters);
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(137, _senderAdapters);
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(42161, _senderAdapters);
+
+        /// setup mma receiver adapters
+        for (uint256 i; i < DST_CHAINS.length; i++) {
+            /// setup receiver adapters
+            vm.selectFork(fork[DST_CHAINS[i]]);
+            
+            address[] memory _recieverAdapters = new address[](2);
+            _recieverAdapters[0] = contractAddress[DST_CHAINS[i]][bytes("CELER_RECEIVER_ADAPTER")];
+            _recieverAdapters[1] = contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")];
+
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
+                1, contractAddress[1][bytes("MMA_SENDER")], _recieverAdapters, 2
+            );
         }
     }
 }
