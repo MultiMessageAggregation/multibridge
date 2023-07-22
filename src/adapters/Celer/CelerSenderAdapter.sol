@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./interfaces/IMessageBus.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../base/BaseSenderAdapter.sol";
+import "../BaseSenderAdapter.sol";
 
 contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
     string public constant name = "celer";

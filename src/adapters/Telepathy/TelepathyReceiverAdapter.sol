@@ -7,10 +7,6 @@ import {IBridgeReceiverAdapter} from "../../interfaces/IBridgeReceiverAdapter.so
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TelepathyReceiverAdapter is IBridgeReceiverAdapter, ITelepathyHandler, Ownable {
-    /* ========== EVENTS ========== */
-
-    event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
-
     /* ========== ERRORS ========== */
 
     error NotFromTelepathyRouter(address sender);

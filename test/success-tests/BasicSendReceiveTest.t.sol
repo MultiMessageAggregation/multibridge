@@ -23,7 +23,8 @@ contract MMA is Setup {
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             137,
             contractAddress[137][bytes("MMA_RECEIVER")],
-            address(0),    /// FIXME: move to uniswap timelock
+            address(0),
+            /// FIXME: move to uniswap timelock
             bytes(""),
             uint64(block.timestamp + 2 days)
         );
@@ -32,4 +33,4 @@ contract MMA is Setup {
         vm.stopPrank();
         _simulatePayloadDelivery(1, 137, logs);
     }
-} 
+}

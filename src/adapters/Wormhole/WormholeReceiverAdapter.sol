@@ -1,126 +1,124 @@
-// SPDX-License-Identifier: Apache 2
+// SPDX-License-Identifier: GPL-3.0-only
 
 pragma solidity >=0.8.9;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+/// library imports
+import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
+
+/// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Error.sol";
 
-interface Structs {
-    struct Provider {
-        uint16 chainId;
-        uint16 governanceChainId;
-        bytes32 governanceContract;
-    }
+/// @notice receiver adapter for wormhole bridge
+/// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
+/// the MMA receiver.
+contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
+    address public immutable relayer;
+    IGAC public immutable gac;
 
-    struct GuardianSet {
-        address[] keys;
-        uint32 expirationTime;
-    }
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
+    address public senderAdapter;
 
-    struct Signature {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        uint8 guardianIndex;
-    }
-
-    struct VM {
-        uint8 version;
-        uint32 timestamp;
-        uint32 nonce;
-        uint16 emitterChainId;
-        bytes32 emitterAddress;
-        uint64 sequence;
-        uint8 consistencyLevel;
-        bytes payload;
-        uint32 guardianSetIndex;
-        Signature[] signatures;
-        bytes32 hash;
-    }
-}
-
-interface IWormhole {
-    function parseAndVerifyVM(bytes calldata encodedVM)
-        external
-        view
-        returns (Structs.VM memory vm, bool valid, string memory reason);
-}
-
-interface IWormholeReceiver {
-    function receiveWormholeMessages(bytes[] memory vaas, bytes[] memory additionalData) external payable;
-}
-
-contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver, Ownable {
-    mapping(uint256 => uint16) idMap;
-    mapping(uint16 => uint256) reverseIdMap;
-    mapping(uint16 => bytes32) public senderAdapters;
-    IWormhole private immutable wormhole;
-    address private immutable relayer;
+    mapping(uint256 => uint16) public chainIdMap;
+    mapping(uint16 => uint256) public reversechainIdMap;
     mapping(bytes32 => bool) public processedMessages;
 
-    event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
-
-    constructor(address _bridgeAddress, address _relayer) {
-        wormhole = IWormhole(_bridgeAddress);
-        relayer = _relayer;
-    }
-
-    modifier onlyRelayerContract() {
-        require(msg.sender == relayer, "msg.sender is not CoreRelayer contract.");
+    /*/////////////////////////////////////////////////////////////////
+                                 MODIFIER
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
+        }
         _;
     }
 
-    function receiveWormholeMessages(bytes[] memory whMessages, bytes[] memory)
-        public
-        payable
-        override
-        onlyRelayerContract
-    {
-        (Structs.VM memory vm, bool valid, string memory reason) = wormhole.parseAndVerifyVM(whMessages[0]);
-        //validate
-        require(valid, reason);
-        // Ensure the emitterAddress of this VAA is the Uniswap message sender
-        require(senderAdapters[vm.emitterChainId] == vm.emitterAddress, "Invalid Emitter Address!");
-        //verify destination
-        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) =
-            abi.decode(vm.payload, (address, address, bytes, address));
-        require(receiverAdapter == address(this), "Message not for this dest");
-        // replay protection
-        bytes32 msgId = bytes32(uint256(vm.nonce));
-        if (processedMessages[vm.hash]) {
-            revert MessageIdAlreadyExecuted(msgId);
-        } else {
-            processedMessages[vm.hash] = true;
+    modifier onlyRelayerContract() {
+        if (msg.sender != relayer) {
+            revert Error.CALLER_NOT_WORMHOLE_RELAYER();
         }
+        _;
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                                CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @param _relayer is wormhole relayer.
+    /// @param _gac is global access controller.
+    /// note: https://docs.wormhole.com/wormhole/quick-start/cross-chain-dev/automatic-relayer
+    constructor(address _relayer, address _gac) {
+        relayer = _relayer;
+        gac = IGAC(_gac);
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                                EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeReceiverAdapter
+    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+        if (_senderAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        address oldAdapter = senderAdapter;
+        senderAdapter = _senderAdapter;
+
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+    }
+
+    /// @dev maps the MMA chain id to bridge specific chain id
+    /// @dev _origIds is the chain's native chain id
+    /// @dev _whIds are the bridge allocated chain id
+    function setChainchainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+        uint256 arrLength = _origIds.length;
+
+        if (arrLength != _whIds.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < arrLength;) {
+            chainIdMap[_origIds[i]] = _whIds[i];
+            reversechainIdMap[_whIds[i]] = _origIds[i];
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @inheritdoc IWormholeReceiver
+    function receiveWormholeMessages(
+        bytes memory payload,
+        bytes[] memory,
+        bytes32,
+        uint16 sourceChain,
+        bytes32 deliveryHash
+    ) public payable override onlyRelayerContract {
+        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) =
+            abi.decode(payload, (address, address, bytes, address));
+
+        if (receiverAdapter != address(this)) {
+            revert Error.RECEIVER_ADAPTER_MISMATCHED();
+        }
+
+        if (processedMessages[deliveryHash]) {
+            revert MessageIdAlreadyExecuted(deliveryHash);
+        } else {
+            processedMessages[deliveryHash] = true;
+        }
+
         //send message to destReceiver
         (bool ok, bytes memory lowLevelData) =
-            destReceiver.call(abi.encodePacked(data, msgId, uint256(reverseIdMap[vm.emitterChainId]), srcSender));
+            destReceiver.call(abi.encodePacked(data, deliveryHash, uint256(reversechainIdMap[sourceChain]), srcSender));
         if (!ok) {
-            revert MessageFailure(msgId, lowLevelData);
+            revert MessageFailure(deliveryHash, lowLevelData);
         } else {
-            emit MessageIdExecuted(reverseIdMap[vm.emitterChainId], msgId);
-        }
-    }
-
-    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyOwner {
-        require(_origIds.length == _whIds.length, "mismatch length");
-        for (uint256 i; i < _origIds.length; ++i) {
-            idMap[_origIds[i]] = _whIds[i];
-            reverseIdMap[_whIds[i]] = _origIds[i];
-        }
-    }
-
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        override
-        onlyOwner
-    {
-        require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i; i < _srcChainIds.length; ++i) {
-            uint16 wormholeId = idMap[_srcChainIds[i]];
-            require(wormholeId != 0, "unrecognized srcChainId");
-            senderAdapters[wormholeId] = bytes32(uint256(uint160(_senderAdapters[i])));
-            emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
+            emit MessageIdExecuted(reversechainIdMap[sourceChain], deliveryHash);
         }
     }
 }

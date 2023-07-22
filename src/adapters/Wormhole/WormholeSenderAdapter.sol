@@ -1,127 +1,132 @@
-// SPDX-License-Identifier: Apache 2
-
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
+/// library imports
+import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
+
+/// local imports
+import "../BaseSenderAdapter.sol";
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Error.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../base/BaseSenderAdapter.sol";
 
-interface IWormhole {
-    function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
-        external
-        payable
-        returns (uint64 sequence);
+contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
+    IWormholeRelayer private immutable relayer;
+    IGAC public immutable gac;
 
-    function messageFee() external view returns (uint256);
-}
-
-interface IRelayProvider {}
-
-interface ICoreRelayer {
-    /**
-     * @dev This is the basic function for requesting delivery
-     */
-    function requestDelivery(DeliveryRequest memory request, uint32 nonce, IRelayProvider provider)
-        external
-        payable
-        returns (uint64 sequence);
-
-    function getDefaultRelayProvider() external returns (IRelayProvider);
-
-    function getDefaultRelayParams() external pure returns (bytes memory relayParams);
-
-    function quoteGasDeliveryFee(uint16 targetChain, uint32 gasLimit, IRelayProvider relayProvider)
-        external
-        pure
-        returns (uint256 deliveryQuote);
-
-    function quoteApplicationBudgetFee(uint16 targetChain, uint256 targetAmount, IRelayProvider provider)
-        external
-        pure
-        returns (uint256 nativeQuote);
-
-    struct DeliveryRequest {
-        uint16 targetChain;
-        bytes32 targetAddress;
-        bytes32 refundAddress;
-        uint256 computeBudget;
-        uint256 applicationBudget;
-        bytes relayParameters; //Optional
-    }
-}
-
-contract WormholeSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
     string public name = "wormhole";
-    mapping(uint256 => uint16) idMap;
-    // dstChainId => receiverAdapter address
+
+    mapping(uint256 => uint16) chainIdMap;
     mapping(uint16 => address) public receiverAdapters;
 
-    uint8 consistencyLevel = 1;
-
-    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
-
-    IWormhole private immutable wormhole;
-    ICoreRelayer private immutable relayer;
-    IRelayProvider private relayProvider;
-
-    constructor(address _bridgeAddress, address _relayer) {
-        wormhole = IWormhole(_bridgeAddress);
-        relayer = ICoreRelayer(_relayer);
-        relayProvider = relayer.getDefaultRelayProvider();
+    /*/////////////////////////////////////////////////////////////////
+                                 MODIFIER
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
+        }
+        _;
     }
 
-    function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
-        uint256 fee = wormhole.messageFee();
-        uint256 deliveryCost = relayer.quoteGasDeliveryFee(idMap[_toChainId], 500000, relayProvider);
-        uint256 applicationBudget = relayer.quoteApplicationBudgetFee(idMap[_toChainId], 100, relayProvider);
-        return fee + deliveryCost + applicationBudget;
+    /*/////////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+    constructor(address _wormholeRelayer, address _gac) {
+        relayer = IWormholeRelayer(_wormholeRelayer);
+        gac = IGAC(_gac);
     }
 
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeSenderAdapter
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
         external
         payable
         override
         returns (bytes32)
     {
-        address receiverAdapter = receiverAdapters[idMap[_toChainId]];
-        require(receiverAdapter != address(0), "no receiver adapter");
-        bytes memory payload = abi.encode(msg.sender, _to, _data, receiverAdapter);
-        uint256 msgFee = wormhole.messageFee();
-        wormhole.publishMessage{value: msgFee}(uint32(nonce), payload, consistencyLevel);
+        address receiverAdapter = receiverAdapters[chainIdMap[_toChainId]];
 
-        uint256 relayFee = msg.value - msgFee;
-        ICoreRelayer.DeliveryRequest memory request = ICoreRelayer.DeliveryRequest(
-            idMap[_toChainId], //targetChain
-            bytes32(uint256(uint160(receiverAdapter))), //targetAddress
-            bytes32(uint256(uint160(address(this)))), //refundAddress
-            relayFee, //computeBudget
-            0, //applicationBudget
-            relayer.getDefaultRelayParams() //relayerParams
-        );
-        relayer.requestDelivery{value: relayFee}(request, uint32(nonce), relayProvider);
+        if (receiverAdapter == address(0)) {
+            revert Error.ZERO_RECEIVER_ADPATER();
+        }
+
+        bytes memory payload = abi.encode(msg.sender, _to, _data, receiverAdapter);
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
+
+        relayer.sendPayloadToEvm{value: msg.value}(
+            chainIdMap[_toChainId],
+            receiverAdapter,
+            payload,
+            0,
+            /// @dev no reciever value since just passing message
+            gac.getGlobalMsgDeliveryGasLimit()
+        );
+
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
         return msgId;
     }
 
-    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyOwner {
-        require(_origIds.length == _whIds.length, "mismatch length");
-        for (uint256 i; i < _origIds.length; ++i) {
-            idMap[_origIds[i]] = _whIds[i];
+    /// @dev maps the MMA chain id to bridge specific chain id
+    /// @dev _origIds is the chain's native chain id
+    /// @dev _whIds are the bridge allocated chain id
+    function setChainchainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+        uint256 arrLength = _origIds.length;
+
+        if (arrLength != _whIds.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < arrLength;) {
+            chainIdMap[_origIds[i]] = _whIds[i];
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
+    /// @inheritdoc IBridgeSenderAdapter
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
         external
         override
-        onlyOwner
+        onlyCaller
     {
-        require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
-        for (uint256 i; i < _dstChainIds.length; ++i) {
-            uint16 wormholeId = idMap[_dstChainIds[i]];
-            require(wormholeId != 0, "unrecognized dstChainId");
+        uint256 arrLength = _dstChainIds.length;
+
+        if (arrLength != _receiverAdapters.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < arrLength;) {
+            uint16 wormholeId = chainIdMap[_dstChainIds[i]];
+
+            if (wormholeId == 0) {
+                revert Error.ZERO_CHAIN_ID();
+            }
+
             receiverAdapters[wormholeId] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
+
+            unchecked {
+                ++i;
+            }
         }
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeSenderAdapter
+    function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256 fee) {
+        /// note: 50000 GAS is commonly used across the MMA; move to some global contract
+        (fee,) = relayer.quoteEVMDeliveryPrice(chainIdMap[_toChainId], 0, gac.getGlobalMsgDeliveryGasLimit());
     }
 }

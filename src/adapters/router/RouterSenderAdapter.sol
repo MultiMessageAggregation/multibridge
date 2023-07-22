@@ -6,7 +6,7 @@ import "../../interfaces/IBridgeSenderAdapter.sol";
 import "./interfaces/IRouterGateway.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "../base/BaseSenderAdapter.sol";
+import "../BaseSenderAdapter.sol";
 
 contract RouterSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
     /* ========== STATE VARIABLES ========== */

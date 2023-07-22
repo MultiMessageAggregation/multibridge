@@ -4,14 +4,10 @@ pragma solidity 0.8.17;
 
 import {ITelepathyRouter} from "./interfaces/ITelepathy.sol";
 import {IBridgeSenderAdapter} from "../../interfaces/IBridgeSenderAdapter.sol";
-import {BaseSenderAdapter} from "../base/BaseSenderAdapter.sol";
+import {BaseSenderAdapter} from "../BaseSenderAdapter.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Ownable {
-    /* ========== EVENTS ========== */
-
-    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
-
     /* ========== ERRORS ========== */
 
     error MismatchAdapterArrLength(uint256 chainIdsLength, uint256 adaptersLength);

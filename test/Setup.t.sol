@@ -103,16 +103,17 @@ abstract contract Setup is Test {
 
             contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")] =
                 address(new HyperlaneReceiverAdapter(HYPERLANE_MAILBOX));
-            
+
             uint256[] memory srcChain = new uint256[](1);
             srcChain[0] = 1;
 
             address[] memory senderAdapters = new address[](1);
             senderAdapters[0] = contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")];
 
-            HyperlaneReceiverAdapter(contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")]).updateSenderAdapter(srcChain, senderAdapters);
+            HyperlaneReceiverAdapter(contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")])
+                .updateSenderAdapter(srcChain, senderAdapters);
         }
-        
+
         vm.selectFork(fork[1]);
 
         address[] memory _receiverAdapters = new address[](3);
@@ -120,22 +121,26 @@ abstract contract Setup is Test {
         _receiverAdapters[1] = contractAddress[137][bytes("HYPERLANE_RECEIVER_ADAPTER")];
         _receiverAdapters[2] = contractAddress[42161][bytes("HYPERLANE_RECEIVER_ADAPTER")];
 
-        HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateReceiverAdapter(DST_CHAINS, _receiverAdapters);
-        
+        HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateReceiverAdapter(
+            DST_CHAINS, _receiverAdapters
+        );
+
         uint32[] memory _receiverDomains = new uint32[](3);
         _receiverDomains[0] = uint32(56);
         _receiverDomains[1] = uint32(137);
         _receiverDomains[2] = uint32(42161);
 
-        HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateDestinationDomainIds(DST_CHAINS, _receiverDomains);
-    }   
+        HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateDestinationDomainIds(
+            DST_CHAINS, _receiverDomains
+        );
+    }
 
     /// @dev deploys the celer adapters to all configured chains
     function _deployCelerAdapters() internal {
         /// @notice deploy source adapter to Ethereum
         vm.selectFork(fork[1]);
         contractAddress[1][bytes("CELER_SENDER_ADAPTER")] = address(new CelerSenderAdapter(ETH_CELER_MSG_BUS));
-        
+
         uint256[] memory srcChain = new uint256[](1);
         srcChain[0] = 1;
 
@@ -145,15 +150,21 @@ abstract contract Setup is Test {
         /// @notice deploy receiver adapters to BSC, POLYGON & ARB
         vm.selectFork(fork[56]);
         contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(BSC_CELER_MSG_BUS));
-        CelerReceiverAdapter(contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(srcChain, senderAdapters);
+        CelerReceiverAdapter(contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(
+            srcChain, senderAdapters
+        );
 
         vm.selectFork(fork[137]);
         contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(POLYGON_CELER_MSG_BUS));
-        CelerReceiverAdapter(contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(srcChain, senderAdapters);
+        CelerReceiverAdapter(contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(
+            srcChain, senderAdapters
+        );
 
         vm.selectFork(fork[42161]);
         contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(ARB_CELER_MSG_BUS));
-        CelerReceiverAdapter(contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(srcChain, senderAdapters);
+        CelerReceiverAdapter(contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(
+            srcChain, senderAdapters
+        );
 
         vm.selectFork(fork[1]);
 
@@ -162,7 +173,9 @@ abstract contract Setup is Test {
         _receiverAdapters[1] = contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")];
         _receiverAdapters[2] = contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")];
 
-        CelerSenderAdapter(contractAddress[1][bytes("CELER_SENDER_ADAPTER")]).updateReceiverAdapter(DST_CHAINS, _receiverAdapters);
+        CelerSenderAdapter(contractAddress[1][bytes("CELER_SENDER_ADAPTER")]).updateReceiverAdapter(
+            DST_CHAINS, _receiverAdapters
+        );
     }
 
     /// @dev deploys the amb helpers to all configured chains
@@ -171,7 +184,7 @@ abstract contract Setup is Test {
         vm.selectFork(fork[1]);
         contractAddress[1][bytes("CELER_HELPER")] = address(new CelerHelper());
         contractAddress[1][bytes("HYPERLANE_HELPER")] = address(new HyperlaneHelper());
-        
+
         vm.allowCheatcodes(contractAddress[1][bytes("CELER_HELPER")]);
         vm.allowCheatcodes(contractAddress[1][bytes("HYPERLANE_HELPER")]);
 
@@ -217,7 +230,7 @@ abstract contract Setup is Test {
         for (uint256 i; i < DST_CHAINS.length; i++) {
             /// setup receiver adapters
             vm.selectFork(fork[DST_CHAINS[i]]);
-            
+
             address[] memory _recieverAdapters = new address[](2);
             _recieverAdapters[0] = contractAddress[DST_CHAINS[i]][bytes("CELER_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")];
@@ -229,25 +242,34 @@ abstract contract Setup is Test {
     }
 
     /// @dev helps payload delivery using logs
-    function _simulatePayloadDelivery(uint256 _srcChainId, uint256 _dstChainId,Vm.Log[] memory _logs) internal {
+    function _simulatePayloadDelivery(uint256 _srcChainId, uint256 _dstChainId, Vm.Log[] memory _logs) internal {
         /// simulates the off-chain infra of hyperlane
-        HyperlaneHelper(contractAddress[_srcChainId][bytes("HYPERLANE_HELPER")]).help(address(HYPERLANE_MAILBOX), address(HYPERLANE_MAILBOX), fork[_dstChainId], _logs);
+        HyperlaneHelper(contractAddress[_srcChainId][bytes("HYPERLANE_HELPER")]).help(
+            address(HYPERLANE_MAILBOX), address(HYPERLANE_MAILBOX), fork[_dstChainId], _logs
+        );
 
         /// simulates the off-chain infra of celer
-        CelerHelper(contractAddress[_srcChainId][bytes("CELER_HELPER")]).help(uint64(_srcChainId), _getCelerMessageBus(_srcChainId), _getCelerMessageBus(_dstChainId), uint64(_dstChainId), fork[_dstChainId], _logs);
+        CelerHelper(contractAddress[_srcChainId][bytes("CELER_HELPER")]).help(
+            uint64(_srcChainId),
+            _getCelerMessageBus(_srcChainId),
+            _getCelerMessageBus(_dstChainId),
+            uint64(_dstChainId),
+            fork[_dstChainId],
+            _logs
+        );
     }
 
     /// @dev returns celer message bus for chain id
     function _getCelerMessageBus(uint256 _chainId) internal view returns (address) {
-        if(_chainId == 1) {
+        if (_chainId == 1) {
             return ETH_CELER_MSG_BUS;
         }
 
-        if(_chainId == 137) {
+        if (_chainId == 137) {
             return POLYGON_CELER_MSG_BUS;
         }
 
-        if(_chainId == 421616) {
+        if (_chainId == 421616) {
             return ARB_CELER_MSG_BUS;
         }
 

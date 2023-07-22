@@ -4,23 +4,29 @@ pragma solidity >=0.8.9;
 
 import "./EIP5164/SingleMessageDispatcher.sol";
 
-/**
- * @dev Adapter that connects MultiMessageSender and each message bridge.
- * Message bridge can implement their favourite encode&decode way for MessageStruct.Message.
- */
+/// @dev interface for bridge sender adapters
 interface IBridgeSenderAdapter is SingleMessageDispatcher {
-    /**
-     * @dev Return name of this message bridge.
-     */
+    /*/////////////////////////////////////////////////////////////////
+                                EVENTS
+    ////////////////////////////////////////////////////////////////*/
+    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
+
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev allows owner to update the receiver adapters on different destination chains
+    /// @param _dstChainIds are the destination chain identifier
+    /// @param _receiverAdapters are different receiver adapters
+    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters) external;
+
+    /*/////////////////////////////////////////////////////////////////
+                        EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev returns name of the message bridge wrapped by the adapter
     function name() external view returns (string memory);
 
-    /**
-     * @dev Return native token amount in wei required by this message bridge for sending a message.
-     */
+    /// @dev return native token amount in wei required by this message bridge for sending a message
     function getMessageFee(uint256 toChainId, address to, bytes calldata data) external view returns (uint256);
-
-    /**
-     * @dev Owner update receiver adapter address on dst chain.
-     */
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters) external;
 }

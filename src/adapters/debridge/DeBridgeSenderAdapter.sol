@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../base/BaseSenderAdapter.sol";
+import "../BaseSenderAdapter.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
 import "./interfaces/IDeBridgeGate.sol";
 import "./interfaces/IDeBridgeReceiverAdapter.sol";

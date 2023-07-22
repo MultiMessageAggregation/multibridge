@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {IBridgeSenderAdapter} from "../../interfaces/IBridgeSenderAdapter.sol";
-import {BaseSenderAdapter} from "../base/BaseSenderAdapter.sol";
+import {BaseSenderAdapter} from "../BaseSenderAdapter.sol";
 import {SingleMessageDispatcher} from "../../interfaces/EIP5164/SingleMessageDispatcher.sol";
 import {MultiMessageSender} from "../../MultiMessageSender.sol";
 
