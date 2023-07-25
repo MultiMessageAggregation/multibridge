@@ -52,4 +52,10 @@ library Error {
 
     /// @dev is thrown if caller is not de-bridge gate
     error CALLER_NOT_DEBRIDGE_GATE();
+
+    /// @dev is thrown if msg.value is less than required fees
+    error INSUFFICIENT_FEES();
+
+    /// @dev is thrown if contract call is invalid (for axelar)
+    error NOT_APPROVED_BY_GATEWAY();
 }
