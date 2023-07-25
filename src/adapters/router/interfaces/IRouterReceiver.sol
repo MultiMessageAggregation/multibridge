@@ -1,9 +1,7 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-/**
- * @dev Router Receiver Interface.
- */
+///@dev Router Receiver Interface.
 interface IRouterReceiver {
     /// @notice Function to handle incoming cross-chain message.
     /// @param srcContractAddress address of contract on source chain where the request was initiated.

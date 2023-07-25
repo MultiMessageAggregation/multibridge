@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-// From https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/interfaces/IInterchainSecurityModule.sol
-pragma solidity 0.8.17;
+pragma solidity >=0.8.9;
 
+/// @dev imported from https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/interfaces/IInterchainSecurityModule.sol
 interface IInterchainSecurityModule {
     enum Types {
         UNUSED_0,

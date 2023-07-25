@@ -7,7 +7,6 @@ import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 
-import "./safeguard/MessageAppPauser.sol";
 import "./libraries/Utils.sol";
 
 interface IMessageReceiverApp {

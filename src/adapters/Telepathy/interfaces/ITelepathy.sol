@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
-
+/// @dev imported from (https://github.com/succinctlabs/telepathy-contracts)
 interface ITelepathyRouter {
     event SentMessage(uint64 indexed nonce, bytes32 indexed msgHash, bytes message);
 

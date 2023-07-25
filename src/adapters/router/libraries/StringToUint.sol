@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.17;
+pragma solidity >=0.8.9;
 
 library StringToUint {
     function st2num(string memory numString) internal pure returns (uint256) {
