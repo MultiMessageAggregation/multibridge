@@ -1,44 +1,33 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity 0.8.17;
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+/// local imports
+import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
 
-import {IBridgeReceiverAdapter} from "../../interfaces/IBridgeReceiverAdapter.sol";
+import "./interfaces/IMailbox.sol";
+import "./interfaces/IMessageRecipient.sol";
+import "./interfaces/IInterchainSecurityModule.sol";
+import "./libraries/TypeCasts.sol";
 
-import {IMailbox} from "./interfaces/IMailbox.sol";
-import {IMessageRecipient} from "./interfaces/IMessageRecipient.sol";
-import {
-    IInterchainSecurityModule, ISpecifiesInterchainSecurityModule
-} from "./interfaces/IInterchainSecurityModule.sol";
-import {TypeCasts} from "./libraries/TypeCasts.sol";
-import {Errors} from "./libraries/Errors.sol";
-
-/**
- * @title HyperlaneReceiverAdapter implementation.
- * @notice `IBridgeReceiverAdapter` implementation that uses Hyperlane as the bridge.
- */
-contract HyperlaneReceiverAdapter is
-    IBridgeReceiverAdapter,
-    IMessageRecipient,
-    ISpecifiesInterchainSecurityModule,
-    Ownable
-{
-    /// @notice `Mailbox` contract reference.
+/// @notice receiver adapter for hyperlane bridge
+contract HyperlaneReceiverAdapter is IBridgeReceiverAdapter, IMessageRecipient, ISpecifiesInterchainSecurityModule {
     IMailbox public immutable mailbox;
+    IGAC public immutable gac;
 
-    /// @notice `ISM` contract reference.
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev can override if need
     IInterchainSecurityModule public ism;
 
-    /**
-     * @notice Sender adapter address for each source chain.
-     * @dev srcChainId => senderAdapter address.
-     */
-    mapping(uint256 => address) public senderAdapters;
+    /// @dev adapter deployed to Ethereum
+    address public senderAdapter;
 
-    /**
-     * @notice Ensure that messages cannot be replayed once they have been executed.
-     * @dev msgId => isExecuted.
-     */
+    /// @dev tracks the msg id status to prevent replay
     mapping(bytes32 => bool) public executedMessages;
 
     /**
@@ -54,82 +43,98 @@ contract HyperlaneReceiverAdapter is
      */
     event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
 
-    /* Constructor */
-    /**
-     * @notice HyperlaneReceiverAdapter constructor.
-     * @param _mailbox Address of the Hyperlane `Mailbox` contract.
-     */
-    constructor(address _mailbox) {
-        if (_mailbox == address(0)) {
-            revert Errors.InvalidMailboxZeroAddress();
-        }
-        mailbox = IMailbox(_mailbox);
-    }
-
-    /// @notice Restrict access to trusted `Mailbox` contract.
-    modifier onlyMailbox() {
-        if (msg.sender != address(mailbox)) {
-            revert Errors.UnauthorizedMailbox(msg.sender);
+    /*/////////////////////////////////////////////////////////////////
+                                 MODIFIER
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
         }
         _;
     }
 
-    /// @inheritdoc ISpecifiesInterchainSecurityModule
-    function interchainSecurityModule() external view returns (IInterchainSecurityModule) {
-        return ism;
+    modifier onlyMailbox() {
+        if (msg.sender != address(mailbox)) {
+            revert Error.CALLER_NOT_HYPERLANE_MAILBOX();
+        }
+        _;
     }
 
-    /**
-     * @notice Sets the ISM for this adapter/recipient.
-     * @param _ism The ISM contract address.
-     */
-    function setIsm(address _ism) external onlyOwner {
+    /*/////////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @param _mailbox is hyperlane's mailbox contract
+    constructor(address _mailbox, address _gac) {
+        if (_mailbox == address(0)) {
+            revert Error.ZERO_MAILBOX_ADDRESS();
+        }
+
+        mailbox = IMailbox(_mailbox);
+        gac = IGAC(_gac);
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @notice set the ism for this adapter/recipient
+    /// @param _ism contract address
+    /// note: use only if needed
+    function setIsm(address _ism) external onlyCaller {
         ism = IInterchainSecurityModule(_ism);
         emit IsmSet(_ism);
     }
 
-    /**
-     * @notice Called by Hyperlane `Mailbox` contract on destination chain to receive cross-chain messages.
-     * @dev _origin Source chain domain identifier (not currently used).
-     * @param _sender Address of the sender on the source chain.
-     * @param _body Body of the message.
-     */
-    function handle(uint32, /* _origin*/ bytes32 _sender, bytes memory _body) external onlyMailbox {
-        address adapter = TypeCasts.bytes32ToAddress(_sender);
-        (uint256 srcChainId, bytes32 msgId, address srcSender, address destReceiver, bytes memory data) =
-            abi.decode(_body, (uint256, bytes32, address, address, bytes));
-
-        if (adapter != senderAdapters[srcChainId]) {
-            revert Errors.UnauthorizedAdapter(srcChainId, adapter);
-        }
-        if (executedMessages[msgId]) {
-            revert MessageIdAlreadyExecuted(msgId);
-        } else {
-            executedMessages[msgId] = true;
+    /// @inheritdoc IBridgeReceiverAdapter
+    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+        if (_senderAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        (bool success, bytes memory returnData) =
-            destReceiver.call(abi.encodePacked(data, msgId, srcChainId, srcSender));
+        address oldAdapter = senderAdapter;
+        senderAdapter = _senderAdapter;
 
-        if (!success) {
-            revert MessageFailure(msgId, returnData);
-        }
-
-        emit MessageIdExecuted(srcChainId, msgId);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
     }
 
-    /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        override
-        onlyOwner
-    {
-        if (_srcChainIds.length != _senderAdapters.length) {
-            revert Errors.MismatchChainsAdaptersLength(_srcChainIds.length, _senderAdapters.length);
+    /// @notice Called by Hyperlane `Mailbox` contract on destination chain to receive cross-chain messages.
+    /// @dev _origin Source chain domain identifier (not currently used).
+    /// @param _sender Address of the sender on the source chain.
+    /// @param _body Body of the message.
+    function handle(uint32 _origin, bytes32 _sender, bytes memory _body) external onlyMailbox {
+        address adapter = TypeCasts.bytes32ToAddress(_sender);
+        AdapterPayload memory decodedPayload = abi.decode(_body, (AdapterPayload));
+
+        if (adapter != senderAdapter) {
+            revert Error.INVALID_SOURCE_SENDER();
         }
-        for (uint256 i; i < _srcChainIds.length; ++i) {
-            senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
-            emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
+
+        if (executedMessages[decodedPayload.msgId]) {
+            revert MessageIdAlreadyExecuted(decodedPayload.msgId);
         }
+
+        executedMessages[decodedPayload.msgId] = true;
+
+        (bool success, bytes memory returnData) = decodedPayload.finalDestination.call(
+            abi.encodePacked(
+                decodedPayload.data, decodedPayload.msgId, uint256(_origin), decodedPayload.senderAdapterCaller
+            )
+        );
+
+        if (!success) {
+            revert MessageFailure(decodedPayload.msgId, returnData);
+        }
+
+        emit MessageIdExecuted(uint256(_origin), decodedPayload.msgId);
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc ISpecifiesInterchainSecurityModule
+    function interchainSecurityModule() external view returns (IInterchainSecurityModule) {
+        return ism;
     }
 }

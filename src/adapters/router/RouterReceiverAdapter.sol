@@ -1,99 +1,112 @@
 // SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
-
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+/// local imports
 import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
+
 import "./interfaces/IRouterGateway.sol";
 import "./interfaces/IRouterReceiver.sol";
 import "./libraries/StringToUint.sol";
 
-contract RouterReceiverAdapter is Pausable, Ownable, IRouterReceiver, IBridgeReceiverAdapter {
-    /* ========== STATE VARIABLES ========== */
-
-    mapping(uint256 => address) public senderAdapters;
+/// @notice receiver adapter for router bridge
+contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
     IRouterGateway public immutable routerGateway;
+    IGAC public immutable gac;
+
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
+    address public senderAdapter;
     mapping(bytes32 => bool) public executedMessages;
 
-    /* ========== EVENTS ========== */
-
-    event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
-
-    /* ========== MODIFIERS ========== */
-
-    modifier onlyRouterGateway() {
-        require(msg.sender == address(routerGateway), "caller is not router gateway");
+    /*/////////////////////////////////////////////////////////////////
+                                 MODIFIER
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
+        }
         _;
     }
 
-    /* ========== CONSTRUCTOR  ========== */
-
-    constructor(address _routerGateway) {
-        routerGateway = IRouterGateway(_routerGateway);
+    modifier onlyRouterGateway() {
+        if (msg.sender != address(routerGateway)) {
+            revert Error.CALLER_NOT_ROUTER_GATEWAY();
+        }
+        _;
     }
 
-    /* ========== EXTERNAL METHODS ========== */
+    /*/////////////////////////////////////////////////////////////////
+                        CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+    constructor(address _routerGateway, address _gac) {
+        routerGateway = IRouterGateway(_routerGateway);
+        gac = IGAC(_gac);
+    }
 
-    // Called by the Router Gateway on destination chain to receive cross-chain messages.
-    // srcContractAddress is the address of contract on the source chain where the request was intiated
-    // The payload is abi.encode of (MessageStruct.Message).
+    /*/////////////////////////////////////////////////////////////////
+                        EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeReceiverAdapter
+    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+        if (_senderAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        address oldAdapter = senderAdapter;
+        senderAdapter = _senderAdapter;
+
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+    }
+
+    /// @inheritdoc IRouterReceiver
     function handleRequestFromSource(
         bytes memory srcContractAddress,
         bytes memory payload,
         string memory srcChainId,
-        uint64 //srcChainType
-    ) external override onlyRouterGateway whenNotPaused returns (bytes memory) {
-        (address _srcSender, address _destReceiver, bytes memory _data, bytes32 _msgId) =
-            abi.decode(payload, (address, address, bytes, bytes32));
+        uint64
+    ) external override onlyRouterGateway returns (bytes memory) {
+        AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
+        uint256 _srcChainId = StringToUint.st2num(srcChainId);
 
-        uint256 _sourceChainId = StringToUint.st2num(srcChainId);
-
-        require(toAddress(srcContractAddress) == senderAdapters[_sourceChainId], "not allowed message sender");
-
-        if (executedMessages[_msgId]) {
-            revert MessageIdAlreadyExecuted(_msgId);
-        } else {
-            executedMessages[_msgId] = true;
+        if (decodedPayload.receiverAdapter != address(this)) {
+            revert Error.RECEIVER_ADAPTER_MISMATCHED();
         }
 
-        (bool ok, bytes memory lowLevelData) =
-            _destReceiver.call(abi.encodePacked(_data, _msgId, _sourceChainId, _srcSender));
+        if (_toAddress(srcContractAddress) != senderAdapter) {
+            revert Error.INVALID_SOURCE_SENDER();
+        }
+
+        if (executedMessages[decodedPayload.msgId]) {
+            revert MessageIdAlreadyExecuted(decodedPayload.msgId);
+        }
+
+        executedMessages[decodedPayload.msgId] = true;
+
+        (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
+            abi.encodePacked(decodedPayload.data, decodedPayload.msgId, _srcChainId, decodedPayload.senderAdapterCaller)
+        );
 
         if (!ok) {
-            revert MessageFailure(_msgId, lowLevelData);
+            revert MessageFailure(decodedPayload.msgId, lowLevelData);
         } else {
-            emit MessageIdExecuted(_sourceChainId, _msgId);
+            emit MessageIdExecuted(_srcChainId, decodedPayload.msgId);
         }
 
         return "";
     }
 
-    /* ========== ADMIN METHODS ========== */
+    /*/////////////////////////////////////////////////////////////////
+                                HELPER FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        onlyOwner
-    {
-        require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i; i < _srcChainIds.length; ++i) {
-            senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
-            emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
-        }
-    }
-
-    /* ========== UTILS METHODS ========== */
-
-    function toAddress(bytes memory _bytes) internal pure returns (address contractAddress) {
+    /// @dev casts bytes to address
+    function _toAddress(bytes memory _bytes) internal pure returns (address contractAddress) {
         bytes20 srcTokenAddress;
         assembly {
             srcTokenAddress := mload(add(_bytes, 0x20))

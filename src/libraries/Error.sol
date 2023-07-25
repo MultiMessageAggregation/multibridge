@@ -31,4 +31,25 @@ library Error {
 
     /// @dev is thrown when caller is not wormhole relayer
     error CALLER_NOT_WORMHOLE_RELAYER();
+
+    /// @dev is thrown when hyperlane mailbox address is zero
+    error ZERO_MAILBOX_ADDRESS();
+
+    /// @dev is thrown when the destination chain id is invalid
+    error INVALID_DST_CHAIN();
+
+    /// @dev is thrown if caller is not telepathy router
+    error CALLER_NOT_TELEPATHY_ROUTER();
+
+    /// @dev is thrown if source sender is invalid
+    error INVALID_SOURCE_SENDER();
+
+    /// @dev is thrown if caller is not router protocol's gateway
+    error CALLER_NOT_ROUTER_GATEWAY();
+
+    /// @dev is thrown if caller is not hyperlane's mailbox
+    error CALLER_NOT_HYPERLANE_MAILBOX();
+
+    /// @dev is thrown if caller is not de-bridge gate
+    error CALLER_NOT_DEBRIDGE_GATE();
 }

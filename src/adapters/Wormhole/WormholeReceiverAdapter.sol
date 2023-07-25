@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-only
-
 pragma solidity >=0.8.9;
 
 /// library imports
@@ -9,6 +8,7 @@ import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
 import "../../interfaces/IBridgeReceiverAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
 
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
@@ -99,22 +99,27 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         uint16 sourceChain,
         bytes32 deliveryHash
     ) public payable override onlyRelayerContract {
-        (address srcSender, address destReceiver, bytes memory data, address receiverAdapter) =
-            abi.decode(payload, (address, address, bytes, address));
+        AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
 
-        if (receiverAdapter != address(this)) {
+        if (decodedPayload.receiverAdapter != address(this)) {
             revert Error.RECEIVER_ADAPTER_MISMATCHED();
         }
 
         if (processedMessages[deliveryHash]) {
             revert MessageIdAlreadyExecuted(deliveryHash);
-        } else {
-            processedMessages[deliveryHash] = true;
         }
 
-        //send message to destReceiver
-        (bool ok, bytes memory lowLevelData) =
-            destReceiver.call(abi.encodePacked(data, deliveryHash, uint256(reversechainIdMap[sourceChain]), srcSender));
+        processedMessages[deliveryHash] = true;
+
+        /// @dev send message to destReceiver
+        (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
+            abi.encodePacked(
+                decodedPayload.data,
+                deliveryHash,
+                uint256(reversechainIdMap[sourceChain]),
+                decodedPayload.senderAdapterCaller
+            )
+        );
         if (!ok) {
             revert MessageFailure(deliveryHash, lowLevelData);
         } else {

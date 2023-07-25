@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
+/// local imports
+import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
 
 import "./safeguard/MessageAppPauser.sol";
 import "./libraries/Utils.sol";
-import "../../interfaces/IBridgeReceiverAdapter.sol";
 
 interface IMessageReceiverApp {
     enum ExecutionStatus {
@@ -13,75 +17,108 @@ interface IMessageReceiverApp {
         Retry // execution rejected, can retry later
     }
 
-    /**
-     * @notice Called by MessageBus to execute a message
-     * @param _sender The address of the source app contract
-     * @param _srcChainId The source chain ID where the transfer is originated from
-     * @param _message Arbitrary message bytes originated from and encoded by the source app contract
-     * @param _executor Address who called the MessageBus execution function
-     */
+    /// @notice Called by MessageBus to execute a message
+    /// @param _sender The address of the source app contract
+    /// @param _srcChainId The source chain ID where the transfer is originated from
+    /// @param _message Arbitrary message bytes originated from and encoded by the source app contract
+    /// @param _executor Address who called the MessageBus execution function
     function executeMessage(address _sender, uint64 _srcChainId, bytes calldata _message, address _executor)
         external
         payable
         returns (ExecutionStatus);
 }
 
-contract CelerReceiverAdapter is IBridgeReceiverAdapter, MessageAppPauser, IMessageReceiverApp {
-    mapping(uint256 => address) public senderAdapters;
+contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
+    string constant ABORT_PREFIX = "MSG::ABORT:";
+
     address public immutable msgBus;
+    IGAC public immutable gac;
+
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev adapter deployed to Ethereum
+    address public senderAdapter;
+
+    /// @dev tracks the msg id status to prevent replay
     mapping(bytes32 => bool) public executedMessages;
 
-    event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
+    /*/////////////////////////////////////////////////////////////////
+                                 MODIFIER
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
+        }
+        _;
+    }
 
     modifier onlyMessageBus() {
         require(msg.sender == msgBus, "caller is not message bus");
         _;
     }
 
-    constructor(address _msgBus) {
+    /*/////////////////////////////////////////////////////////////////
+                                CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+    constructor(address _msgBus, address _gac) {
         msgBus = _msgBus;
+        gac = IGAC(_gac);
     }
 
-    // Called by MessageBus on destination chain to receive cross-chain messages.
-    // The message is abi.encode of (MessageStruct.Message).
+    /*/////////////////////////////////////////////////////////////////
+                                EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeReceiverAdapter
+    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+        if (_senderAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        address oldAdapter = senderAdapter;
+        senderAdapter = _senderAdapter;
+
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+    }
+
+    /// @dev accepts incoming messages from celer message bus
     function executeMessage(
         address _srcContract,
         uint64 _srcChainId,
         bytes calldata _message,
         address // executor
-    ) external payable override onlyMessageBus whenNotMsgPaused returns (ExecutionStatus) {
-        (bytes32 msgId, address srcSender, address destReceiver, bytes memory data) =
-            abi.decode(_message, (bytes32, address, address, bytes));
-        require(_srcContract == senderAdapters[uint256(_srcChainId)], "not allowed message sender");
-        if (executedMessages[msgId]) {
-            revert MessageIdAlreadyExecuted(msgId);
-        } else {
-            executedMessages[msgId] = true;
+    ) external payable override onlyMessageBus returns (ExecutionStatus) {
+        AdapterPayload memory decodedPayload = abi.decode(_message, (AdapterPayload));
+
+        if (_srcContract != senderAdapter) {
+            revert Error.INVALID_SOURCE_SENDER();
         }
-        (bool ok, bytes memory lowLevelData) =
-            destReceiver.call(abi.encodePacked(data, msgId, uint256(_srcChainId), srcSender));
+
+        if (executedMessages[decodedPayload.msgId]) {
+            revert MessageIdAlreadyExecuted(decodedPayload.msgId);
+        }
+
+        executedMessages[decodedPayload.msgId] = true;
+
+        (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
+            abi.encodePacked(
+                decodedPayload.data, decodedPayload.msgId, uint256(_srcChainId), decodedPayload.senderAdapterCaller
+            )
+        );
+
         if (!ok) {
             string memory reason = Utils.getRevertMsg(lowLevelData);
             revert(
                 string.concat(
-                    ABORT_PREFIX, string(abi.encodeWithSelector(MessageFailure.selector, msgId, bytes(reason)))
+                    ABORT_PREFIX,
+                    string(abi.encodeWithSelector(MessageFailure.selector, decodedPayload.msgId, bytes(reason)))
                 )
             );
         } else {
-            emit MessageIdExecuted(uint256(_srcChainId), msgId);
+            emit MessageIdExecuted(uint256(_srcChainId), decodedPayload.msgId);
             return ExecutionStatus.Success;
-        }
-    }
-
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        override
-        onlyOwner
-    {
-        require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i; i < _srcChainIds.length; ++i) {
-            senderAdapters[_srcChainIds[i]] = _senderAdapters[i];
-            emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
         }
     }
 }

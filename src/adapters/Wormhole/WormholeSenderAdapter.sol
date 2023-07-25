@@ -8,17 +8,19 @@ import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 import "../BaseSenderAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
 
+/// @notice sender adapter for wormhole bridge
 contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
+    string public constant name = "wormhole";
+
     IWormholeRelayer private immutable relayer;
     IGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    string public name = "wormhole";
-
     mapping(uint256 => uint16) chainIdMap;
     mapping(uint16 => address) public receiverAdapters;
 
@@ -44,7 +46,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
                             EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeSenderAdapter
+    /// @notice sends a message via wormhole relayer
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
         external
         payable
@@ -57,8 +59,8 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
             revert Error.ZERO_RECEIVER_ADPATER();
         }
 
-        bytes memory payload = abi.encode(msg.sender, _to, _data, receiverAdapter);
         bytes32 msgId = _getNewMessageId(_toChainId, _to);
+        bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
 
         relayer.sendPayloadToEvm{value: msg.value}(
             chainIdMap[_toChainId],

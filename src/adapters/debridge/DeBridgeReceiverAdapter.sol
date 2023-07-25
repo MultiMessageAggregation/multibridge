@@ -1,19 +1,29 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
-
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+/// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../libraries/Error.sol";
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Types.sol";
+
 import "./interfaces/IDeBridgeReceiverAdapter.sol";
 import "./interfaces/IDeBridgeGate.sol";
 import "./interfaces/ICallProxy.sol";
 
-contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter, IBridgeReceiverAdapter {
-    /* ========== STATE VARIABLES ========== */
-
-    mapping(uint256 => address) public senderAdapters;
+/// @notice sender adapter for de-bridge
+contract DeBridgeReceiverAdapter is IDeBridgeReceiverAdapter, IBridgeReceiverAdapter {
     IDeBridgeGate public immutable deBridgeGate;
+    IGAC public immutable gac;
+
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev adapter deployed to Ethereum
+    address public senderAdapter;
+
+    /// @dev trakcs the msg id status to prevent replay attacks
     mapping(bytes32 => bool) public executedMessages;
 
     /* ========== ERRORS ========== */
@@ -21,40 +31,64 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
     error CallProxyBadRole();
     error NativeSenderBadRole(address nativeSender, uint256 chainIdFrom);
 
-    /* ========== EVENTS ========== */
-
-    event SenderAdapterUpdated(uint256 srcChainId, address senderAdapter);
-
-    /* ========== CONSTRUCTOR  ========== */
-
-    constructor(IDeBridgeGate _deBridgeGate) {
-        deBridgeGate = _deBridgeGate;
+    /*/////////////////////////////////////////////////////////////////
+                                 MODIFIER
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
+        }
+        _;
     }
 
-    /* ========== PUBLIC METHODS ========== */
+    /*/////////////////////////////////////////////////////////////////
+                                CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+    constructor(address _deBridgeGate, address _gac) {
+        deBridgeGate = IDeBridgeGate(_deBridgeGate);
+        gac = IGAC(_gac);
+    }
 
-    // Called by DeBridge CallProxy on destination chain to receive cross-chain messages.
-    function executeMessage(address _srcSender, address _destReceiver, bytes calldata _data, bytes32 _msgId)
-        external
-        whenNotPaused
-    {
+    /*/////////////////////////////////////////////////////////////////
+                                EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeReceiverAdapter
+    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+        if (_senderAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        address oldAdapter = senderAdapter;
+        senderAdapter = _senderAdapter;
+
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+    }
+
+    /// @dev accepts incoming messages from debridge gate
+    function executeMessage(address _srcSender, address _destReceiver, bytes calldata _data, bytes32 _msgId) external {
         ICallProxy callProxy = ICallProxy(deBridgeGate.callProxy());
-        if (address(callProxy) != msg.sender) revert CallProxyBadRole();
 
-        address nativeSender = toAddress(callProxy.submissionNativeSender(), 0);
+        if (msg.sender != address(callProxy)) {
+            revert Error.CALLER_NOT_DEBRIDGE_GATE();
+        }
+
+        address nativeSender = _toAddress(callProxy.submissionNativeSender(), 0);
         uint256 submissionChainIdFrom = callProxy.submissionChainIdFrom();
 
-        if (senderAdapters[submissionChainIdFrom] != nativeSender) {
-            revert NativeSenderBadRole(nativeSender, submissionChainIdFrom);
+        if (senderAdapter != nativeSender) {
+            revert Error.INVALID_SOURCE_SENDER();
         }
 
         if (executedMessages[_msgId]) {
             revert MessageIdAlreadyExecuted(_msgId);
-        } else {
-            executedMessages[_msgId] = true;
         }
+
+        executedMessages[_msgId] = true;
+
         (bool ok, bytes memory lowLevelData) =
             _destReceiver.call(abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender));
+
         if (!ok) {
             revert MessageFailure(_msgId, lowLevelData);
         } else {
@@ -62,31 +96,11 @@ contract DeBridgeReceiverAdapter is Ownable, Pausable, IDeBridgeReceiverAdapter,
         }
     }
 
-    /* ========== ADMIN METHODS ========== */
+    /*/////////////////////////////////////////////////////////////////
+                            HELPER FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    function updateSenderAdapter(uint256[] calldata _srcChainIds, address[] calldata _senderAdapters)
-        external
-        override
-        onlyOwner
-    {
-        require(_srcChainIds.length == _senderAdapters.length, "mismatch length");
-        for (uint256 i; i < _srcChainIds.length; ++i) {
-            senderAdapters[uint256(_srcChainIds[i])] = _senderAdapters[i];
-            emit SenderAdapterUpdated(_srcChainIds[i], _senderAdapters[i]);
-        }
-    }
-
-    /* ========== INTERNAL METHODS ========== */
-
-    function toAddress(bytes memory _bytes, uint256 _start) internal pure returns (address) {
+    function _toAddress(bytes memory _bytes, uint256 _start) internal pure returns (address) {
         require(_bytes.length >= _start + 20, "toAddress_outOfBounds");
         address tempAddress;
 

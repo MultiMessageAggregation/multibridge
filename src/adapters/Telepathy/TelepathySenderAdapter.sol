@@ -1,67 +1,99 @@
 // SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
+/// local imports
+import "../../interfaces/IBridgeSenderAdapter.sol";
+import "./interfaces/ITelepathy.sol";
+import "../../interfaces/IGAC.sol";
 
-import {ITelepathyRouter} from "./interfaces/ITelepathy.sol";
-import {IBridgeSenderAdapter} from "../../interfaces/IBridgeSenderAdapter.sol";
-import {BaseSenderAdapter} from "../BaseSenderAdapter.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
 
-contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter, Ownable {
-    /* ========== ERRORS ========== */
+import "../BaseSenderAdapter.sol";
 
-    error MismatchAdapterArrLength(uint256 chainIdsLength, uint256 adaptersLength);
-
-    /* ========== STATE VARIABLES ========== */
-
+/// @notice sender adapter for telepathy bridge
+contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     string public constant name = "telepathy";
-    address public immutable telepathyRouter;
+
+    ITelepathyRouter public immutable telepathyRouter;
+    IGAC public immutable gac;
+
+    /*/////////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    ////////////////////////////////////////////////////////////////*/
 
     /// @dev dstChainId => receiverAdapter
     mapping(uint256 => address) public receiverAdapters;
 
-    /* ========== CONSTRUCTOR  ========== */
-
-    constructor(address _telepathyRouter) {
-        telepathyRouter = _telepathyRouter;
+    /*/////////////////////////////////////////////////////////////////
+                            MODIFIERS
+    ////////////////////////////////////////////////////////////////*/
+    modifier onlyCaller() {
+        if (!gac.isPrevilagedCaller(msg.sender)) {
+            revert Error.INVALID_PREVILAGED_CALLER();
+        }
+        _;
     }
 
-    /* ========== EXTERNAL METHODS ========== */
+    /*/////////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
 
-    /// @dev Telepathy does not have a fee and will subsidize the cost of execution for these messages.
+    constructor(address _telepathyRouter, address _gac) {
+        telepathyRouter = ITelepathyRouter(_telepathyRouter);
+        gac = IGAC(_gac);
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev telepathy doesn't have fees and are subsidizing the fees
     function getMessageFee(uint256, address, bytes calldata) external pure returns (uint256) {
         return 0;
     }
 
-    /// @notice Send a message message to the Telepathy Router.
+    /// @notice sends a message via telepathy router
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
         external
         payable
         override
         returns (bytes32)
     {
-        bytes32 msgId = _getNewMessageId(_toChainId, _to);
-        bytes memory message = abi.encode(msgId, msg.sender, _to, _data);
+        address receiverAdapter = receiverAdapters[_toChainId];
 
-        ITelepathyRouter(telepathyRouter).send(uint32(_toChainId), receiverAdapters[_toChainId], message);
+        if (receiverAdapter == address(0)) {
+            revert Error.ZERO_RECEIVER_ADPATER();
+        }
+
+        bytes32 msgId = _getNewMessageId(_toChainId, _to);
+        bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
+
+        ITelepathyRouter(telepathyRouter).send(uint32(_toChainId), receiverAdapter, payload);
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
 
         return msgId;
     }
 
-    /* ========== ADMIN METHODS ========== */
-
+    /// @inheritdoc IBridgeSenderAdapter
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
         external
         override
-        onlyOwner
+        onlyCaller
     {
-        if (_dstChainIds.length != _receiverAdapters.length) {
-            revert MismatchAdapterArrLength(_dstChainIds.length, _receiverAdapters.length);
+        uint256 arrLength = _dstChainIds.length;
+
+        if (arrLength != _receiverAdapters.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
         }
-        for (uint256 i; i < _dstChainIds.length; ++i) {
+
+        for (uint256 i; i < arrLength;) {
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 }
