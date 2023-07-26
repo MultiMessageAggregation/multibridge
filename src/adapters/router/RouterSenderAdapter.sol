@@ -29,6 +29,13 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
+    modifier onlyMultiMessageSender() {
+        if (msg.sender != gac.getMultiMessageSender()) {
+            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
+        }
+        _;
+    }
+
     modifier onlyCaller() {
         if (!gac.isPrevilagedCaller(msg.sender)) {
             revert Error.INVALID_PREVILAGED_CALLER();
@@ -49,18 +56,18 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
                             EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeSenderAdapter
-    function getMessageFee(uint256, address, bytes calldata) external view returns (uint256) {
-        return routerGateway.requestToDestDefaultFee();
-    }
-
     /// @notice sends a message via router gateway
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
         external
         payable
         override
+        onlyMultiMessageSender
         returns (bytes32)
     {
+        if(_toChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         address receiverAdapter = receiverAdapters[_toChainId];
 
         if (receiverAdapter == address(0)) {
@@ -125,5 +132,14 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
             mstore(0x40, add(m, 52))
             b := m
         }
+    }
+
+    /*/////////////////////////////////////////////////////////////////
+                        EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeSenderAdapter
+    function getMessageFee(uint256, address, bytes calldata) external view returns (uint256) {
+        return routerGateway.requestToDestDefaultFee();
     }
 }

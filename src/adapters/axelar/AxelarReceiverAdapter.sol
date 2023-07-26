@@ -46,7 +46,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     /*/////////////////////////////////////////////////////////////////
                          EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
-    
+
     /// @inheritdoc IBridgeReceiverAdapter
     function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
         if (_senderAdapter == address(0)) {
@@ -58,7 +58,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
 
         emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
     }
-    
+
     function execute(
         bytes32 commandId,
         string calldata sourceChain,

@@ -28,6 +28,13 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                             MODIFIERS
     ////////////////////////////////////////////////////////////////*/
+    modifier onlyMultiMessageSender() {
+        if (msg.sender != gac.getMultiMessageSender()) {
+            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
+        }
+        _;
+    }
+
     modifier onlyCaller() {
         if (!gac.isPrevilagedCaller(msg.sender)) {
             revert Error.INVALID_PREVILAGED_CALLER();
@@ -48,31 +55,29 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
                             EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @dev telepathy doesn't have fees and are subsidizing the fees
-    function getMessageFee(uint256, address, bytes calldata) external pure returns (uint256) {
-        return 0;
-    }
-
     /// @notice sends a message via telepathy router
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
         external
         payable
         override
-        returns (bytes32)
+        onlyMultiMessageSender
+        returns (bytes32 msgId)
     {
+        if (_toChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         address receiverAdapter = receiverAdapters[_toChainId];
 
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADPATER();
         }
 
-        bytes32 msgId = _getNewMessageId(_toChainId, _to);
+        msgId = _getNewMessageId(_toChainId, _to);
         bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
 
         ITelepathyRouter(telepathyRouter).send(uint32(_toChainId), receiverAdapter, payload);
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
-
-        return msgId;
     }
 
     /// @inheritdoc IBridgeSenderAdapter
@@ -96,4 +101,14 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
             }
         }
     }
+
+    /*/////////////////////////////////////////////////////////////////
+                        EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev telepathy doesn't have fees and are subsidizing the fees
+    function getMessageFee(uint256, address, bytes calldata) external pure returns (uint256) {
+        return 0;
+    }
+
 }

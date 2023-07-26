@@ -9,9 +9,16 @@ interface IGAC {
     //////////////////////////////////////////////////////////////*/
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
 
+    event CoreContractsUpdated(address indexed mmaSender, address indexed mmaReceiver);
+
     /*///////////////////////////////////////////////////////////////
                         EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev sets the multi message contracts
+    /// @param _mmaSender is the multi message sender contracts
+    /// @param _mmaReceiver is the multi message receiver contracts
+    function setMultiMessageCoreContracts(address _mmaSender, address _mmaReceiver) external;
 
     /// @dev sets the global message gas limits
     /// @param _gasLimit is the limit to be set
@@ -29,4 +36,10 @@ interface IGAC {
     /// @dev returns the global message delivery gas limit configured
     /// @return _gasLimit is the configured gas limit on dst
     function getGlobalMsgDeliveryGasLimit() external view returns (uint256 _gasLimit);
+
+    /// @dev returns the multi message sender on the chain
+    function getMultiMessageSender() external view returns (address _mmaSender);
+
+    /// @dev returns the multi message receiver on the chain
+    function getMultiMessageReceiver() external view returns (address _mmaReceiver);
 }

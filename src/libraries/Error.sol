@@ -20,6 +20,10 @@ library Error {
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/
+
+    /// @dev is thrown if caller is not multi message sender
+    error CALLER_NOT_MULTI_MESSAGE_SENDER();
+
     /// @dev is thrown if chain id is zero
     error ZERO_CHAIN_ID();
 

@@ -79,7 +79,6 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         }
     }
 
-
     /// @dev sendMessage sends a message to Axelar.
     /// @param toChainId The ID of the destination chain.
     /// @param to The address of the contract on the destination chain that will receive the message.
@@ -91,7 +90,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         returns (bytes32 messageId)
     {
         address receiverAdapter = receiverAdapters[toChainId];
-        
+
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADPATER();
         }
@@ -99,15 +98,16 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         string memory destinationChain = axelarChainRegistry.getChainName(toChainId);
 
         // Revert if the destination chain is invalid
-        if(bytes(destinationChain).length > 0) {
+        if (bytes(destinationChain).length > 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
         // calculate fee for the message
-        uint256 fee = IAxelarChainRegistry(axelarChainRegistry).getFee(toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
+        uint256 fee =
+            IAxelarChainRegistry(axelarChainRegistry).getFee(toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
 
         // revert if fee is not enough
-        if(msg.value < fee) {
+        if (msg.value < fee) {
             revert Error.INSUFFICIENT_FEES();
         }
 
@@ -145,7 +145,6 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         gateway.callContract(destinationChain, receiverAdapter, payload);
     }
 
-
     /*/////////////////////////////////////////////////////////////////
                             EXTERNAL VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
@@ -154,5 +153,4 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
     function getMessageFee(uint256 toChainId, address, bytes calldata) external view override returns (uint256) {
         return axelarChainRegistry.getFee(toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
-
 }

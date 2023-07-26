@@ -22,11 +22,18 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     mapping(uint256 => uint16) chainIdMap;
-    mapping(uint16 => address) public receiverAdapters;
+    mapping(uint256 => address) public receiverAdapters;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
+    modifier onlyMultiMessageSender() {
+        if (msg.sender != gac.getMultiMessageSender()) {
+            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
+        }
+        _;
+    }
+
     modifier onlyCaller() {
         if (!gac.isPrevilagedCaller(msg.sender)) {
             revert Error.INVALID_PREVILAGED_CALLER();
@@ -51,28 +58,34 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         external
         payable
         override
-        returns (bytes32)
+        onlyMultiMessageSender
+        returns (bytes32 msgId)
     {
-        address receiverAdapter = receiverAdapters[chainIdMap[_toChainId]];
+        address receiverAdapter = receiverAdapters[_toChainId];
 
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADPATER();
         }
 
-        bytes32 msgId = _getNewMessageId(_toChainId, _to);
+        uint16 wormChainId = chainIdMap[_toChainId];
+
+        if (wormChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
+        msgId = _getNewMessageId(_toChainId, _to);
         bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
 
         relayer.sendPayloadToEvm{value: msg.value}(
-            chainIdMap[_toChainId],
+            wormChainId,
             receiverAdapter,
             payload,
             0,
-            /// @dev no reciever value since just passing message
+            /// @dev no receiver value since just passing message
             gac.getGlobalMsgDeliveryGasLimit()
         );
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
-        return msgId;
     }
 
     /// @dev maps the MMA chain id to bridge specific chain id
@@ -107,13 +120,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         }
 
         for (uint256 i; i < arrLength;) {
-            uint16 wormholeId = chainIdMap[_dstChainIds[i]];
-
-            if (wormholeId == 0) {
-                revert Error.ZERO_CHAIN_ID();
-            }
-
-            receiverAdapters[wormholeId] = _receiverAdapters[i];
+            receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
             emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
 
             unchecked {
