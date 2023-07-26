@@ -22,6 +22,8 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
                         STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     address public senderAdapter;
+    string public senderChain;
+
     mapping(bytes32 => bool) public executeMsgs;
 
     /*/////////////////////////////////////////////////////////////////
@@ -48,15 +50,22 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+        string memory _senderChainDecoded = abi.decode(_senderChain, (string));
+
+        if(keccak256(abi.encode(_senderChainDecoded)) == keccak256(abi.encode(""))) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
+        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
     function execute(
@@ -65,9 +74,10 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         string calldata sourceAddress,
         bytes calldata payload
     ) external override {
-        bytes32 payloadHash = keccak256(payload);
+        /// @dev step-1: validate caller
 
-        // Validate the Axelar contract call. This will revert if the call is not approved by the Axelar Gateway contract.
+
+        ///  Validate the Axelar contract call. This will revert if the call is not approved by the Axelar Gateway contract.
         if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)) {
             revert Error.NOT_APPROVED_BY_GATEWAY();
         }
