@@ -2,10 +2,11 @@
 pragma solidity >=0.8.9;
 
 /// local imports
-import "../../interfaces/IBridgeSenderAdapter.sol";
+import "../BaseSenderAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
+import "../../interfaces/IBridgeSenderAdapter.sol";
 
 import "./interfaces/IAxelarChainRegistry.sol";
 import "./interfaces/IAxelarGateway.sol";
@@ -16,7 +17,7 @@ interface IMultiBridgeSender {
     function caller() external view returns (address);
 }
 
-contract AxelarSenderAdapter is IBridgeSenderAdapter {
+contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     string public constant name = "axelar";
 
     IAxelarGateway public immutable gateway;
@@ -26,8 +27,6 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    uint32 public nonce;
-
     IAxelarGasService public gasService;
 
     /// @dev maps receiver adapter address on dst chain
@@ -36,6 +35,13 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////////*/
+    modifier onlyMultiMessageSender() {
+        if (msg.sender != gac.getMultiMessageSender()) {
+            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
+        }
+        _;
+    }
+
     modifier onlyCaller() {
         if (!gac.isPrevilagedCaller(msg.sender)) {
             revert Error.INVALID_PREVILAGED_CALLER();
@@ -56,6 +62,47 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                             EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
+
+    /// @dev sendMessage sends a message to Axelar.
+    /// @param _toChainId The ID of the destination chain.
+    /// @param _to The address of the contract on the destination chain that will receive the message.
+    /// @param _data The data to be included in the message.
+    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+        external
+        payable
+        override
+        onlyMultiMessageSender
+        returns (bytes32 msgId)
+    {
+        address receiverAdapter = receiverAdapters[_toChainId];
+
+        if (receiverAdapter == address(0)) {
+            revert Error.ZERO_RECEIVER_ADPATER();
+        }
+        // get destination chain name from chain id
+        string memory destinationChain = axelarChainRegistry.getChainName(_toChainId);
+
+        // Revert if the destination chain is invalid
+        if (bytes(destinationChain).length > 0) {
+            revert Error.INVALID_DST_CHAIN();
+        }
+
+        // calculate fee for the message
+        uint256 fee =
+            IAxelarChainRegistry(axelarChainRegistry).getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
+
+        // revert if fee is not enough
+        if (msg.value < fee) {
+            revert Error.INSUFFICIENT_FEES();
+        }
+
+        // generate message id
+        msgId = _getNewMessageId(_toChainId, _to);
+
+        _callContract(destinationChain, StringAddressConversion.toString(receiverAdapter), msgId, _to, _data);
+
+        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+    }
 
     /// @inheritdoc IBridgeSenderAdapter
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
@@ -79,48 +126,18 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         }
     }
 
-    /// @dev sendMessage sends a message to Axelar.
-    /// @param toChainId The ID of the destination chain.
-    /// @param to The address of the contract on the destination chain that will receive the message.
-    /// @param data The data to be included in the message.
-    function dispatchMessage(uint256 toChainId, address to, bytes calldata data)
-        external
-        payable
-        override
-        returns (bytes32 messageId)
-    {
-        address receiverAdapter = receiverAdapters[toChainId];
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
-        if (receiverAdapter == address(0)) {
-            revert Error.ZERO_RECEIVER_ADPATER();
-        }
-        // get destination chain name from chain id
-        string memory destinationChain = axelarChainRegistry.getChainName(toChainId);
-
-        // Revert if the destination chain is invalid
-        if (bytes(destinationChain).length > 0) {
-            revert Error.INVALID_DST_CHAIN();
-        }
-
-        // calculate fee for the message
-        uint256 fee =
-            IAxelarChainRegistry(axelarChainRegistry).getFee(toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
-
-        // revert if fee is not enough
-        if (msg.value < fee) {
-            revert Error.INSUFFICIENT_FEES();
-        }
-
-        // generate message id
-        bytes32 msgId = bytes32(uint256(nonce));
-
-        _callContract(destinationChain, StringAddressConversion.toString(receiverAdapter), msgId, to, data);
-
-        emit MessageDispatched(msgId, msg.sender, toChainId, to, data);
-        nonce++;
-
-        return msgId;
+    /// @inheritdoc IBridgeSenderAdapter
+    function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
+        return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
+
+    /*/////////////////////////////////////////////////////////////////
+                            HELPER FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
     /// @dev Sends a message to the IAxelarRelayer contract for relaying to the Axelar Network.
     /// @param destinationChain The name of the destination chain.
@@ -134,7 +151,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         bytes32 msgId,
         address multibridgeReceiver,
         bytes calldata data
-    ) private {
+    ) internal {
         // encode payload for receiver adapter
         bytes memory payload = abi.encode(msgId, address(msg.sender), multibridgeReceiver, data);
 
@@ -143,14 +160,5 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter {
         );
 
         gateway.callContract(destinationChain, receiverAdapter, payload);
-    }
-
-    /*/////////////////////////////////////////////////////////////////
-                            EXTERNAL VIEW FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IBridgeSenderAdapter
-    function getMessageFee(uint256 toChainId, address, bytes calldata) external view override returns (uint256) {
-        return axelarChainRegistry.getFee(toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
 }

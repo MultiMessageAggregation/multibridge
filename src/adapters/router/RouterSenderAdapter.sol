@@ -64,7 +64,7 @@ contract RouterSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         onlyMultiMessageSender
         returns (bytes32)
     {
-        if(_toChainId == 0) {
+        if (_toChainId == 0) {
             revert Error.ZERO_CHAIN_ID();
         }
 

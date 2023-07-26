@@ -110,5 +110,4 @@ contract TelepathySenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     function getMessageFee(uint256, address, bytes calldata) external pure returns (uint256) {
         return 0;
     }
-
 }

@@ -46,6 +46,13 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
+    modifier onlyMultiMessageSender() {
+        if (msg.sender != gac.getMultiMessageSender()) {
+            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
+        }
+        _;
+    }
+
     modifier onlyCaller() {
         if (!gac.isPrevilagedCaller(msg.sender)) {
             revert Error.INVALID_PREVILAGED_CALLER();
@@ -79,8 +86,15 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         external
         payable
         override
+        onlyMultiMessageSender
         returns (bytes32 msgId)
     {
+        uint32 hypChainId = chainIdMap[_toChainId];
+
+        if (_toChainId == 0 || hypChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         address receiverAdapter = receiverAdapters[_toChainId];
 
         if (receiverAdapter == address(0)) {
@@ -99,6 +113,7 @@ contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         bytes32 hyperlaneMsgId =
             IMailbox(mailbox).dispatch(dstDomainId, TypeCasts.addressToBytes32(receiverAdapter), payload);
 
+        /// FIXME: change refund address to the one configured, not the MMA Sender Caller
         try igp.payForGas{value: msg.value}(
             hyperlaneMsgId, dstDomainId, gac.getGlobalMsgDeliveryGasLimit(), MultiMessageSender(msg.sender).caller()
         ) {} catch {}
