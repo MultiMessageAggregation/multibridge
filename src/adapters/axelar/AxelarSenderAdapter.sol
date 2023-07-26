@@ -8,7 +8,6 @@ import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../interfaces/IBridgeSenderAdapter.sol";
 
-import "./interfaces/IAxelarChainRegistry.sol";
 import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarGasService.sol";
 import "./libraries/StringAddressConversion.sol";
@@ -22,7 +21,6 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
     IAxelarGateway public immutable gateway;
     IGAC public immutable gac;
-    IAxelarChainRegistry public immutable axelarChainRegistry;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -31,6 +29,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
     /// @dev maps receiver adapter address on dst chain
     mapping(uint256 => address) public receiverAdapters;
+    mapping(uint256 => string) public chainIdMap;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -52,8 +51,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _chainRegistry, address _gasService, address _gateway, address _gac) {
-        axelarChainRegistry = IAxelarChainRegistry(_chainRegistry);
+    constructor(address _gasService, address _gateway, address _gac) {
         gasService = IAxelarGasService(_gasService);
         gateway = IAxelarGateway(_gateway);
         gac = IGAC(_gac);
@@ -79,29 +77,36 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADPATER();
         }
-        // get destination chain name from chain id
-        string memory destinationChain = axelarChainRegistry.getChainName(_toChainId);
 
-        // Revert if the destination chain is invalid
+        string memory destinationChain = chainIdMap[_toChainId];
+
         if (bytes(destinationChain).length > 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
-        // calculate fee for the message
-        uint256 fee =
-            IAxelarChainRegistry(axelarChainRegistry).getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
-
-        // revert if fee is not enough
-        if (msg.value < fee) {
-            revert Error.INSUFFICIENT_FEES();
-        }
-
-        // generate message id
         msgId = _getNewMessageId(_toChainId, _to);
-
         _callContract(destinationChain, StringAddressConversion.toString(receiverAdapter), msgId, _to, _data);
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+    }
+
+    /// @dev maps the MMA chain id to bridge specific chain id
+    /// @dev _origIds is the chain's native chain id
+    /// @dev _axlIds are the bridge allocated chain id
+    function setChainchainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyCaller {
+        uint256 arrLength = _origIds.length;
+
+        if (arrLength != _axlIds.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < arrLength;) {
+            chainIdMap[_origIds[i]] = _axlIds[i];
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /// @inheritdoc IBridgeSenderAdapter
@@ -132,7 +137,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
     /// @inheritdoc IBridgeSenderAdapter
     function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
-        return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
+        // return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
 
     /*/////////////////////////////////////////////////////////////////

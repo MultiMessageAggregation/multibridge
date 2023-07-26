@@ -24,6 +24,15 @@ library Error {
     /// @dev is thrown if caller is not multi message sender
     error CALLER_NOT_MULTI_MESSAGE_SENDER();
 
+    /// @dev is thrown if sender chain is not allowed on reciever adapter
+    error INVALID_SENDER_CHAIN_ID();
+
+    /// @dev is thrown if sender adapter is not allowed on reciever adapter
+    error INVALID_SENDER_ADAPTER();
+
+    /// @dev is thrown if final destination is not mma receiver on reciever adapter
+    error INVALID_FINAL_DESTINATION();
+
     /// @dev is thrown if chain id is zero
     error ZERO_CHAIN_ID();
 
@@ -53,6 +62,9 @@ library Error {
 
     /// @dev is thrown if caller is not hyperlane's mailbox
     error CALLER_NOT_HYPERLANE_MAILBOX();
+
+    /// @dev is thrown if caller is not celer's message bus
+    error CALLER_NOT_CELER_BUS();
 
     /// @dev is thrown if caller is not de-bridge gate
     error CALLER_NOT_DEBRIDGE_GATE();

@@ -21,7 +21,9 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     address public senderAdapter;
-    mapping(bytes32 => bool) public executedMessages;
+    string public senderChain;
+
+    mapping(bytes32 => bool) public isMessageExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
@@ -53,15 +55,22 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+        string memory _senderChainDecoded = abi.decode(_senderChain, (string));
+
+        if (keccak256(abi.encode(_senderChainDecoded)) == keccak256(abi.encode(""))) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
+        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
     /// @inheritdoc IRouterReceiver
@@ -71,32 +80,43 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
         string memory srcChainId,
         uint64
     ) external override onlyRouterGateway returns (bytes memory) {
-        AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
-        uint256 _srcChainId = StringToUint.st2num(srcChainId);
-
-        if (decodedPayload.receiverAdapter != address(this)) {
-            revert Error.RECEIVER_ADAPTER_MISMATCHED();
+        /// @dev step-1: validate incoming chain id
+        if (keccak256(bytes(srcChainId)) != keccak256(bytes(senderChain))) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
         }
+        
+        /// @dev step-2: validate the caller (done in modifier)
 
+        /// @dev step-3: validate the source address
         if (_toAddress(srcContractAddress) != senderAdapter) {
             revert Error.INVALID_SOURCE_SENDER();
         }
 
-        if (executedMessages[decodedPayload.msgId]) {
-            revert MessageIdAlreadyExecuted(decodedPayload.msgId);
+        /// decode the cross-chain payload
+        AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
+        bytes32 msgId = decodedPayload.msgId;
+
+        /// @dev step-4: check for duplicate message
+        if (isMessageExecuted[msgId]) {
+            revert MessageIdAlreadyExecuted(msgId);
         }
 
-        executedMessages[decodedPayload.msgId] = true;
-
-        (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-            abi.encodePacked(decodedPayload.data, decodedPayload.msgId, _srcChainId, decodedPayload.senderAdapterCaller)
-        );
-
-        if (!ok) {
-            revert MessageFailure(decodedPayload.msgId, lowLevelData);
-        } else {
-            emit MessageIdExecuted(_srcChainId, decodedPayload.msgId);
+        /// @dev step-5: validate the destination
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+            revert Error.INVALID_FINAL_DESTINATION();
         }
+
+        isMessageExecuted[msgId] = true;
+
+        // (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
+        //     abi.encodePacked(decodedPayload.data, decodedPayload.msgId, _srcChainId, decodedPayload.senderAdapterCaller)
+        // );
+
+        // if (!ok) {
+        //     revert MessageFailure(decodedPayload.msgId, lowLevelData);
+        // } else {
+        //     emit MessageIdExecuted(_srcChainId, decodedPayload.msgId);
+        // }
 
         return "";
     }

@@ -9,11 +9,11 @@ import "../BaseSenderAdapter.sol";
 import "../../libraries/Error.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Types.sol";
+import "../../libraries/TypeCasts.sol";
 
 /// bridge specific imports
 import "./interfaces/IMailbox.sol";
 import "./interfaces/IInterchainGasPaymaster.sol";
-import "./libraries/TypeCasts.sol";
 
 /// @notice sender adapter for hyperlane bridge
 contract HyperlaneSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {

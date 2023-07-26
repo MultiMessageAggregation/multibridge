@@ -9,6 +9,7 @@ import "../../interfaces/IBridgeReceiverAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
+import "../../libraries/TypeCasts.sol";
 
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
@@ -21,10 +22,13 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     address public senderAdapter;
+    uint16 public senderChain;
 
     mapping(uint256 => uint16) public chainIdMap;
     mapping(uint16 => uint256) public reversechainIdMap;
-    mapping(bytes32 => bool) public processedMessages;
+
+    mapping(bytes32 => bool) public isMessageExecuted;
+    mapping(bytes32 => bool) public deliveryHashStatus;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
@@ -60,15 +64,22 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+        uint16 _senderChainDecoded = abi.decode(_senderChain, (uint16));
+
+        if (_senderChainDecoded == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
+        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
     /// @dev maps the MMA chain id to bridge specific chain id
@@ -95,35 +106,52 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     function receiveWormholeMessages(
         bytes memory payload,
         bytes[] memory,
-        bytes32,
+        bytes32 sourceAddress,
         uint16 sourceChain,
         bytes32 deliveryHash
     ) public payable override onlyRelayerContract {
+        /// @dev step-1: validate incoming chain id
+        if (sourceChain != senderChain) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
+        /// @dev step-2: validate the caller (done in modifier)
+
+        /// @dev step-3: validate the source address
+        if (TypeCasts.bytes32ToAddress(sourceAddress) != senderAdapter) {
+            revert Error.INVALID_SENDER_ADAPTER();
+        }
+
+        /// decode the cross-chain payload
         AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
+        bytes32 msgId = decodedPayload.msgId;
 
-        if (decodedPayload.receiverAdapter != address(this)) {
-            revert Error.RECEIVER_ADAPTER_MISMATCHED();
+        /// @dev step-4: check for duplicate message
+        if (isMessageExecuted[msgId] || deliveryHashStatus[deliveryHash]) {
+            revert MessageIdAlreadyExecuted(msgId);
         }
 
-        if (processedMessages[deliveryHash]) {
-            revert MessageIdAlreadyExecuted(deliveryHash);
-        }
+        isMessageExecuted[decodedPayload.msgId] = true;
+        deliveryHashStatus[deliveryHash] = true;
 
-        processedMessages[deliveryHash] = true;
+        /// @dev step-5: validate the destination
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+            revert Error.INVALID_FINAL_DESTINATION();
+        }
 
         /// @dev send message to destReceiver
-        (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-            abi.encodePacked(
-                decodedPayload.data,
-                deliveryHash,
-                uint256(reversechainIdMap[sourceChain]),
-                decodedPayload.senderAdapterCaller
-            )
-        );
-        if (!ok) {
-            revert MessageFailure(deliveryHash, lowLevelData);
-        } else {
-            emit MessageIdExecuted(reversechainIdMap[sourceChain], deliveryHash);
-        }
+        // (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
+        //     abi.encodePacked(
+        //         decodedPayload.data,
+        //         deliveryHash,
+        //         uint256(reversechainIdMap[sourceChain]),
+        //         decodedPayload.senderAdapterCaller
+        //     )
+        // );
+        // if (!ok) {
+        //     revert MessageFailure(deliveryHash, lowLevelData);
+        // } else {
+        //     emit MessageIdExecuted(reversechainIdMap[sourceChain], deliveryHash);
+        // }
     }
 }

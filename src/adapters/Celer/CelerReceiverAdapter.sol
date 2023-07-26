@@ -39,9 +39,10 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
 
     /// @dev adapter deployed to Ethereum
     address public senderAdapter;
+    uint64 public senderChain;
 
     /// @dev tracks the msg id status to prevent replay
-    mapping(bytes32 => bool) public executedMessages;
+    mapping(bytes32 => bool) public isMessageExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
@@ -54,7 +55,9 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
     }
 
     modifier onlyMessageBus() {
-        require(msg.sender == msgBus, "caller is not message bus");
+        if (msg.sender == msgBus) {
+            revert Error.CALLER_NOT_CELER_BUS();
+        }
         _;
     }
 
@@ -71,15 +74,22 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+        uint64 _senderChainDecoded = abi.decode(_senderChain, (uint64));
+
+        if (_senderChainDecoded == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
+        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
     /// @dev accepts incoming messages from celer message bus
@@ -89,35 +99,51 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
         bytes calldata _message,
         address // executor
     ) external payable override onlyMessageBus returns (ExecutionStatus) {
-        AdapterPayload memory decodedPayload = abi.decode(_message, (AdapterPayload));
+        /// @dev step-1: validate incoming chain id
+        if (_srcChainId != senderChain) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
 
+        /// @dev step-2: validate the caller (done in modifier)
+
+        /// @dev step-3: validate the source address
         if (_srcContract != senderAdapter) {
-            revert Error.INVALID_SOURCE_SENDER();
+            revert Error.INVALID_SENDER_ADAPTER();
         }
 
-        if (executedMessages[decodedPayload.msgId]) {
-            revert MessageIdAlreadyExecuted(decodedPayload.msgId);
+        /// decode the cross-chain payload
+        AdapterPayload memory decodedPayload = abi.decode(_message, (AdapterPayload));
+        bytes32 msgId = decodedPayload.msgId;
+
+        /// @dev step-4: check for duplicate message
+        if (isMessageExecuted[msgId]) {
+            revert MessageIdAlreadyExecuted(msgId);
         }
 
-        executedMessages[decodedPayload.msgId] = true;
+        isMessageExecuted[decodedPayload.msgId] = true;
 
-        (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-            abi.encodePacked(
-                decodedPayload.data, decodedPayload.msgId, uint256(_srcChainId), decodedPayload.senderAdapterCaller
-            )
-        );
-
-        if (!ok) {
-            string memory reason = Utils.getRevertMsg(lowLevelData);
-            revert(
-                string.concat(
-                    ABORT_PREFIX,
-                    string(abi.encodeWithSelector(MessageFailure.selector, decodedPayload.msgId, bytes(reason)))
-                )
-            );
-        } else {
-            emit MessageIdExecuted(uint256(_srcChainId), decodedPayload.msgId);
-            return ExecutionStatus.Success;
+        /// @dev step-5: validate the destination
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+            revert Error.INVALID_FINAL_DESTINATION();
         }
+
+        // (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
+        //     abi.encodePacked(
+        //         decodedPayload.data, decodedPayload.msgId, uint256(_srcChainId), decodedPayload.senderAdapterCaller
+        //     )
+        // );
+
+        // if (!ok) {
+        //     string memory reason = Utils.getRevertMsg(lowLevelData);
+        //     revert(
+        //         string.concat(
+        //             ABORT_PREFIX,
+        //             string(abi.encodeWithSelector(MessageFailure.selector, decodedPayload.msgId, bytes(reason)))
+        //         )
+        //     );
+        // } else {
+        //     emit MessageIdExecuted(uint256(_srcChainId), decodedPayload.msgId);
+        //     return ExecutionStatus.Success;
+        // }
     }
 }

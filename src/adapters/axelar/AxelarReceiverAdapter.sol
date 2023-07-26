@@ -7,14 +7,14 @@ import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 
-import "./interfaces/IAxelarChainRegistry.sol";
 import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarExecutable.sol";
 import "./libraries/StringAddressConversion.sol";
 
 /// @notice receiver adapter for axelar bridge
 contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
-    IAxelarChainRegistry public immutable axelarChainRegistry;
+    using StringAddressConversion for string;
+
     IAxelarGateway public immutable gateway;
     IGAC public immutable gac;
 
@@ -24,7 +24,10 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     address public senderAdapter;
     string public senderChain;
 
-    mapping(bytes32 => bool) public executeMsgs;
+    mapping(bytes32 => bool) public isMessageExecuted;
+    mapping(bytes32 => bool) public commandIdStatus;
+
+    mapping(string => uint256) public reverseChainIdMap;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
@@ -39,9 +42,8 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     /*/////////////////////////////////////////////////////////////////
                          CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _chainRegistry, address _gateway, address _gac) {
+    constructor(address _gateway, address _gac) {
         gateway = IAxelarGateway(_gateway);
-        axelarChainRegistry = IAxelarChainRegistry(_chainRegistry);
         gac = IGAC(_gac);
     }
 
@@ -53,7 +55,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
         string memory _senderChainDecoded = abi.decode(_senderChain, (string));
 
-        if(keccak256(abi.encode(_senderChainDecoded)) == keccak256(abi.encode(""))) {
+        if (keccak256(abi.encode(_senderChainDecoded)) == keccak256(abi.encode(""))) {
             revert Error.ZERO_CHAIN_ID();
         }
 
@@ -68,47 +70,53 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
+    /// @dev accepts new cross-chain messages from axelar gateway
     function execute(
         bytes32 commandId,
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload
     ) external override {
-        /// @dev step-1: validate caller
+        /// @dev step-1: validate incoming chain id
+        if (keccak256(bytes(sourceChain)) != keccak256(bytes(senderChain))) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
 
-
-        ///  Validate the Axelar contract call. This will revert if the call is not approved by the Axelar Gateway contract.
-        if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)) {
+        /// @dev step-2: validate the caller
+        if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload))) {
             revert Error.NOT_APPROVED_BY_GATEWAY();
         }
 
-        // Get the source chain id by chain name
-        uint256 srcChainId = axelarChainRegistry.getChainId(sourceChain);
-
-        // Check if the sender is allowed.
-        // The sender should be the address of the sender adapter contract on the source chain.
-        if (StringAddressConversion.toAddress(sourceAddress) != senderAdapter) {
-            revert Error.INVALID_SOURCE_SENDER();
+        /// @dev step-3: validate the source address
+        if (sourceAddress.toAddress() != senderAdapter) {
+            revert Error.INVALID_SENDER_ADAPTER();
         }
 
-        // Decode the payload
-        (bytes32 msgId, address srcSender, address destReceiver, bytes memory data) =
-            abi.decode(payload, (bytes32, address, address, bytes));
+        /// decode the cross-chain payload
+        AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
+        bytes32 msgId = decodedPayload.msgId;
 
-        // Check if the message has been executed
-        if (executeMsgs[msgId]) revert MessageIdAlreadyExecuted(msgId);
-
-        // Mark the message as executed
-        executeMsgs[msgId] = true;
-
-        // Call MultiBridgeReceiver contract to execute the message
-        (bool ok, bytes memory lowLevelData) = destReceiver.call(abi.encodePacked(data, msgId, srcChainId, srcSender));
-
-        if (!ok) {
-            revert MessageFailure(msgId, lowLevelData);
-        } else {
-            // Emit the event if the message is executed successfully
-            emit MessageIdExecuted(srcChainId, msgId);
+        /// @dev step-4: check for duplicate message
+        if (commandIdStatus[commandId] || isMessageExecuted[msgId]) {
+            revert MessageIdAlreadyExecuted(msgId);
         }
+
+        /// @dev step-5: validate the destination
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+            revert Error.INVALID_FINAL_DESTINATION();
+        }
+
+        isMessageExecuted[msgId] = true;
+        commandIdStatus[commandId] = true;
+
+        /// @dev forwards the message to multi-message receiver
+        // (bool ok, bytes memory lowLevelData) = destReceiver.call(abi.encodePacked(data, msgId, srcChainId, srcSender));
+
+        // if (!ok) {
+        //     revert MessageFailure(msgId, lowLevelData);
+        // } else {
+        //     // Emit the event if the message is executed successfully
+        //     emit MessageIdExecuted(srcChainId, msgId);
+        // }
     }
 }

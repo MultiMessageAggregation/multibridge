@@ -22,14 +22,11 @@ contract DeBridgeReceiverAdapter is IDeBridgeReceiverAdapter, IBridgeReceiverAda
 
     /// @dev adapter deployed to Ethereum
     address public senderAdapter;
+    uint256 public senderChainId;
 
     /// @dev trakcs the msg id status to prevent replay attacks
-    mapping(bytes32 => bool) public executedMessages;
-
-    /* ========== ERRORS ========== */
-
-    error CallProxyBadRole();
-    error NativeSenderBadRole(address nativeSender, uint256 chainIdFrom);
+    mapping(bytes32 => bool) public isMessageExecuted;
+    mapping(bytes32 => bool) public deBridgeisMessageExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
@@ -54,46 +51,69 @@ contract DeBridgeReceiverAdapter is IDeBridgeReceiverAdapter, IBridgeReceiverAda
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+        uint256 _senderChainDecoded = abi.decode(_senderChain, (uint256));
+
+        if (_senderChainDecoded == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
+        senderChainId = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
     /// @dev accepts incoming messages from debridge gate
-    function executeMessage(address _srcSender, address _destReceiver, bytes calldata _data, bytes32 _msgId) external {
+    function executeMessage(address _srcSender, address, bytes calldata _data, bytes32 _msgId) external {
         ICallProxy callProxy = ICallProxy(deBridgeGate.callProxy());
-
-        if (msg.sender != address(callProxy)) {
-            revert Error.CALLER_NOT_DEBRIDGE_GATE();
-        }
-
-        address nativeSender = _toAddress(callProxy.submissionNativeSender(), 0);
         uint256 submissionChainIdFrom = callProxy.submissionChainIdFrom();
 
-        if (senderAdapter != nativeSender) {
-            revert Error.INVALID_SOURCE_SENDER();
+        /// @dev step-1: validate incoming chain id
+        if (submissionChainIdFrom != senderChainId) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
-        if (executedMessages[_msgId]) {
-            revert MessageIdAlreadyExecuted(_msgId);
+        /// @dev step-2: validate the caller
+        if (msg.sender != address(callProxy)) {
+            revert Error.NOT_APPROVED_BY_GATEWAY();
         }
 
-        executedMessages[_msgId] = true;
-
-        (bool ok, bytes memory lowLevelData) =
-            _destReceiver.call(abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender));
-
-        if (!ok) {
-            revert MessageFailure(_msgId, lowLevelData);
-        } else {
-            emit MessageIdExecuted(submissionChainIdFrom, _msgId);
+        /// @dev step-3: validate the source address
+        if (_srcSender != senderAdapter) {
+            revert Error.INVALID_SENDER_ADAPTER();
         }
+
+        /// decode the cross-chain payload
+        AdapterPayload memory decodedPayload = abi.decode(_data, (AdapterPayload));
+        bytes32 msgId = decodedPayload.msgId;
+
+        /// @dev step-4: check for duplicate message
+        if (deBridgeisMessageExecuted[_msgId] || isMessageExecuted[msgId]) {
+            revert MessageIdAlreadyExecuted(msgId);
+        }
+
+        /// @dev step-5: validate the destination
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+            revert Error.INVALID_FINAL_DESTINATION();
+        }
+
+        isMessageExecuted[msgId] = true;
+        deBridgeisMessageExecuted[_msgId] = true;
+
+        // (bool ok, bytes memory lowLevelData) =
+        //     _destReceiver.call(abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender));
+
+        // if (!ok) {
+        //     revert MessageFailure(_msgId, lowLevelData);
+        // } else {
+        //     emit MessageIdExecuted(submissionChainIdFrom, _msgId);
+        // }
     }
 
     /*/////////////////////////////////////////////////////////////////
