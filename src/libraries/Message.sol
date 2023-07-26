@@ -3,7 +3,7 @@ pragma solidity >=0.8.9;
 
 /// @title MessageStruct
 /// @dev library for cross-chain message & related helper functions
-library MessageStruct {
+library MessageLibrary {
     /// @dev Message indicates a remote call to target contract on destination chain.
     /// @param dstChainId is the id of chain where this message is sent to.
     /// @param nonce is an incrementing number held by MultiMessageSender to ensure msgId uniqueness
@@ -12,11 +12,11 @@ library MessageStruct {
     /// @param expiration is the unix time when the message expires, zero means never expire.
     /// @param bridgeName is the message bridge name used for sending this message.
     struct Message {
-        uint64 dstChainId;
-        uint32 nonce;
+        uint256 dstChainId;
         address target;
+        uint256 nonce;
         bytes callData;
-        uint64 expiration;
+        uint256 expiration;
         string bridgeName;
     }
 
@@ -24,7 +24,7 @@ library MessageStruct {
     /// @notice message.bridgeName is not included in the message id.
     /// @param _message is the cross-chain message
     /// @param _srcChainId is the identifier of the source chain
-    function computeMsgId(MessageStruct.Message memory _message, uint64 _srcChainId) internal pure returns (bytes32) {
+    function computeMsgId(Message memory _message, uint256 _srcChainId) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
                 _srcChainId,

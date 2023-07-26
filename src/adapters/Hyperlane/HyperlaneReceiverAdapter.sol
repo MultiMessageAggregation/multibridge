@@ -3,6 +3,7 @@ pragma solidity >=0.8.9;
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
@@ -130,17 +131,14 @@ contract HyperlaneReceiverAdapter is IBridgeReceiverAdapter, IMessageRecipient, 
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
-        // (bool success, bytes memory returnData) = decodedPayload.finalDestination.call(
-        //     abi.encodePacked(
-        //         decodedPayload.data, decodedPayload.msgId, uint256(_origin), decodedPayload.senderAdapterCaller
-        //     )
-        // );
+        MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
+        uint256 _srcChain = uint256(_origin);
 
-        // if (!success) {
-        //     revert MessageFailure(decodedPayload.msgId, returnData);
-        // }
-
-        // emit MessageIdExecuted(uint256(_origin), decodedPayload.msgId);
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
+            emit MessageIdExecuted(_srcChain, msgId);
+        } catch (bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
     }
 
     /*/////////////////////////////////////////////////////////////////

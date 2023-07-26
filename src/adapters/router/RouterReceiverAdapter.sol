@@ -24,6 +24,7 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
     string public senderChain;
 
     mapping(bytes32 => bool) public isMessageExecuted;
+    mapping(string => uint256) public reversechainIdMap;
 
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
@@ -73,6 +74,25 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
         emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
     }
 
+    /// @dev maps the MMA chain id to bridge specific chain id
+    /// @dev _origIds is the chain's native chain id
+    /// @dev _whIds are the bridge allocated chain id
+    function setChainchainIdMap(uint256[] calldata _origIds, string[] calldata _routerIds) external onlyCaller {
+        uint256 arrLength = _origIds.length;
+
+        if (arrLength != _routerIds.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < arrLength;) {
+            reversechainIdMap[_routerIds[i]] = _origIds[i];
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     /// @inheritdoc IRouterReceiver
     function handleRequestFromSource(
         bytes memory srcContractAddress,
@@ -84,7 +104,7 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
         if (keccak256(bytes(srcChainId)) != keccak256(bytes(senderChain))) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
-        
+
         /// @dev step-2: validate the caller (done in modifier)
 
         /// @dev step-3: validate the source address
@@ -108,15 +128,14 @@ contract RouterReceiverAdapter is IRouterReceiver, IBridgeReceiverAdapter {
 
         isMessageExecuted[msgId] = true;
 
-        // (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-        //     abi.encodePacked(decodedPayload.data, decodedPayload.msgId, _srcChainId, decodedPayload.senderAdapterCaller)
-        // );
+        MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
+        uint256 _srcChain = reversechainIdMap[srcChainId];
 
-        // if (!ok) {
-        //     revert MessageFailure(decodedPayload.msgId, lowLevelData);
-        // } else {
-        //     emit MessageIdExecuted(_srcChainId, decodedPayload.msgId);
-        // }
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
+            emit MessageIdExecuted(_srcChain, msgId);
+        } catch (bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
 
         return "";
     }

@@ -3,6 +3,7 @@ pragma solidity >=0.8.9;
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../libraries/Error.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Types.sol";
@@ -106,14 +107,13 @@ contract DeBridgeReceiverAdapter is IDeBridgeReceiverAdapter, IBridgeReceiverAda
         isMessageExecuted[msgId] = true;
         deBridgeisMessageExecuted[_msgId] = true;
 
-        // (bool ok, bytes memory lowLevelData) =
-        //     _destReceiver.call(abi.encodePacked(_data, _msgId, submissionChainIdFrom, _srcSender));
+        MessageLibrary.Message memory _decodedData = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        // if (!ok) {
-        //     revert MessageFailure(_msgId, lowLevelData);
-        // } else {
-        //     emit MessageIdExecuted(submissionChainIdFrom, _msgId);
-        // }
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_decodedData, submissionChainIdFrom) {
+            emit MessageIdExecuted(submissionChainIdFrom, msgId);
+        } catch (bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
     }
 
     /*/////////////////////////////////////////////////////////////////

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
-
-import "../MessageStruct.sol";
+import "../libraries/Message.sol";
 
 interface IMultiMessageReceiver {
     /**
@@ -14,5 +13,5 @@ interface IMultiMessageReceiver {
      * @dev Every receiver adapter should call this function with decoded MessageStruct.Message
      * when receiver adapter receives a message produced by a corresponding sender adapter on the source chain.
      */
-    function receiveMessage(MessageStruct.Message calldata _message) external;
+    function receiveMessage(MessageLibrary.Message calldata _message, uint256 _srcChainId) external;
 }

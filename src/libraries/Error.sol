@@ -17,6 +17,12 @@ library Error {
     /// @dev is thrown if caller is not owner of the contract
     error INVALID_PREVILAGED_CALLER();
 
+    /// @dev is thrown if no sender adapter is found on MMA Sender
+    error NO_SENDER_ADAPTER_FOUND();
+
+    /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
+    error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/

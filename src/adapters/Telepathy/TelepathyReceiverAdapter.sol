@@ -3,6 +3,7 @@ pragma solidity >=0.8.9;
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
@@ -106,18 +107,16 @@ contract TelepathyReceiverAdapter is IBridgeReceiverAdapter, ITelepathyHandler {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
+        MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
+        uint256 _srcChain = uint256(_srcChainId);
+
         /// @dev send message to destReceiver
-        // (bool success, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-        //     abi.encodePacked(
-        //         decodedPayload.data, decodedPayload.msgId, uint256(_srcChainId), decodedPayload.senderAdapterCaller
-        //     )
-        // );
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
+            emit MessageIdExecuted(_srcChain, msgId);
+        } catch(bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
 
-        // if (!success) {
-        //     revert MessageFailure(decodedPayload.msgId, lowLevelData);
-        // }
-
-        // emit MessageIdExecuted(uint256(_srcChainId), decodedPayload.msgId);
         return ITelepathyHandler.handleTelepathy.selector;
     }
 }

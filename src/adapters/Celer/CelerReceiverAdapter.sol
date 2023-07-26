@@ -3,9 +3,11 @@ pragma solidity >=0.8.9;
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
+import "../../libraries/Message.sol";
 
 import "./libraries/Utils.sol";
 
@@ -127,23 +129,15 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
-        // (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-        //     abi.encodePacked(
-        //         decodedPayload.data, decodedPayload.msgId, uint256(_srcChainId), decodedPayload.senderAdapterCaller
-        //     )
-        // );
+        MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
+        uint256 _srcChain = uint256(_srcChainId);
 
-        // if (!ok) {
-        //     string memory reason = Utils.getRevertMsg(lowLevelData);
-        //     revert(
-        //         string.concat(
-        //             ABORT_PREFIX,
-        //             string(abi.encodeWithSelector(MessageFailure.selector, decodedPayload.msgId, bytes(reason)))
-        //         )
-        //     );
-        // } else {
-        //     emit MessageIdExecuted(uint256(_srcChainId), decodedPayload.msgId);
-        //     return ExecutionStatus.Success;
-        // }
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
+            emit MessageIdExecuted(_srcChain, msgId);
+        } catch (bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
+
+        return ExecutionStatus.Success;
     }
 }

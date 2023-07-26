@@ -6,10 +6,12 @@ import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/TypeCasts.sol";
+import "../../libraries/Message.sol";
 
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
@@ -139,19 +141,13 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
-        /// @dev send message to destReceiver
-        // (bool ok, bytes memory lowLevelData) = decodedPayload.finalDestination.call(
-        //     abi.encodePacked(
-        //         decodedPayload.data,
-        //         deliveryHash,
-        //         uint256(reversechainIdMap[sourceChain]),
-        //         decodedPayload.senderAdapterCaller
-        //     )
-        // );
-        // if (!ok) {
-        //     revert MessageFailure(deliveryHash, lowLevelData);
-        // } else {
-        //     emit MessageIdExecuted(reversechainIdMap[sourceChain], deliveryHash);
-        // }
+        MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
+        uint256 _srcChain = reversechainIdMap[sourceChain];
+
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
+            emit MessageIdExecuted(_srcChain, msgId);
+        } catch (bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
     }
 }

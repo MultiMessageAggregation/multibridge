@@ -3,9 +3,11 @@ pragma solidity >=0.8.9;
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
+import "../../libraries/Message.sol";
 
 import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarExecutable.sol";
@@ -109,14 +111,13 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         isMessageExecuted[msgId] = true;
         commandIdStatus[commandId] = true;
 
-        /// @dev forwards the message to multi-message receiver
-        // (bool ok, bytes memory lowLevelData) = destReceiver.call(abi.encodePacked(data, msgId, srcChainId, srcSender));
+        MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
+        uint256 _srcChain = reverseChainIdMap[sourceChain];
 
-        // if (!ok) {
-        //     revert MessageFailure(msgId, lowLevelData);
-        // } else {
-        //     // Emit the event if the message is executed successfully
-        //     emit MessageIdExecuted(srcChainId, msgId);
-        // }
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
+            emit MessageIdExecuted(_srcChain, msgId);
+        } catch (bytes memory lowLevelData) {
+            revert MessageFailure(msgId, lowLevelData);
+        }
     }
 }
