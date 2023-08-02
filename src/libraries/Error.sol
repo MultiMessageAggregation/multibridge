@@ -23,6 +23,15 @@ library Error {
     /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
     error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
 
+    /// @dev is thrown if expiration time is zero
+    error ZERO_EXPIRATION_TIME();
+
+    /// @dev is thrown if quorum threshold is greater than receiver adapters
+    error INVALID_QUORUM_THRESHOLD();
+
+    /// @dev is thrown if receiver adapter array has duplicates
+    error DUPLICATE_RECEIVER_ADAPTER();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/

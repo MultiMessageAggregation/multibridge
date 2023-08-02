@@ -15,6 +15,9 @@ contract GAC is IGAC, Ownable {
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
+    uint256 public msgExpiration;
+
+    address public refundAddress;
 
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
@@ -32,9 +35,9 @@ contract GAC is IGAC, Ownable {
 
     /// @inheritdoc IGAC
     function setMultiMessageCoreContracts(address _mmaSender, address _mmaReceiver) external override onlyOwner {
-        if(_mmaSender == address(0) || _mmaReceiver == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
+        // if(_mmaSender == address(0) || _mmaReceiver == address(0)) {
+        //     revert Error.ZERO_ADDRESS_INPUT();
+        // }
 
         multiMessageSender = _mmaSender;
         multiMessageReceiver = _mmaReceiver;
@@ -48,6 +51,24 @@ contract GAC is IGAC, Ownable {
         dstGasLimit = _gasLimit;
 
         emit DstGasLimitUpdated(oldLimit, _gasLimit);
+    }
+
+    /// @inheritdoc IGAC
+    function setMsgExpiryTime(uint256 _timeInSeconds) external override onlyOwner {
+        if (_timeInSeconds == 0) {
+            revert Error.ZERO_EXPIRATION_TIME();
+        }
+
+        msgExpiration = _timeInSeconds;
+    }
+
+    /// @inheritdoc IGAC
+    function setRefundAddress(address _refundAddress) external override onlyOwner {
+        if (_refundAddress == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        refundAddress = _refundAddress;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -66,6 +87,16 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getGlobalMsgDeliveryGasLimit() external view override returns (uint256 _gasLimit) {
         _gasLimit = dstGasLimit;
+    }
+
+    /// @inheritdoc IGAC
+    function getMsgExpiryTime() external view override returns (uint256 _expiration) {
+        _expiration = msgExpiration;
+    }
+
+    /// @inheritdoc IGAC
+    function getRefundAddress() external view override returns (address _refundAddress) {
+        _refundAddress = refundAddress;
     }
 
     /// @inheritdoc IGAC

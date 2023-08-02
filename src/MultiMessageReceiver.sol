@@ -37,10 +37,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
-    event SingleBridgeMsgReceived(
-        bytes32 msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
-    );
-    event MessageExecuted(bytes32 msgId, address target, uint256 nonce,  bytes callData);
+    event SingleBridgeMsgReceived(bytes32 msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter);
+    event MessageExecuted(bytes32 msgId, address target, uint256 nonce, bytes callData);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -62,14 +60,30 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
                                 INITIALIZER
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice A one-time function to initialize contract states.
+    /// @notice sets the initial paramters
     function initialize(address[] calldata _receiverAdapters, uint64 _quorumThreshold) external initializer {
-        require(_receiverAdapters.length > 0, "empty receiver adapter list");
-        require(_quorumThreshold <= _receiverAdapters.length, "invalid threshold");
-        for (uint256 i; i < _receiverAdapters.length; ++i) {
-            require(_receiverAdapters[i] != address(0), "receiver adapter is zero address");
-            _updateReceiverAdapter(_receiverAdapters[i], true);
+        uint256 len = _receiverAdapters.length;
+
+        if (len == 0) {
+            revert Error.ZERO_RECEIVER_ADAPTER();
         }
+
+        if (_quorumThreshold > len) {
+            revert Error.INVALID_QUORUM_THRESHOLD();
+        }
+
+        for (uint256 i; i < len;) {
+            if (_receiverAdapters[i] == address(0)) {
+                revert Error.ZERO_ADDRESS_INPUT();
+            }
+
+            _updateReceiverAdapter(_receiverAdapters[i], true);
+
+            unchecked {
+                ++i;
+            }
+        }
+
         quorumThreshold = _quorumThreshold;
     }
 
@@ -185,10 +199,37 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     function _updateReceiverAdapter(address _receiverAdapter, bool _add) private {
         if (_add) {
             _addTrustedExecutor(_receiverAdapter);
+
+            _checkDuplicates(trustedExecutor);
         } else {
             _removeTrustedExecutor(_receiverAdapter);
-            require(quorumThreshold <= trustedExecutor.length, "insufficient total power after removal");
+
+            if (quorumThreshold > trustedExecutor.length) {
+                revert Error.INVALID_QUORUM_THRESHOLD();
+            }
         }
         emit ReceiverAdapterUpdated(_receiverAdapter, _add);
+    }
+
+    function _checkDuplicates(address[] memory _input) internal pure {
+        uint256 len = _input.length;
+
+        for (uint256 i; i < len;) {
+            address x = _input[i];
+            for (uint256 j; j < len;) {
+                address y = _input[j];
+                if (i != j && x == y) {
+                    revert Error.DUPLICATE_RECEIVER_ADAPTER();
+                }
+
+                unchecked {
+                    ++j;
+                }
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@ import {Test, Vm} from "forge-std/Test.sol";
 import "forge-std/Console.sol";
 
 /// @dev imports from Pigeon Helper (Facilitate State Transfer Mocks)
-import {WomrholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
+import {WormholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
 import {AxelarHelper} from "pigeon/axelar/AxelarHelper.sol";
 
 /// local imports
@@ -22,11 +22,14 @@ import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
 
 /// @dev can inherit the setup in tests
 abstract contract Setup is Test {
+    bytes32 _salt = keccak256(abi.encode("UNISWAP_MMA"));
+
     /*///////////////////////////////////////////////////////////////
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
     /// @dev simulated caller
     address constant caller = address(10);
+    address constant owner = address(420);
 
     /// @dev constants for axelar
     address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;
@@ -51,10 +54,10 @@ abstract contract Setup is Test {
 
     /// @notice configure any new dst chains here
     uint256[] public DST_CHAINS = [56, 137];
-    
+
     /// @notice configure all wormhole parameters in order of DST_CHAINS
     address[] public WORMHOLE_RELAYERS = [BSC_RELAYER, POLYGON_RELAYER];
-    uint256[] public WORMHOLE_CHAIN_IDS = [4, 5];
+    uint16[] public WORMHOLE_CHAIN_IDS = [4, 5];
 
     /// @notice configure all axelar parameters in order of DST_CHAINS
     address[] public AXELAR_GATEWAYS = [BSC_GATEWAY, POLYGON_GATEWAY];
@@ -101,6 +104,9 @@ abstract contract Setup is Test {
 
         /// @dev setup core contracts
         _setupCoreContracts();
+
+        /// @dev setup adapter contracts
+        _setupAdapters();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -108,11 +114,13 @@ abstract contract Setup is Test {
     //////////////////////////////////////////////////////////////*/
     /// @dev deploys controller to all chains
     function _deployGac() internal {
-        for(uint256 i; i < ALL_CHAINS.length; ) {
+        vm.startPrank(owner);
+
+        for (uint256 i; i < ALL_CHAINS.length;) {
             uint256 chainId = ALL_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
-            contractAddress[chainId][bytes("GAC")] = address(new GAC());
+            contractAddress[chainId][bytes("GAC")] = address(new GAC{salt: _salt}());
 
             unchecked {
                 ++i;
@@ -126,7 +134,7 @@ abstract contract Setup is Test {
         vm.selectFork(fork[1]);
 
         contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")] =
-            address(new WormholeSenderAdapter(ETH_RELAYER, contractAddress[1][bytes("GAC")]));
+            address(new WormholeSenderAdapter{salt: _salt}(ETH_RELAYER, contractAddress[1][bytes("GAC")]));
 
         uint256 len = DST_CHAINS.length;
 
@@ -137,11 +145,12 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
-            address receiverAdapter =
-                address(new WormholeReceiverAdapter(WORMHOLE_RELAYERS[i], contractAddress[chainId][bytes("GAC")]));
+            address receiverAdapter = address(
+                new WormholeReceiverAdapter{salt: _salt}(WORMHOLE_RELAYERS[i], contractAddress[chainId][bytes("GAC")])
+            );
             contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
-           
+
             unchecked {
                 ++i;
             }
@@ -163,9 +172,11 @@ abstract contract Setup is Test {
     function _deployAxelarAdapters() internal {
         /// @notice deploy source adapter to Ethereum
         vm.selectFork(fork[1]);
-        contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")] = address(new AxelarSenderAdapter(ETH_GAS_SERVICE, ETH_GATEWAY, contractAddress[1][bytes("GAC")]));
+        contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")] = address(
+            new AxelarSenderAdapter{salt: _salt}(ETH_GAS_SERVICE, ETH_GATEWAY, contractAddress[1][bytes("GAC")])
+        );
 
-                uint256 len = DST_CHAINS.length;
+        uint256 len = DST_CHAINS.length;
 
         /// @notice deploy receiver adapters to all DST_CHAINS
         address[] memory _receiverAdapters = new address[](len);
@@ -174,11 +185,12 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
-            address receiverAdapter =
-                address(new AxelarReceiverAdapter(AXELAR_GATEWAYS[i], contractAddress[chainId][bytes("GAC")]));
+            address receiverAdapter = address(
+                new AxelarReceiverAdapter{salt: _salt}(AXELAR_GATEWAYS[i], contractAddress[chainId][bytes("GAC")])
+            );
             contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
-           
+
             unchecked {
                 ++i;
             }
@@ -189,7 +201,7 @@ abstract contract Setup is Test {
         AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).updateReceiverAdapter(
             DST_CHAINS, _receiverAdapters
         );
-            
+
         AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).setChainchainIdMap(
             DST_CHAINS, AXELAR_CHAIN_IDS
         );
@@ -210,8 +222,8 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            contractAddress[chainId][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper());
-            contractAddress[chainId][bytes("AXELAR_HELPER")] = address(new AxelarHelper());
+            contractAddress[chainId][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper{salt: _salt}());
+            contractAddress[chainId][bytes("AXELAR_HELPER")] = address(new AxelarHelper{salt: _salt}());
 
             vm.allowCheatcodes(contractAddress[chainId][bytes("WORMHOLE_HELPER")]);
             vm.allowCheatcodes(contractAddress[chainId][bytes("AXELAR_HELPER")]);
@@ -226,14 +238,15 @@ abstract contract Setup is Test {
     function _deployCoreContracts() internal {
         /// @notice deploy mma sender to ETHEREUM
         vm.selectFork(fork[1]);
-        contractAddress[1][bytes("MMA_SENDER")] = address(new MultiMessageSender(caller, contractAddress[1][bytes("GAC")]));
+        contractAddress[1][bytes("MMA_SENDER")] =
+            address(new MultiMessageSender{salt: _salt}(caller, contractAddress[1][bytes("GAC")]));
 
         /// @notice deploy amb helpers to BSC & POLYGON
         for (uint256 i; i < DST_CHAINS.length; i++) {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            contractAddress[chainId][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver());
+            contractAddress[chainId][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver{salt: _salt}());
         }
     }
 
@@ -247,8 +260,7 @@ abstract contract Setup is Test {
         _senderAdapters[0] = contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")];
         _senderAdapters[1] = contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")];
 
-        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(56, _senderAdapters);
-        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(137, _senderAdapters);
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
 
         /// setup mma receiver adapters
         for (uint256 i; i < DST_CHAINS.length;) {
@@ -260,16 +272,133 @@ abstract contract Setup is Test {
             _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
-            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                1, contractAddress[1][bytes("MMA_SENDER")], _recieverAdapters, 2
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(_recieverAdapters, 2);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        /// setup the core contracts to GAC
+        for (uint256 i; i < ALL_CHAINS.length;) {
+            uint256 chainId = ALL_CHAINS[i];
+
+            vm.selectFork(fork[chainId]);
+            vm.startPrank(owner);
+            GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageCoreContracts(
+                contractAddress[chainId][bytes("MMA_SENDER")], contractAddress[chainId][bytes("MMA_RECEIVER")]
             );
 
-            unchecked{
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @dev setup adapter contracts
+    function _setupAdapters() internal {
+        vm.startPrank(owner);
+
+        for (uint256 i; i < DST_CHAINS.length;) {
+            uint256 chainId = DST_CHAINS[i];
+            vm.selectFork(fork[chainId]);
+
+            WormholeReceiverAdapter(contractAddress[chainId]["WORMHOLE_RECEIVER_ADAPTER"]).updateSenderAdapter(
+                abi.encode(_wormholeChainId(1)), contractAddress[1]["WORMHOLE_SENDER_ADAPTER"]
+            );
+
+            AxelarReceiverAdapter(contractAddress[chainId]["AXELAR_RECEIVER_ADAPTER"]).updateSenderAdapter(
+                abi.encode(_axelarChainId(1)), contractAddress[1]["AXELAR_SENDER_ADAPTER"]
+            );
+
+            unchecked {
                 ++i;
             }
         }
     }
 
     /// @dev helps payload delivery using logs
-    function _simulatePayloadDelivery(uint256 _srcChainId, uint256 _dstChainId, Vm.Log[] memory _logs) internal {}
+    function _simulatePayloadDelivery(uint256 _srcChainId, uint256 _dstChainId, Vm.Log[] memory _logs) internal {
+        /// simulate wormhole off-chain infra
+        WormholeHelper(contractAddress[_srcChainId][bytes("WORMHOLE_HELPER")]).help(
+            _wormholeChainId(_srcChainId), fork[_dstChainId], _wormholeRelayer(_dstChainId), _logs
+        );
+
+        /// simulate axelar off-chain infra
+        AxelarHelper(contractAddress[_srcChainId][bytes("AXELAR_HELPER")]).help(
+            _axelarChainId(_srcChainId),
+            _axelarGateway(_dstChainId),
+            _axelarChainId(_dstChainId),
+            fork[_dstChainId],
+            _logs
+        );
+    }
+
+    /// @dev returns the chain id of wormhole for local chain id
+    function _wormholeChainId(uint256 _chainId) internal pure returns (uint16) {
+        if (_chainId == 1) {
+            return uint16(2);
+        }
+
+        if (_chainId == 56) {
+            return uint16(4);
+        }
+
+        if (_chainId == 137) {
+            return uint16(5);
+        }
+
+        return 0;
+    }
+
+    /// @dev returns the chain id of axelar for local chain id
+    function _axelarChainId(uint256 _chainId) internal pure returns (string memory) {
+        if (_chainId == 1) {
+            return "Ethereum";
+        }
+
+        if (_chainId == 56) {
+            return "binance";
+        }
+
+        if (_chainId == 137) {
+            return "Polygon";
+        }
+
+        return "";
+    }
+
+    /// @dev returns the relayer of wormhole for chain id
+    function _wormholeRelayer(uint256 _chainId) internal pure returns (address) {
+        if (_chainId == 1) {
+            return ETH_RELAYER;
+        }
+
+        if (_chainId == 56) {
+            return BSC_RELAYER;
+        }
+
+        if (_chainId == 137) {
+            return POLYGON_RELAYER;
+        }
+
+        return address(0);
+    }
+
+    /// @dev returns the gateway of axelar for chain id
+    function _axelarGateway(uint256 _chainId) internal pure returns (address) {
+        if (_chainId == 1) {
+            return ETH_GATEWAY;
+        }
+
+        if (_chainId == 56) {
+            return BSC_GATEWAY;
+        }
+
+        if (_chainId == 137) {
+            return POLYGON_GATEWAY;
+        }
+
+        return address(0);
+    }
 }

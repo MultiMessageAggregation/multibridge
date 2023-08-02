@@ -20,8 +20,8 @@ contract MultiMessageSender {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
 
-    /// @dev maps dst chainId -> list of bridge sender adapters
-    mapping(uint256 => address[]) public senderAdapters;
+    /// @dev bridge sender adapters available
+    address[] public senderAdapters;
 
     /// @dev contract that can use this multi-bridge sender for cross-chain remoteCall
     /// @notice multi message sender is only intended to be used by a single sender (or) application
@@ -69,9 +69,9 @@ contract MultiMessageSender {
     ////////////////////////////////////////////////////////////////*/
 
     /// @param _caller is the privilaged address to interact with MultiMessageSender
-    /// @param _gac is the controller/registry of uniswap mma 
+    /// @param _gac is the controller/registry of uniswap mma
     constructor(address _caller, address _gac) {
-        if(_caller == address(0) || _gac == address(0)) {
+        if (_caller == address(0) || _gac == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -90,17 +90,13 @@ contract MultiMessageSender {
     /// will be refunded back to msg.sender, which requires caller being able to receive native token.
     /// Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
 
-    /// @param _dstChainId is the destination chainId.
-    /// @param _target is the contract address on the destination chain.
-    /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData)).
-    /// @param _expiration is the unix time when the message expires, zero means never expire.
-    function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData, uint64 _expiration)
-        external
-        payable
-        onlyCaller
-    {
+    /// @param _dstChainId is the destination chainId
+    /// @param _target is the target execution point on dst chain
+    /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
+    function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData) external payable onlyCaller {
         /// @dev writes to memory for gas saving
-        address[] memory adapters = senderAdapters[_dstChainId];
+        address[] memory adapters = senderAdapters;
+
         uint256 adapterLength = adapters.length;
 
         if (adapterLength == 0) {
@@ -110,8 +106,10 @@ contract MultiMessageSender {
         /// @dev increments nonce
         ++nonce;
 
+        uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
+
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(_dstChainId, _target, nonce, _callData, _expiration, "");
+            MessageLibrary.Message(_dstChainId, _target, nonce, _callData, msgExpiration, "");
 
         for (uint256 i; i < adapterLength;) {
             IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
@@ -137,22 +135,17 @@ contract MultiMessageSender {
         /// refund remaining fee
         /// FIXME: add an explicit refund address config
         if (address(this).balance > 0) {
-            _safeTransferETH(msg.sender, address(this).balance);
+            _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
 
-        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, _expiration, adapters);
+        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, msgExpiration, adapters);
     }
 
     /// @notice Add bridge sender adapters
-    /// @param _chainId is the destination chainId. Use 0 to add default adapers
     /// @param _senderAdapters is the adapter address to add
-    function addSenderAdapters(uint256 _chainId, address[] calldata _senderAdapters) external onlyCaller {
+    function addSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
         for (uint256 i; i < _senderAdapters.length;) {
-            if(_chainId == 0) {
-                revert Error.ZERO_CHAIN_ID();
-            }
-
-            _addSenderAdapter(_chainId, _senderAdapters[i]);
+            _addSenderAdapter(_senderAdapters[i]);
 
             unchecked {
                 ++i;
@@ -161,11 +154,10 @@ contract MultiMessageSender {
     }
 
     /// @notice Remove bridge sender adapters
-    /// @param _chainId is the destination chainId. Use 0 to remove default adapers
     /// @param _senderAdapters is the adapter address to remove
-    function removeSenderAdapters(uint256 _chainId, address[] calldata _senderAdapters) external onlyCaller {
+    function removeSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
         for (uint256 i; i < _senderAdapters.length;) {
-            _removeSenderAdapter(_chainId, _senderAdapters[i]);
+            _removeSenderAdapter(_senderAdapters[i]);
 
             unchecked {
                 ++i;
@@ -183,51 +175,49 @@ contract MultiMessageSender {
         address _multiMessageReceiver,
         address _target,
         bytes calldata _callData
-    ) public view returns (uint256) {
+    ) public view returns (uint256 totalFee) {
         MessageLibrary.Message memory message = MessageLibrary.Message(_dstChainId, _target, nonce, _callData, 0, "");
         bytes memory data;
-        uint256 totalFee;
 
-        uint256 adaptersChainId = 0; // default adapters
-        if (senderAdapters[_dstChainId].length > 0) {
-            // if different set of adapters are configured for this desitnation chain
-            adaptersChainId = _dstChainId;
-        }
-        address[] storage adapters = senderAdapters[adaptersChainId];
+        /// @dev writes to memory for saving gas
+        address[] storage adapters = senderAdapters;
+
         for (uint256 i; i < adapters.length; ++i) {
             message.bridgeName = IBridgeSenderAdapter(adapters[i]).name();
+            /// @dev second update costs less gas
             data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
-            
+
             uint256 fee =
                 IBridgeSenderAdapter(adapters[i]).getMessageFee(uint256(_dstChainId), _multiMessageReceiver, data);
-            
+
             totalFee += fee;
         }
-        return totalFee;
     }
 
     /*/////////////////////////////////////////////////////////////////
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function _addSenderAdapter(uint256 _chainId, address _senderAdapter) private {
-        for (uint256 i; i < senderAdapters[_chainId].length; ++i) {
-            if (senderAdapters[_chainId][i] == _senderAdapter) {
-                return;
-            }
+    function _addSenderAdapter(address _senderAdapter) private {
+        if (_senderAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
         }
-        senderAdapters[_chainId].push(_senderAdapter);
+
+        senderAdapters.push(_senderAdapter);
         emit SenderAdapterUpdated(_senderAdapter, true);
     }
 
-    function _removeSenderAdapter(uint256 _chainId, address _senderAdapter) private {
-        uint256 lastIndex = senderAdapters[_chainId].length - 1;
-        for (uint256 i; i < senderAdapters[_chainId].length; ++i) {
-            if (senderAdapters[_chainId][i] == _senderAdapter) {
+    function _removeSenderAdapter(address _senderAdapter) private {
+        uint256 lastIndex = senderAdapters.length - 1;
+
+        for (uint256 i; i < senderAdapters.length; ++i) {
+            if (senderAdapters[i] == _senderAdapter) {
                 if (i < lastIndex) {
-                    senderAdapters[_chainId][i] = senderAdapters[_chainId][lastIndex];
+                    senderAdapters[i] = senderAdapters[lastIndex];
                 }
-                senderAdapters[_chainId].pop();
+
+                senderAdapters.pop();
+
                 emit SenderAdapterUpdated(_senderAdapter, false);
                 return;
             }

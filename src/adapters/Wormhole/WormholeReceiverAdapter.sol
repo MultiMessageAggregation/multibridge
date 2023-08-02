@@ -3,6 +3,7 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
+import "forge-std/console.sol";
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
@@ -121,6 +122,8 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
 
         /// @dev step-3: validate the source address
         if (TypeCasts.bytes32ToAddress(sourceAddress) != senderAdapter) {
+            console.log(TypeCasts.bytes32ToAddress(sourceAddress));
+            console.log(senderAdapter);
             revert Error.INVALID_SENDER_ADAPTER();
         }
 

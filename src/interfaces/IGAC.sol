@@ -24,6 +24,14 @@ interface IGAC {
     /// @param _gasLimit is the limit to be set
     function setGlobalMsgDeliveryGasLimit(uint256 _gasLimit) external;
 
+    /// @dev sets the message expiry time
+    /// @param _timeInSeconds is the expiry time for the message on dst chain
+    function setMsgExpiryTime(uint256 _timeInSeconds) external;
+
+    /// @dev sets the refund address for gas refunds
+    /// @param _refundAddress is the address to receive refunds from MMA sender
+    function setRefundAddress(address _refundAddress) external;
+
     /*///////////////////////////////////////////////////////////////
                     EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -42,4 +50,10 @@ interface IGAC {
 
     /// @dev returns the multi message receiver on the chain
     function getMultiMessageReceiver() external view returns (address _mmaReceiver);
+
+    /// @dev returns the expiry time of message from the time of dispatch
+    function getMsgExpiryTime() external view returns (uint256 _expiration);
+
+    /// @dev returns the refund address
+    function getRefundAddress() external view returns (address _refundAddress);
 }
