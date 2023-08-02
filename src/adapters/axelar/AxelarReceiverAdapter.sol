@@ -35,8 +35,8 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPrevilagedCaller(msg.sender)) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+        if (!gac.isprivilagedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILAGED_CALLER();
         }
         _;
     }
@@ -73,6 +73,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     }
 
     /// @dev accepts new cross-chain messages from axelar gateway
+    /// @inheritdoc IAxelarExecutable
     function execute(
         bytes32 commandId,
         string calldata sourceChain,

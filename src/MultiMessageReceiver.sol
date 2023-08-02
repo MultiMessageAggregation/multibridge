@@ -19,7 +19,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice minimum accumulated power precentage for each message to be executed
+    /// @notice minimum number of AMBs required for delivery before execution
     uint64 public quorumThreshold;
 
     /// @notice bridge receiver adapters that has already delivered this message.
@@ -36,12 +36,11 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
     event SingleBridgeMsgReceived(
-        bytes32 msgId, uint256 srcChainId, string indexed bridgeName, uint256 nonce, address receiverAdapter
+        bytes32 msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
-    event MessageExecuted(bytes32 msgId, uint256 srcChainId, address target, uint256 nonce,  bytes callData);
+    event MessageExecuted(bytes32 msgId, address target, uint256 nonce,  bytes callData);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -102,7 +101,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
 
         msgInfo.from[msg.sender] = true;
-        emit SingleBridgeMsgReceived(msgId, _srcChainId, _message.bridgeName, _message.nonce, msg.sender);
+        emit SingleBridgeMsgReceived(msgId, _message.bridgeName, _message.nonce, msg.sender);
     }
 
     /// @notice Execute the message (invoke external call according to the message content) if the message
@@ -129,7 +128,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         (bool ok,) = _target.call(_callData);
         require(ok, "external message execution failed");
-        emit MessageExecuted(msgId, _srcChainId, _target, _nonce, _callData);
+        emit MessageExecuted(msgId, _target, _nonce, _callData);
     }
 
     /// @notice Update bridge receiver adapters.

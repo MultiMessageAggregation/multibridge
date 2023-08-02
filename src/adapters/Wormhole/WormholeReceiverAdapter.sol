@@ -36,8 +36,8 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPrevilagedCaller(msg.sender)) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+        if (!gac.isprivilagedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILAGED_CALLER();
         }
         _;
     }

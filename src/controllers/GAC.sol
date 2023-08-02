@@ -7,6 +7,7 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// local imports
 import {IGAC} from "../interfaces/IGAC.sol";
+import {Error} from "../libraries/Error.sol";
 
 /// @dev is the global access control contract for bridge adapters
 contract GAC is IGAC, Ownable {
@@ -31,6 +32,10 @@ contract GAC is IGAC, Ownable {
 
     /// @inheritdoc IGAC
     function setMultiMessageCoreContracts(address _mmaSender, address _mmaReceiver) external override onlyOwner {
+        if(_mmaSender == address(0) || _mmaReceiver == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
         multiMessageSender = _mmaSender;
         multiMessageReceiver = _mmaReceiver;
 
@@ -50,7 +55,7 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function isPrevilagedCaller(address _caller) external view override returns (bool) {
+    function isprivilagedCaller(address _caller) external view override returns (bool) {
         if (_caller == owner()) {
             return true;
         }

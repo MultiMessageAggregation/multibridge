@@ -15,7 +15,7 @@ library Error {
     error ARRAY_LENGTH_MISMATCHED();
 
     /// @dev is thrown if caller is not owner of the contract
-    error INVALID_PREVILAGED_CALLER();
+    error INVALID_PRIVILAGED_CALLER();
 
     /// @dev is thrown if no sender adapter is found on MMA Sender
     error NO_SENDER_ADAPTER_FOUND();
@@ -46,7 +46,7 @@ library Error {
     error RECEIVER_ADAPTER_MISMATCHED();
 
     /// @dev is thrown if receiver adapter is zero address
-    error ZERO_RECEIVER_ADPATER();
+    error ZERO_RECEIVER_ADAPTER();
 
     /// @dev is thrown when caller is not wormhole relayer
     error CALLER_NOT_WORMHOLE_RELAYER();

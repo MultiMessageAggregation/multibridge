@@ -42,8 +42,8 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     }
 
     modifier onlyCaller() {
-        if (!gac.isPrevilagedCaller(msg.sender)) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+        if (!gac.isprivilagedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILAGED_CALLER();
         }
         _;
     }
@@ -75,7 +75,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         address receiverAdapter = receiverAdapters[_toChainId];
 
         if (receiverAdapter == address(0)) {
-            revert Error.ZERO_RECEIVER_ADPATER();
+            revert Error.ZERO_RECEIVER_ADAPTER();
         }
 
         string memory destinationChain = chainIdMap[_toChainId];

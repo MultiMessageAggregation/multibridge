@@ -1,278 +1,275 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-// /// library imports
-// import {Test, Vm} from "forge-std/Test.sol";
-// import "forge-std/Console.sol";
+/// library imports
+import {Test, Vm} from "forge-std/Test.sol";
+import "forge-std/Console.sol";
 
-// /// @dev imports from Pigeon Helper (Facilitate State Transfer Mocks)
-// import {CelerHelper} from "pigeon/celer/CelerHelper.sol";
-// import {HyperlaneHelper} from "pigeon/hyperlane/HyperlaneHelper.sol";
+/// @dev imports from Pigeon Helper (Facilitate State Transfer Mocks)
+import {WomrholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
+import {AxelarHelper} from "pigeon/axelar/AxelarHelper.sol";
 
-// /// local imports
-// import {HyperlaneSenderAdapter} from "../src/adapters/hyperlane/HyperlaneSenderAdapter.sol";
-// import {HyperlaneReceiverAdapter} from "../src/adapters/hyperlane/HyperlaneReceiverAdapter.sol";
+/// local imports
+import {WormholeSenderAdapter} from "../src/adapters/wormhole/WormholeSenderAdapter.sol";
+import {WormholeReceiverAdapter} from "../src/adapters/wormhole/WormholeReceiverAdapter.sol";
 
-// import {CelerSenderAdapter} from "../src/adapters/celer/CelerSenderAdapter.sol";
-// import {CelerReceiverAdapter} from "../src/adapters/celer/CelerReceiverAdapter.sol";
+import {AxelarSenderAdapter} from "../src/adapters/axelar/AxelarSenderAdapter.sol";
+import {AxelarReceiverAdapter} from "../src/adapters/axelar/AxelarReceiverAdapter.sol";
 
-// import {MultiMessageSender} from "../src/MultiMessageSender.sol";
-// import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
+import {GAC} from "../src/controllers/GAC.sol";
+import {MultiMessageSender} from "../src/MultiMessageSender.sol";
+import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
 
-// /// @dev can inherit the setup in tests
-// abstract contract Setup is Test {
-//     /*///////////////////////////////////////////////////////////////
-//                             CONSTANTS
-//     //////////////////////////////////////////////////////////////*/
-//     /// @dev simulated caller
-//     address constant caller = address(10);
+/// @dev can inherit the setup in tests
+abstract contract Setup is Test {
+    /*///////////////////////////////////////////////////////////////
+                            CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+    /// @dev simulated caller
+    address constant caller = address(10);
 
-//     /// @dev constants for hyperlane
-//     address constant HYPERLANE_MAILBOX = 0x35231d4c2D8B8ADcB5617A638A0c4548684c7C70;
-//     address constant HYPERLANE_IGP = 0x56f52c0A1ddcD557285f7CBc782D3d83096CE1Cc;
+    /// @dev constants for axelar
+    address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;
+    address constant BSC_GATEWAY = 0x304acf330bbE08d1e512eefaa92F6a57871fD895;
+    address constant POLYGON_GATEWAY = 0x6f015F16De9fC8791b234eF68D486d2bF203FBA8;
 
-//     /// @dev constants for celer
-//     address constant ETH_CELER_MSG_BUS = 0x4066D196A423b2b3B8B054f4F40efB47a74E200C;
-//     address constant BSC_CELER_MSG_BUS = 0x95714818fdd7a5454F73Da9c777B3ee6EbAEEa6B;
-//     address constant POLYGON_CELER_MSG_BUS = 0xaFDb9C40C7144022811F034EE07Ce2E110093fe6;
-//     address constant ARB_CELER_MSG_BUS = 0x3Ad9d0648CDAA2426331e894e980D0a5Ed16257f;
+    address constant ETH_GAS_SERVICE = 0x2d5d7d31F671F86C782533cc367F14109a082712;
+    address constant BSC_GAS_SERVICE = 0x2d5d7d31F671F86C782533cc367F14109a082712;
+    address constant POLYGON_GAS_SERVICE = 0x2d5d7d31F671F86C782533cc367F14109a082712;
 
-//     /*///////////////////////////////////////////////////////////////
-//                             STATE VARIABLES
-//     //////////////////////////////////////////////////////////////*/
-//     /// @notice configure any new dst chains here
-//     uint256[] public DST_CHAINS = [56, 137, 42161];
+    /// @dev constants for wormhole
+    address constant ETH_RELAYER = 0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
+    address constant BSC_RELAYER = 0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
+    address constant POLYGON_RELAYER = 0x27428DD2d3DD32A4D7f7C497eAaa23130d894911;
 
-//     /// @dev maps the local chain id to a fork id
-//     mapping(uint256 => uint256) public fork;
+    /*///////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    //////////////////////////////////////////////////////////////*/
+    /// @notice configure all the chain ids we use for the tests (including src chain)
+    /// id 0 represents src chain
+    uint256[] public ALL_CHAINS = [1, 56, 137];
 
-//     /// @dev maps the contract chain and name to an address
-//     mapping(uint256 => mapping(bytes => address)) public contractAddress;
+    /// @notice configure any new dst chains here
+    uint256[] public DST_CHAINS = [56, 137];
+    
+    /// @notice configure all wormhole parameters in order of DST_CHAINS
+    address[] public WORMHOLE_RELAYERS = [BSC_RELAYER, POLYGON_RELAYER];
+    uint256[] public WORMHOLE_CHAIN_IDS = [4, 5];
 
-//     /*///////////////////////////////////////////////////////////////
-//                                 SETUP
-//     //////////////////////////////////////////////////////////////*/
-//     function setUp() public virtual {
-//         /// @dev create forks of src chain & 3 diff dst chains
-//         /// @notice chain id: 1 (always source chain)
-//         /// @notice chain id: 137
-//         /// @notice chain id: 56
-//         /// @notice chain id: 42161
-//         fork[1] = vm.createSelectFork(vm.envString("ETH_FORK_URL"));
-//         vm.deal(caller, 100 ether);
+    /// @notice configure all axelar parameters in order of DST_CHAINS
+    address[] public AXELAR_GATEWAYS = [BSC_GATEWAY, POLYGON_GATEWAY];
+    address[] public AXELAR_GAS_SERVICES = [BSC_GAS_SERVICE, POLYGON_GAS_SERVICE];
+    string[] public AXELAR_CHAIN_IDS = ["binance", "Polygon"];
 
-//         fork[56] = vm.createSelectFork(vm.envString("BSC_FORK_URL"));
-//         vm.deal(caller, 100 ether);
+    /// @dev maps the local chain id to a fork id
+    mapping(uint256 => uint256) public fork;
 
-//         fork[137] = vm.createSelectFork(vm.envString("POLYGON_FORK_URL"));
-//         vm.deal(caller, 100 ether);
+    /// @dev maps the contract chain and name to an address
+    mapping(uint256 => mapping(bytes => address)) public contractAddress;
 
-//         fork[42161] = vm.createSelectFork(vm.envString("ARB_FORK_URL"));
-//         vm.deal(caller, 100 ether);
+    /*///////////////////////////////////////////////////////////////
+                                SETUP
+    //////////////////////////////////////////////////////////////*/
+    function setUp() public virtual {
+        /// @dev create forks of src chain & 2 diff dst chains
+        /// @notice chain id: 1 (always source chain)
+        /// @notice chain id: 137
+        /// @notice chain id: 56
+        fork[1] = vm.createSelectFork(vm.envString("ETH_FORK_URL"));
+        vm.deal(caller, 100 ether);
 
-//         /// @dev deploys amb adapters
-//         /// note: now added only hyperlane & celer
-//         _deployHyperlaneAdapters();
-//         _deployCelerAdapters();
+        fork[56] = vm.createSelectFork(vm.envString("BSC_FORK_URL"));
+        vm.deal(caller, 100 ether);
 
-//         /// @dev deploy amb helpers
-//         /// note: deploys only hyperlane & celer helpers
-//         _deployHelpers();
+        fork[137] = vm.createSelectFork(vm.envString("POLYGON_FORK_URL"));
+        vm.deal(caller, 100 ether);
 
-//         /// @dev deploys mma sender and receiver adapters
-//         _deployCoreContracts();
+        /// @dev deploys controller contract to all chains
+        _deployGac();
 
-//         /// @dev setup core contracts
-//         _setupCoreContracts();
-//     }
+        /// @dev deploys amb adapters
+        /// note: now added only wormhole & axelar
+        _deployWormholeAdapters();
+        _deployAxelarAdapters();
 
-//     /*///////////////////////////////////////////////////////////////
-//                             INTERNAL HELPERS
-//     //////////////////////////////////////////////////////////////*/
-//     /// @dev deployes the hyperlane adapters to all configured chains
-//     function _deployHyperlaneAdapters() internal {
-//         /// @notice deploy source adapter to Ethereum
-//         vm.selectFork(fork[1]);
+        /// @dev deploy amb helpers
+        /// note: deploys only wormhole & axelar helpers
+        _deployHelpers();
 
-//         contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")] =
-//             address(new HyperlaneSenderAdapter(HYPERLANE_MAILBOX, HYPERLANE_IGP));
+        /// @dev deploys mma sender and receiver adapters
+        _deployCoreContracts();
 
-//         /// @notice deploy receiver adapters to BSC, POLYGON & ARB
-//         for (uint256 i; i < DST_CHAINS.length; i++) {
-//             vm.selectFork(fork[DST_CHAINS[i]]);
+        /// @dev setup core contracts
+        _setupCoreContracts();
+    }
 
-//             contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")] =
-//                 address(new HyperlaneReceiverAdapter(HYPERLANE_MAILBOX));
+    /*///////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+    //////////////////////////////////////////////////////////////*/
+    /// @dev deploys controller to all chains
+    function _deployGac() internal {
+        for(uint256 i; i < ALL_CHAINS.length; ) {
+            uint256 chainId = ALL_CHAINS[i];
+            vm.selectFork(fork[chainId]);
 
-//             uint256[] memory srcChain = new uint256[](1);
-//             srcChain[0] = 1;
+            contractAddress[chainId][bytes("GAC")] = address(new GAC());
 
-//             address[] memory senderAdapters = new address[](1);
-//             senderAdapters[0] = contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")];
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
-//             HyperlaneReceiverAdapter(contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")])
-//                 .updateSenderAdapter(srcChain, senderAdapters);
-//         }
+    /// @dev deploys the wormhole adapters to all configured chains
+    function _deployWormholeAdapters() internal {
+        /// @notice deploy source adapter to SRC_CHAIN (ETH)
+        vm.selectFork(fork[1]);
 
-//         vm.selectFork(fork[1]);
+        contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")] =
+            address(new WormholeSenderAdapter(ETH_RELAYER, contractAddress[1][bytes("GAC")]));
 
-//         address[] memory _receiverAdapters = new address[](3);
-//         _receiverAdapters[0] = contractAddress[56][bytes("HYPERLANE_RECEIVER_ADAPTER")];
-//         _receiverAdapters[1] = contractAddress[137][bytes("HYPERLANE_RECEIVER_ADAPTER")];
-//         _receiverAdapters[2] = contractAddress[42161][bytes("HYPERLANE_RECEIVER_ADAPTER")];
+        uint256 len = DST_CHAINS.length;
 
-//         HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateReceiverAdapter(
-//             DST_CHAINS, _receiverAdapters
-//         );
+        /// @notice deploy receiver adapters to all DST_CHAINS
+        address[] memory _receiverAdapters = new address[](len);
 
-//         uint32[] memory _receiverDomains = new uint32[](3);
-//         _receiverDomains[0] = uint32(56);
-//         _receiverDomains[1] = uint32(137);
-//         _receiverDomains[2] = uint32(42161);
+        for (uint256 i; i < len;) {
+            uint256 chainId = DST_CHAINS[i];
+            vm.selectFork(fork[chainId]);
 
-//         HyperlaneSenderAdapter(contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")]).updateDestinationDomainIds(
-//             DST_CHAINS, _receiverDomains
-//         );
-//     }
+            address receiverAdapter =
+                address(new WormholeReceiverAdapter(WORMHOLE_RELAYERS[i], contractAddress[chainId][bytes("GAC")]));
+            contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")] = receiverAdapter;
+            _receiverAdapters[i] = receiverAdapter;
+           
+            unchecked {
+                ++i;
+            }
+        }
 
-//     /// @dev deploys the celer adapters to all configured chains
-//     function _deployCelerAdapters() internal {
-//         /// @notice deploy source adapter to Ethereum
-//         vm.selectFork(fork[1]);
-//         contractAddress[1][bytes("CELER_SENDER_ADAPTER")] = address(new CelerSenderAdapter(ETH_CELER_MSG_BUS));
+        /// @dev sets some configs to sender adapter (ETH_CHAIN_ADAPTER)
+        vm.selectFork(fork[1]);
 
-//         uint256[] memory srcChain = new uint256[](1);
-//         srcChain[0] = 1;
+        WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).updateReceiverAdapter(
+            DST_CHAINS, _receiverAdapters
+        );
 
-//         address[] memory senderAdapters = new address[](1);
-//         senderAdapters[0] = contractAddress[1][bytes("CELER_SENDER_ADAPTER")];
+        WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).setChainchainIdMap(
+            DST_CHAINS, WORMHOLE_CHAIN_IDS
+        );
+    }
 
-//         /// @notice deploy receiver adapters to BSC, POLYGON & ARB
-//         vm.selectFork(fork[56]);
-//         contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(BSC_CELER_MSG_BUS));
-//         CelerReceiverAdapter(contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(
-//             srcChain, senderAdapters
-//         );
+    /// @dev deploys the axelar adapters to all configured chains
+    function _deployAxelarAdapters() internal {
+        /// @notice deploy source adapter to Ethereum
+        vm.selectFork(fork[1]);
+        contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")] = address(new AxelarSenderAdapter(ETH_GAS_SERVICE, ETH_GATEWAY, contractAddress[1][bytes("GAC")]));
 
-//         vm.selectFork(fork[137]);
-//         contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(POLYGON_CELER_MSG_BUS));
-//         CelerReceiverAdapter(contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(
-//             srcChain, senderAdapters
-//         );
+                uint256 len = DST_CHAINS.length;
 
-//         vm.selectFork(fork[42161]);
-//         contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")] = address(new CelerReceiverAdapter(ARB_CELER_MSG_BUS));
-//         CelerReceiverAdapter(contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")]).updateSenderAdapter(
-//             srcChain, senderAdapters
-//         );
+        /// @notice deploy receiver adapters to all DST_CHAINS
+        address[] memory _receiverAdapters = new address[](len);
 
-//         vm.selectFork(fork[1]);
+        for (uint256 i; i < len;) {
+            uint256 chainId = DST_CHAINS[i];
+            vm.selectFork(fork[chainId]);
 
-//         address[] memory _receiverAdapters = new address[](3);
-//         _receiverAdapters[0] = contractAddress[56][bytes("CELER_RECEIVER_ADAPTER")];
-//         _receiverAdapters[1] = contractAddress[137][bytes("CELER_RECEIVER_ADAPTER")];
-//         _receiverAdapters[2] = contractAddress[42161][bytes("CELER_RECEIVER_ADAPTER")];
+            address receiverAdapter =
+                address(new AxelarReceiverAdapter(AXELAR_GATEWAYS[i], contractAddress[chainId][bytes("GAC")]));
+            contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")] = receiverAdapter;
+            _receiverAdapters[i] = receiverAdapter;
+           
+            unchecked {
+                ++i;
+            }
+        }
 
-//         CelerSenderAdapter(contractAddress[1][bytes("CELER_SENDER_ADAPTER")]).updateReceiverAdapter(
-//             DST_CHAINS, _receiverAdapters
-//         );
-//     }
+        vm.selectFork(fork[1]);
 
-//     /// @dev deploys the amb helpers to all configured chains
-//     function _deployHelpers() internal {
-//         /// @notice deploy amb helpers to Ethereum
-//         vm.selectFork(fork[1]);
-//         contractAddress[1][bytes("CELER_HELPER")] = address(new CelerHelper());
-//         contractAddress[1][bytes("HYPERLANE_HELPER")] = address(new HyperlaneHelper());
+        AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).updateReceiverAdapter(
+            DST_CHAINS, _receiverAdapters
+        );
+            
+        AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).setChainchainIdMap(
+            DST_CHAINS, AXELAR_CHAIN_IDS
+        );
+    }
 
-//         vm.allowCheatcodes(contractAddress[1][bytes("CELER_HELPER")]);
-//         vm.allowCheatcodes(contractAddress[1][bytes("HYPERLANE_HELPER")]);
+    /// @dev deploys the amb helpers to all configured chains
+    function _deployHelpers() internal {
+        /// @notice deploy amb helpers to Ethereum
+        vm.selectFork(fork[1]);
+        contractAddress[1][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper());
+        contractAddress[1][bytes("AXELAR_HELPER")] = address(new AxelarHelper());
 
-//         /// @notice deploy amb helpers to BSC, POLYGON & ARB
-//         for (uint256 i; i < DST_CHAINS.length; i++) {
-//             vm.selectFork(fork[DST_CHAINS[i]]);
-//             contractAddress[DST_CHAINS[i]][bytes("CELER_HELPER")] = address(new CelerHelper());
-//             contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_HELPER")] = address(new HyperlaneHelper());
+        vm.allowCheatcodes(contractAddress[1][bytes("WORMHOLE_HELPER")]);
+        vm.allowCheatcodes(contractAddress[1][bytes("AXELAR_HELPER")]);
 
-//             vm.allowCheatcodes(contractAddress[DST_CHAINS[i]][bytes("CELER_HELPER")]);
-//             vm.allowCheatcodes(contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_HELPER")]);
-//         }
-//     }
+        /// @notice deploy amb helpers to BSC, POLYGON & ARB
+        for (uint256 i; i < DST_CHAINS.length;) {
+            uint256 chainId = DST_CHAINS[i];
 
-//     /// @dev deploys the mma sender and receiver adapters to all configured chains
-//     function _deployCoreContracts() internal {
-//         /// @notice deploy mma sender to Ethereum
-//         vm.selectFork(fork[1]);
-//         contractAddress[1][bytes("MMA_SENDER")] = address(new MultiMessageSender(caller));
+            vm.selectFork(fork[chainId]);
+            contractAddress[chainId][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper());
+            contractAddress[chainId][bytes("AXELAR_HELPER")] = address(new AxelarHelper());
 
-//         /// @notice deploy amb helpers to BSC, POLYGON & ARB
-//         for (uint256 i; i < DST_CHAINS.length; i++) {
-//             vm.selectFork(fork[DST_CHAINS[i]]);
-//             contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver());
-//         }
-//     }
+            vm.allowCheatcodes(contractAddress[chainId][bytes("WORMHOLE_HELPER")]);
+            vm.allowCheatcodes(contractAddress[chainId][bytes("AXELAR_HELPER")]);
 
-//     /// @dev setup core contracts
-//     function _setupCoreContracts() internal {
-//         /// setup mma sender adapters
-//         vm.selectFork(fork[1]);
-//         vm.startPrank(caller);
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
-//         address[] memory _senderAdapters = new address[](2);
-//         _senderAdapters[0] = contractAddress[1][bytes("CELER_SENDER_ADAPTER")];
-//         _senderAdapters[1] = contractAddress[1][bytes("HYPERLANE_SENDER_ADAPTER")];
+    /// @dev deploys the mma sender and receiver adapters to all configured chains
+    function _deployCoreContracts() internal {
+        /// @notice deploy mma sender to ETHEREUM
+        vm.selectFork(fork[1]);
+        contractAddress[1][bytes("MMA_SENDER")] = address(new MultiMessageSender(caller, contractAddress[1][bytes("GAC")]));
 
-//         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(56, _senderAdapters);
-//         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(137, _senderAdapters);
-//         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(42161, _senderAdapters);
+        /// @notice deploy amb helpers to BSC & POLYGON
+        for (uint256 i; i < DST_CHAINS.length; i++) {
+            uint256 chainId = DST_CHAINS[i];
 
-//         /// setup mma receiver adapters
-//         for (uint256 i; i < DST_CHAINS.length; i++) {
-//             /// setup receiver adapters
-//             vm.selectFork(fork[DST_CHAINS[i]]);
+            vm.selectFork(fork[chainId]);
+            contractAddress[chainId][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver());
+        }
+    }
 
-//             address[] memory _recieverAdapters = new address[](2);
-//             _recieverAdapters[0] = contractAddress[DST_CHAINS[i]][bytes("CELER_RECEIVER_ADAPTER")];
-//             _recieverAdapters[1] = contractAddress[DST_CHAINS[i]][bytes("HYPERLANE_RECEIVER_ADAPTER")];
+    /// @dev setup core contracts
+    function _setupCoreContracts() internal {
+        /// setup mma sender adapters
+        vm.selectFork(fork[1]);
+        vm.startPrank(caller);
 
-//             MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-//                 1, contractAddress[1][bytes("MMA_SENDER")], _recieverAdapters, 2
-//             );
-//         }
-//     }
+        address[] memory _senderAdapters = new address[](2);
+        _senderAdapters[0] = contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")];
+        _senderAdapters[1] = contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")];
 
-//     /// @dev helps payload delivery using logs
-//     function _simulatePayloadDelivery(uint256 _srcChainId, uint256 _dstChainId, Vm.Log[] memory _logs) internal {
-//         /// simulates the off-chain infra of hyperlane
-//         HyperlaneHelper(contractAddress[_srcChainId][bytes("HYPERLANE_HELPER")]).help(
-//             address(HYPERLANE_MAILBOX), address(HYPERLANE_MAILBOX), fork[_dstChainId], _logs
-//         );
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(56, _senderAdapters);
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(137, _senderAdapters);
 
-//         /// simulates the off-chain infra of celer
-//         CelerHelper(contractAddress[_srcChainId][bytes("CELER_HELPER")]).help(
-//             uint64(_srcChainId),
-//             _getCelerMessageBus(_srcChainId),
-//             _getCelerMessageBus(_dstChainId),
-//             uint64(_dstChainId),
-//             fork[_dstChainId],
-//             _logs
-//         );
-//     }
+        /// setup mma receiver adapters
+        for (uint256 i; i < DST_CHAINS.length;) {
+            uint256 chainId = DST_CHAINS[i];
+            /// setup receiver adapters
+            vm.selectFork(fork[chainId]);
 
-//     /// @dev returns celer message bus for chain id
-//     function _getCelerMessageBus(uint256 _chainId) internal view returns (address) {
-//         if (_chainId == 1) {
-//             return ETH_CELER_MSG_BUS;
-//         }
+            address[] memory _recieverAdapters = new address[](2);
+            _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
+            _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
-//         if (_chainId == 137) {
-//             return POLYGON_CELER_MSG_BUS;
-//         }
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
+                1, contractAddress[1][bytes("MMA_SENDER")], _recieverAdapters, 2
+            );
 
-//         if (_chainId == 421616) {
-//             return ARB_CELER_MSG_BUS;
-//         }
+            unchecked{
+                ++i;
+            }
+        }
+    }
 
-//         return BSC_CELER_MSG_BUS;
-//     }
-// }
+    /// @dev helps payload delivery using logs
+    function _simulatePayloadDelivery(uint256 _srcChainId, uint256 _dstChainId, Vm.Log[] memory _logs) internal {}
+}

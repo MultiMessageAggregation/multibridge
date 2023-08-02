@@ -59,7 +59,7 @@ contract MultiMessageSender {
     /// @dev checks if msg.sender is caller configured in the constructor
     modifier onlyCaller() {
         if (msg.sender != caller) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+            revert Error.INVALID_PRIVILAGED_CALLER();
         }
         _;
     }
@@ -68,8 +68,13 @@ contract MultiMessageSender {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _caller is the previlaged address to interact with MultiMessageSender
+    /// @param _caller is the privilaged address to interact with MultiMessageSender
+    /// @param _gac is the controller/registry of uniswap mma 
     constructor(address _caller, address _gac) {
+        if(_caller == address(0) || _gac == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
         caller = _caller;
         gac = IGAC(_gac);
     }
@@ -143,6 +148,10 @@ contract MultiMessageSender {
     /// @param _senderAdapters is the adapter address to add
     function addSenderAdapters(uint256 _chainId, address[] calldata _senderAdapters) external onlyCaller {
         for (uint256 i; i < _senderAdapters.length;) {
+            if(_chainId == 0) {
+                revert Error.ZERO_CHAIN_ID();
+            }
+
             _addSenderAdapter(_chainId, _senderAdapters[i]);
 
             unchecked {

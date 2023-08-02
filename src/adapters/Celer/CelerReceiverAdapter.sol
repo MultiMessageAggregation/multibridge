@@ -13,9 +13,7 @@ import "./libraries/Utils.sol";
 
 interface IMessageReceiverApp {
     enum ExecutionStatus {
-        Fail, // execution failed, finalized
-        Success, // execution succeeded, finalized
-        Retry // execution rejected, can retry later
+        Success // execution succeeded, finalized
     }
 
     /// @notice Called by MessageBus to execute a message
@@ -30,8 +28,6 @@ interface IMessageReceiverApp {
 }
 
 contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
-    string constant ABORT_PREFIX = "MSG::ABORT:";
-
     address public immutable msgBus;
     IGAC public immutable gac;
 
@@ -50,8 +46,8 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPrevilagedCaller(msg.sender)) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+        if (!gac.isprivilagedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILAGED_CALLER();
         }
         _;
     }
