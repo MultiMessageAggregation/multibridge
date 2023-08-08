@@ -8,7 +8,6 @@ import "../BaseSenderAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
-import "../../interfaces/IBridgeSenderAdapter.sol";
 
 import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarGasService.sol";
@@ -18,45 +17,23 @@ interface IMultiBridgeSender {
     function caller() external view returns (address);
 }
 
-contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
+contract AxelarSenderAdapter is BaseSenderAdapter {
     string public constant name = "axelar";
 
     IAxelarGateway public immutable gateway;
-    IGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     IAxelarGasService public gasService;
-
-    /// @dev maps receiver adapter address on dst chain
-    mapping(uint256 => address) public receiverAdapters;
     mapping(uint256 => string) public chainIdMap;
-
-    /*/////////////////////////////////////////////////////////////////
-                                MODIFIERS
-    ////////////////////////////////////////////////////////////////*/
-    modifier onlyMultiMessageSender() {
-        if (msg.sender != gac.getMultiMessageSender()) {
-            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
-        }
-        _;
-    }
-
-    modifier onlyCaller() {
-        if (!gac.isprivilegedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILEGED_CALLER();
-        }
-        _;
-    }
 
     /*/////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _gasService, address _gateway, address _gac) {
+    constructor(address _gasService, address _gateway, address _gac) BaseSenderAdapter(_gac) {
         gasService = IAxelarGasService(_gasService);
         gateway = IAxelarGateway(_gateway);
-        gac = IGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -111,28 +88,6 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         }
     }
 
-    /// @inheritdoc IBridgeSenderAdapter
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyCaller
-    {
-        uint256 arrLength = _dstChainIds.length;
-
-        if (arrLength != _receiverAdapters.length) {
-            revert Error.ARRAY_LENGTH_MISMATCHED();
-        }
-
-        for (uint256 i; i < arrLength;) {
-            receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
-            emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
     /*/////////////////////////////////////////////////////////////////
                             EXTERNAL VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
@@ -161,7 +116,8 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         bytes calldata data
     ) internal {
         string memory receiverAdapterInString = StringAddressConversion.toString(receiverAdapter);
-        bytes memory payload = abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter,multibridgeReceiver, data));
+        bytes memory payload =
+            abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter, multibridgeReceiver, data));
 
         gasService.payNativeGasForContractCall{value: msg.value}(
             msg.sender, destinationChain, receiverAdapterInString, payload, msg.sender

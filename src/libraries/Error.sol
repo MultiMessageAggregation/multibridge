@@ -17,8 +17,20 @@ library Error {
     /// @dev is thrown if caller is not owner of the contract
     error INVALID_PRIVILEGED_CALLER();
 
+    /// @dev is thrown if caller is invalid receiver adapter
+    error INVALID_RECEIVER_ADAPTER();
+
+    /// @dev is thrown if caller is not self
+    error INVALID_SELF_CALLER();
+
     /// @dev is thrown if no sender adapter is found on MMA Sender
     error NO_SENDER_ADAPTER_FOUND();
+
+    /// @dev is thrown if msg id is already executed
+    error MSG_ID_ALREADY_EXECUTED();
+
+    /// @dev is thrown if message conflicts with current storage
+    error NEW_MESSAGE_CONFLITS_WITH_OLD_DATA();
 
     /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
     error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
@@ -34,6 +46,15 @@ library Error {
 
     /// @dev is thrown if receiver adapter array has duplicates
     error DUPLICATE_RECEIVER_ADAPTER();
+
+    /// @dev is thrown if deadline is lapsed
+    error MSG_EXECUTION_PASSED_DEADLINE();
+
+    /// @dev is thrown if quorum is not reached
+    error INVALID_QUORUM_FOR_EXECUTION();
+
+    /// @dev is thrown if message execution fails on the destination chain
+    error EXECUTION_FAILS_ON_DST();
 
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
