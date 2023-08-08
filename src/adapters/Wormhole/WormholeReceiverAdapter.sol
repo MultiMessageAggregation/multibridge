@@ -37,7 +37,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPRIVILEGEDCaller(msg.sender)) {
+        if (!gac.isprivilegedCaller(msg.sender)) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -88,7 +88,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _whIds are the bridge allocated chain id
-    function setChainchainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _whIds.length) {
@@ -140,7 +140,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         deliveryHashStatus[deliveryHash] = true;
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 

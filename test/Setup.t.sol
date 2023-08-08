@@ -62,7 +62,7 @@ abstract contract Setup is Test {
     /// @notice configure all axelar parameters in order of DST_CHAINS
     address[] public AXELAR_GATEWAYS = [BSC_GATEWAY, POLYGON_GATEWAY];
     address[] public AXELAR_GAS_SERVICES = [BSC_GAS_SERVICE, POLYGON_GAS_SERVICE];
-    string[] public AXELAR_CHAIN_IDS = ["binance", "Polygon"];
+    string[] public AXELAR_CHAIN_IDS = ["binance", "polygon"];
 
     /// @dev maps the local chain id to a fork id
     mapping(uint256 => uint256) public fork;
@@ -163,7 +163,7 @@ abstract contract Setup is Test {
             DST_CHAINS, _receiverAdapters
         );
 
-        WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).setChainchainIdMap(
+        WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).setChainIdMap(
             DST_CHAINS, WORMHOLE_CHAIN_IDS
         );
     }
@@ -202,7 +202,7 @@ abstract contract Setup is Test {
             DST_CHAINS, _receiverAdapters
         );
 
-        AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).setChainchainIdMap(
+        AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).setChainIdMap(
             DST_CHAINS, AXELAR_CHAIN_IDS
         );
     }
@@ -285,9 +285,25 @@ abstract contract Setup is Test {
 
             vm.selectFork(fork[chainId]);
             vm.startPrank(owner);
-            GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageCoreContracts(
-                contractAddress[chainId][bytes("MMA_SENDER")], contractAddress[chainId][bytes("MMA_RECEIVER")]
-            );
+
+            /// @dev mma sender is only available on chain id 1
+            if (chainId == 1) {
+                GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageSender(
+                    contractAddress[chainId][bytes("MMA_SENDER")]
+                );
+            }
+            for (uint256 j; j < ALL_CHAINS.length;) {
+                /// @dev mma receiver is not available on chain id 1
+                if (ALL_CHAINS[j] != 1) {
+                    GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
+                        ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
+                    );
+                }
+
+                unchecked {
+                    ++j;
+                }
+            }
 
             unchecked {
                 ++i;
@@ -354,7 +370,7 @@ abstract contract Setup is Test {
     /// @dev returns the chain id of axelar for local chain id
     function _axelarChainId(uint256 _chainId) internal pure returns (string memory) {
         if (_chainId == 1) {
-            return "Ethereum";
+            return "ethereum";
         }
 
         if (_chainId == 56) {
@@ -362,7 +378,7 @@ abstract contract Setup is Test {
         }
 
         if (_chainId == 137) {
-            return "Polygon";
+            return "polygon";
         }
 
         return "";

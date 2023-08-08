@@ -9,16 +9,22 @@ interface IGAC {
     //////////////////////////////////////////////////////////////*/
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
 
-    event CoreContractsUpdated(address indexed mmaSender, address indexed mmaReceiver);
+    event MultiMessageSenderUpdated(address indexed mmaSender);
+
+    event MultiMessageReceiverUpdated(uint256 chainId, address indexed mmaReceiver);
 
     /*///////////////////////////////////////////////////////////////
                         EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev sets the multi message contracts
+    /// @dev sets the multi message sender on same chain
     /// @param _mmaSender is the multi message sender contracts
+    function setMultiMessageSender(address _mmaSender) external;
+
+    /// @dev sets the multi message contracts
+    /// @param _chainId is the unique chain identifier of the receiver address
     /// @param _mmaReceiver is the multi message receiver contracts
-    function setMultiMessageCoreContracts(address _mmaSender, address _mmaReceiver) external;
+    function setMultiMessageReceiver(uint256 _chainId, address _mmaReceiver) external;
 
     /// @dev sets the global message gas limits
     /// @param _gasLimit is the limit to be set
@@ -49,7 +55,7 @@ interface IGAC {
     function getMultiMessageSender() external view returns (address _mmaSender);
 
     /// @dev returns the multi message receiver on the chain
-    function getMultiMessageReceiver() external view returns (address _mmaReceiver);
+    function getMultiMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver);
 
     /// @dev returns the expiry time of message from the time of dispatch
     function getMsgExpiryTime() external view returns (uint256 _expiration);

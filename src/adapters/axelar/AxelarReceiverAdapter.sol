@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
+import "forge-std/console.sol";
+
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
@@ -35,7 +37,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPRIVILEGEDCaller(msg.sender)) {
+        if (!gac.isprivilegedCaller(msg.sender)) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -105,7 +107,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         }
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 

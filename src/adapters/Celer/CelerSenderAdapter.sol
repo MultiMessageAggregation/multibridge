@@ -32,7 +32,7 @@ contract CelerSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     }
 
     modifier onlyCaller() {
-        if (!gac.isPRIVILEGEDCaller(msg.sender)) {
+        if (!gac.isprivilegedCaller(msg.sender)) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;

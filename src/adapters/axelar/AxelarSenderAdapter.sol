@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
+import "forge-std/console.sol";
+
 /// local imports
 import "../BaseSenderAdapter.sol";
 import "../../interfaces/IGAC.sol";
@@ -42,7 +44,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     }
 
     modifier onlyCaller() {
-        if (!gac.isPRIVILEGEDCaller(msg.sender)) {
+        if (!gac.isprivilegedCaller(msg.sender)) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -80,12 +82,12 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
         string memory destinationChain = chainIdMap[_toChainId];
 
-        if (bytes(destinationChain).length > 0) {
+        if (bytes(destinationChain).length <= 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
         msgId = _getNewMessageId(_toChainId, _to);
-        _callContract(destinationChain, StringAddressConversion.toString(receiverAdapter), msgId, _to, _data);
+        _callContract(destinationChain, receiverAdapter, msgId, _to, _data);
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
     }
@@ -93,7 +95,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _axlIds are the bridge allocated chain id
-    function setChainchainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyCaller {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _axlIds.length) {
@@ -137,6 +139,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
     /// @inheritdoc IBridgeSenderAdapter
     function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
+        return 1 ether;
         // return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
 
@@ -152,18 +155,18 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /// @param data The bytes data to pass to the contract on the destination chain.
     function _callContract(
         string memory destinationChain,
-        string memory receiverAdapter,
+        address receiverAdapter,
         bytes32 msgId,
         address multibridgeReceiver,
         bytes calldata data
     ) internal {
-        // encode payload for receiver adapter
-        bytes memory payload = abi.encode(msgId, address(msg.sender), multibridgeReceiver, data);
+        string memory receiverAdapterInString = StringAddressConversion.toString(receiverAdapter);
+        bytes memory payload = abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter,multibridgeReceiver, data));
 
         gasService.payNativeGasForContractCall{value: msg.value}(
-            msg.sender, destinationChain, receiverAdapter, payload, msg.sender
+            msg.sender, destinationChain, receiverAdapterInString, payload, msg.sender
         );
 
-        gateway.callContract(destinationChain, receiverAdapter, payload);
+        gateway.callContract(destinationChain, receiverAdapterInString, payload);
     }
 }

@@ -116,11 +116,12 @@ contract MultiMessageSender {
             message.bridgeName = bridgeAdapter.name();
 
             /// @dev assumes CREATE2 deployment for mma sender & receiver
-            uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, gac.getMultiMessageReceiver(), abi.encode(message));
+            uint256 fee =
+                bridgeAdapter.getMessageFee(_dstChainId, gac.getMultiMessageReceiver(_dstChainId), abi.encode(message));
 
             /// @dev if one bridge is paused, the flow shouldn't be broken
             try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
-                _dstChainId, gac.getMultiMessageReceiver(), abi.encode(message)
+                _dstChainId, gac.getMultiMessageReceiver(_dstChainId), abi.encode(message)
             ) {} catch {
                 emit ErrorSendMessage(adapters[i], message);
             }
