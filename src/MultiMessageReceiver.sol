@@ -42,7 +42,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
     event QuorumThresholdUpdated(uint64 quorumThreshold);
-    event SingleBridgeMsgReceived(bytes32 msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter);
+    event SingleBridgeMsgReceived(
+        bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
+    );
     event MessageExecuted(bytes32 msgId, address target, uint256 nonce, bytes callData);
 
     /*/////////////////////////////////////////////////////////////////
@@ -184,11 +186,11 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     {
         uint256 len = _receiverAdapters.length;
 
-        if(len != _operations.length) {
+        if (len != _operations.length) {
             revert Error.ARRAY_LENGTH_MISMATCHED();
         }
-        
-        for (uint256 i; i < len; ) {
+
+        for (uint256 i; i < len;) {
             _updateReceiverAdapter(_receiverAdapters[i], _operations[i]);
 
             unchecked {
@@ -200,10 +202,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @notice Update power quorum threshold of message execution.
     function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
         /// NOTE: should check 2/3 ?
-        if(_quorumThreshold <= trustedExecutor.length || _quorumThreshold == 0) {
+        if (_quorumThreshold <= trustedExecutor.length || _quorumThreshold == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
-        
+
         quorumThreshold = _quorumThreshold;
         emit QuorumThresholdUpdated(_quorumThreshold);
     }

@@ -120,7 +120,10 @@ abstract contract Setup is Test {
             uint256 chainId = ALL_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
-            contractAddress[chainId][bytes("GAC")] = address(new GAC{salt: _salt}());
+            GAC gac = new GAC{salt: _salt}();
+            gac.setMsgExpiryTime(2 days);
+            contractAddress[chainId][bytes("GAC")] = address(gac);
+
 
             unchecked {
                 ++i;
