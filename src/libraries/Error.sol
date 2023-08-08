@@ -15,7 +15,7 @@ library Error {
     error ARRAY_LENGTH_MISMATCHED();
 
     /// @dev is thrown if caller is not owner of the contract
-    error INVALID_PRIVILAGED_CALLER();
+    error INVALID_PRIVILEGED_CALLER();
 
     /// @dev is thrown if no sender adapter is found on MMA Sender
     error NO_SENDER_ADAPTER_FOUND();
@@ -28,6 +28,9 @@ library Error {
 
     /// @dev is thrown if quorum threshold is greater than receiver adapters
     error INVALID_QUORUM_THRESHOLD();
+
+    /// @dev is thrown if sender adapter array has duplicates
+    error DUPLICATE_SENDER_ADAPTER();
 
     /// @dev is thrown if receiver adapter array has duplicates
     error DUPLICATE_RECEIVER_ADAPTER();

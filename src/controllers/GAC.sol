@@ -76,7 +76,7 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function isprivilagedCaller(address _caller) external view override returns (bool) {
+    function isprivilegedCaller(address _caller) external view override returns (bool) {
         if (_caller == owner()) {
             return true;
         }

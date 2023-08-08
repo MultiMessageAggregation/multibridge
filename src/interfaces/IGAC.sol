@@ -39,7 +39,7 @@ interface IGAC {
     /// @dev returns `true` if the caller is global access controller
     /// @param _caller is the msg.sender to validate
     /// @return boolean indicating the validity of the caller
-    function isprivilagedCaller(address _caller) external view returns (bool);
+    function isprivilegedCaller(address _caller) external view returns (bool);
 
     /// @dev returns the global message delivery gas limit configured
     /// @return _gasLimit is the configured gas limit on dst
