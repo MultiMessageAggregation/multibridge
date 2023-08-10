@@ -28,7 +28,6 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     uint16 public senderChain;
 
     mapping(uint256 => uint16) public chainIdMap;
-    mapping(uint16 => uint256) public reversechainIdMap;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public deliveryHashStatus;
@@ -97,7 +96,6 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
 
         for (uint256 i; i < arrLength;) {
             chainIdMap[_origIds[i]] = _whIds[i];
-            reversechainIdMap[_whIds[i]] = _origIds[i];
 
             unchecked {
                 ++i;
@@ -145,10 +143,9 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = reversechainIdMap[sourceChain];
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }

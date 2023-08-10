@@ -22,6 +22,7 @@ contract GAC is IGAC, Ownable {
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
     address public multiMessageSender;
+    
     mapping(uint256 chainId => address mmaReceiver) public multiMessageReceiver;
 
     /*///////////////////////////////////////////////////////////////

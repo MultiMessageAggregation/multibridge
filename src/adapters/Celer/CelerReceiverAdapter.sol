@@ -126,10 +126,9 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = uint256(_srcChainId);
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }

@@ -31,8 +31,6 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public commandIdStatus;
 
-    mapping(string => uint256) public reverseChainIdMap;
-
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
@@ -115,10 +113,9 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         commandIdStatus[commandId] = true;
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = reverseChainIdMap[sourceChain];
-
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }

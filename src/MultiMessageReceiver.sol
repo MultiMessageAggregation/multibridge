@@ -106,7 +106,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @dev If the accumulated power of a message has reached the power threshold,
     /// this message will be executed immediately, which will invoke an external function call
     /// according to the message content.
-    function receiveMessage(MessageLibrary.Message calldata _message, uint256 _srcChainId)
+    function receiveMessage(MessageLibrary.Message calldata _message)
         external
         override
         onlyReceiverAdapter
@@ -115,9 +115,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_DST_CHAIN();
         }
 
+        /// FIXME: could make this configurable through GAC, instead of hardcoding 1
+        if(_message.srcChainId != 1) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
         /// This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         /// Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
-        bytes32 msgId = MessageLibrary.computeMsgId(_message, uint64(_srcChainId));
+        bytes32 msgId = MessageLibrary.computeMsgId(_message, uint64(_message.srcChainId));
 
         if (isDuplicateAdapter[msgId][msg.sender]) {
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();

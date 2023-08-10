@@ -109,7 +109,7 @@ contract MultiMessageSender {
         uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
 
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(_dstChainId, _target, nonce, _callData, msgExpiration, "");
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration, "");
 
         for (uint256 i; i < adapterLength;) {
             IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
@@ -183,7 +183,7 @@ contract MultiMessageSender {
         address _target,
         bytes calldata _callData
     ) public view returns (uint256 totalFee) {
-        MessageLibrary.Message memory message = MessageLibrary.Message(_dstChainId, _target, nonce, _callData, 0, "");
+        MessageLibrary.Message memory message = MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0, "");
         bytes memory data;
 
         /// @dev writes to memory for saving gas
