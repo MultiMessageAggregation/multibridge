@@ -46,8 +46,8 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isprivilagedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILAGED_CALLER();
+        if (!gac.isPrivilegedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
     }
@@ -121,15 +121,14 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
         isMessageExecuted[decodedPayload.msgId] = true;
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = uint256(_srcChainId);
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }

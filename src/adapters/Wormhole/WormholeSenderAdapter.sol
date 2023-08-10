@@ -9,44 +9,22 @@ import "../BaseSenderAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
-import "../../interfaces/IBridgeSenderAdapter.sol";
 
 /// @notice sender adapter for wormhole bridge
-contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
+contract WormholeSenderAdapter is BaseSenderAdapter {
     string public constant name = "wormhole";
-
     IWormholeRelayer private immutable relayer;
-    IGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     mapping(uint256 => uint16) chainIdMap;
-    mapping(uint256 => address) public receiverAdapters;
-
-    /*/////////////////////////////////////////////////////////////////
-                                 MODIFIER
-    ////////////////////////////////////////////////////////////////*/
-    modifier onlyMultiMessageSender() {
-        if (msg.sender != gac.getMultiMessageSender()) {
-            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
-        }
-        _;
-    }
-
-    modifier onlyCaller() {
-        if (!gac.isprivilagedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILAGED_CALLER();
-        }
-        _;
-    }
 
     /*/////////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _wormholeRelayer, address _gac) {
+    constructor(address _wormholeRelayer, address _gac) BaseSenderAdapter(_gac) {
         relayer = IWormholeRelayer(_wormholeRelayer);
-        gac = IGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -91,7 +69,7 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _whIds are the bridge allocated chain id
-    function setChainchainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _whIds.length) {
@@ -100,28 +78,6 @@ contract WormholeSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
         for (uint256 i; i < arrLength;) {
             chainIdMap[_origIds[i]] = _whIds[i];
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /// @inheritdoc IBridgeSenderAdapter
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyCaller
-    {
-        uint256 arrLength = _dstChainIds.length;
-
-        if (arrLength != _receiverAdapters.length) {
-            revert Error.ARRAY_LENGTH_MISMATCHED();
-        }
-
-        for (uint256 i; i < arrLength;) {
-            receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
-            emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
 
             unchecked {
                 ++i;

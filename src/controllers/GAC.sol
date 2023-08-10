@@ -22,7 +22,8 @@ contract GAC is IGAC, Ownable {
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
     address public multiMessageSender;
-    address public multiMessageReceiver;
+    
+    mapping(uint256 chainId => address mmaReceiver) public multiMessageReceiver;
 
     /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -34,15 +35,29 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function setMultiMessageCoreContracts(address _mmaSender, address _mmaReceiver) external override onlyOwner {
-        // if(_mmaSender == address(0) || _mmaReceiver == address(0)) {
-        //     revert Error.ZERO_ADDRESS_INPUT();
-        // }
+    function setMultiMessageSender(address _mmaSender) external override onlyOwner {
+        if (_mmaSender == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
 
         multiMessageSender = _mmaSender;
-        multiMessageReceiver = _mmaReceiver;
 
-        emit CoreContractsUpdated(_mmaSender, _mmaReceiver);
+        emit MultiMessageSenderUpdated(_mmaSender);
+    }
+
+    /// @inheritdoc IGAC
+    function setMultiMessageReceiver(uint256 _chainId, address _mmaReceiver) external override onlyOwner {
+        if (_mmaReceiver == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        if (_chainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
+        multiMessageReceiver[_chainId] = _mmaReceiver;
+
+        emit MultiMessageReceiverUpdated(_chainId, _mmaReceiver);
     }
 
     /// @inheritdoc IGAC
@@ -76,7 +91,7 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function isprivilagedCaller(address _caller) external view override returns (bool) {
+    function isPrivilegedCaller(address _caller) external view override returns (bool) {
         if (_caller == owner()) {
             return true;
         }
@@ -105,7 +120,7 @@ contract GAC is IGAC, Ownable {
     }
 
     /// @inheritdoc IGAC
-    function getMultiMessageReceiver() external view returns (address _mmaReceiver) {
-        _mmaReceiver = multiMessageReceiver;
+    function getMultiMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver) {
+        _mmaReceiver = multiMessageReceiver[_chainId];
     }
 }

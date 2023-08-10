@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
+import "forge-std/console.sol";
+
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
@@ -29,14 +31,12 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public commandIdStatus;
 
-    mapping(string => uint256) public reverseChainIdMap;
-
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isprivilagedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILAGED_CALLER();
+        if (!gac.isPrivilegedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
     }
@@ -105,7 +105,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         }
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
@@ -113,10 +113,9 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         commandIdStatus[commandId] = true;
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = reverseChainIdMap[sourceChain];
-
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }

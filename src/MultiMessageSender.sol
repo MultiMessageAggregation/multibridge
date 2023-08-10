@@ -59,7 +59,7 @@ contract MultiMessageSender {
     /// @dev checks if msg.sender is caller configured in the constructor
     modifier onlyCaller() {
         if (msg.sender != caller) {
-            revert Error.INVALID_PRIVILAGED_CALLER();
+            revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
     }
@@ -68,7 +68,7 @@ contract MultiMessageSender {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _caller is the privilaged address to interact with MultiMessageSender
+    /// @param _caller is the PRIVILEGED address to interact with MultiMessageSender
     /// @param _gac is the controller/registry of uniswap mma
     constructor(address _caller, address _gac) {
         if (_caller == address(0) || _gac == address(0)) {
@@ -109,18 +109,25 @@ contract MultiMessageSender {
         uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
 
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(_dstChainId, _target, nonce, _callData, msgExpiration, "");
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration, "");
 
         for (uint256 i; i < adapterLength;) {
             IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
             message.bridgeName = bridgeAdapter.name();
 
+            address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
+
+            if(mmaReceiver == address(0)) {
+                revert Error.ZERO_RECEIVER_ADAPTER();
+            }
+            
             /// @dev assumes CREATE2 deployment for mma sender & receiver
-            uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, gac.getMultiMessageReceiver(), abi.encode(message));
+            uint256 fee =
+                bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
 
             /// @dev if one bridge is paused, the flow shouldn't be broken
             try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
-                _dstChainId, gac.getMultiMessageReceiver(), abi.encode(message)
+                _dstChainId, mmaReceiver, abi.encode(message)
             ) {} catch {
                 emit ErrorSendMessage(adapters[i], message);
             }
@@ -176,7 +183,7 @@ contract MultiMessageSender {
         address _target,
         bytes calldata _callData
     ) public view returns (uint256 totalFee) {
-        MessageLibrary.Message memory message = MessageLibrary.Message(_dstChainId, _target, nonce, _callData, 0, "");
+        MessageLibrary.Message memory message = MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0, "");
         bytes memory data;
 
         /// @dev writes to memory for saving gas
@@ -203,6 +210,9 @@ contract MultiMessageSender {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
+        /// @dev reverts if it finds a duplicate
+        _checkDuplicates(_senderAdapter);
+
         senderAdapters.push(_senderAdapter);
         emit SenderAdapterUpdated(_senderAdapter, true);
     }
@@ -220,6 +230,22 @@ contract MultiMessageSender {
 
                 emit SenderAdapterUpdated(_senderAdapter, false);
                 return;
+            }
+        }
+    }
+
+    /// @dev validates if the sender adapter already exists
+    /// @param _senderAdapter is the address of the sender to check
+    function _checkDuplicates(address _senderAdapter) internal view {
+        uint256 len = senderAdapters.length;
+
+        for (uint256 i; i < len;) {
+            if (senderAdapters[i] == _senderAdapter) {
+                revert Error.DUPLICATE_SENDER_ADAPTER();
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }

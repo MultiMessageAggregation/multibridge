@@ -13,5 +13,5 @@ interface IMultiMessageReceiver {
      * @dev Every receiver adapter should call this function with decoded MessageStruct.Message
      * when receiver adapter receives a message produced by a corresponding sender adapter on the source chain.
      */
-    function receiveMessage(MessageLibrary.Message calldata _message, uint256 _srcChainId) external;
+    function receiveMessage(MessageLibrary.Message calldata _message) external;
 }

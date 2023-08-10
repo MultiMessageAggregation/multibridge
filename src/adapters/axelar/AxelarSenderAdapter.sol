@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
+import "forge-std/console.sol";
+
 /// local imports
 import "../BaseSenderAdapter.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
-import "../../interfaces/IBridgeSenderAdapter.sol";
 
 import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarGasService.sol";
@@ -16,45 +17,23 @@ interface IMultiBridgeSender {
     function caller() external view returns (address);
 }
 
-contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
+contract AxelarSenderAdapter is BaseSenderAdapter {
     string public constant name = "axelar";
 
     IAxelarGateway public immutable gateway;
-    IGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     IAxelarGasService public gasService;
-
-    /// @dev maps receiver adapter address on dst chain
-    mapping(uint256 => address) public receiverAdapters;
     mapping(uint256 => string) public chainIdMap;
-
-    /*/////////////////////////////////////////////////////////////////
-                                MODIFIERS
-    ////////////////////////////////////////////////////////////////*/
-    modifier onlyMultiMessageSender() {
-        if (msg.sender != gac.getMultiMessageSender()) {
-            revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
-        }
-        _;
-    }
-
-    modifier onlyCaller() {
-        if (!gac.isprivilagedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILAGED_CALLER();
-        }
-        _;
-    }
 
     /*/////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _gasService, address _gateway, address _gac) {
+    constructor(address _gasService, address _gateway, address _gac) BaseSenderAdapter(_gac) {
         gasService = IAxelarGasService(_gasService);
         gateway = IAxelarGateway(_gateway);
-        gac = IGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -80,12 +59,12 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
 
         string memory destinationChain = chainIdMap[_toChainId];
 
-        if (bytes(destinationChain).length > 0) {
+        if (bytes(destinationChain).length <= 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
         msgId = _getNewMessageId(_toChainId, _to);
-        _callContract(destinationChain, StringAddressConversion.toString(receiverAdapter), msgId, _to, _data);
+        _callContract(destinationChain, receiverAdapter, msgId, _to, _data);
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
     }
@@ -93,7 +72,7 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _axlIds are the bridge allocated chain id
-    function setChainchainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyCaller {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _axlIds.length) {
@@ -109,34 +88,14 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
         }
     }
 
-    /// @inheritdoc IBridgeSenderAdapter
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyCaller
-    {
-        uint256 arrLength = _dstChainIds.length;
-
-        if (arrLength != _receiverAdapters.length) {
-            revert Error.ARRAY_LENGTH_MISMATCHED();
-        }
-
-        for (uint256 i; i < arrLength;) {
-            receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
-            emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
     /*/////////////////////////////////////////////////////////////////
                             EXTERNAL VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeSenderAdapter
     function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
+        /// FIXME: axelar has no on-chain message fee estimate. should have to overpay and get refund
+        return 1 ether;
         // return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
 
@@ -152,18 +111,19 @@ contract AxelarSenderAdapter is IBridgeSenderAdapter, BaseSenderAdapter {
     /// @param data The bytes data to pass to the contract on the destination chain.
     function _callContract(
         string memory destinationChain,
-        string memory receiverAdapter,
+        address receiverAdapter,
         bytes32 msgId,
         address multibridgeReceiver,
         bytes calldata data
     ) internal {
-        // encode payload for receiver adapter
-        bytes memory payload = abi.encode(msgId, address(msg.sender), multibridgeReceiver, data);
+        string memory receiverAdapterInString = StringAddressConversion.toString(receiverAdapter);
+        bytes memory payload =
+            abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter, multibridgeReceiver, data));
 
         gasService.payNativeGasForContractCall{value: msg.value}(
-            msg.sender, destinationChain, receiverAdapter, payload, msg.sender
+            msg.sender, destinationChain, receiverAdapterInString, payload, msg.sender
         );
 
-        gateway.callContract(destinationChain, receiverAdapter, payload);
+        gateway.callContract(destinationChain, receiverAdapterInString, payload);
     }
 }
