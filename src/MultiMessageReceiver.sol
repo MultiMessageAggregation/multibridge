@@ -138,14 +138,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         /// stores the execution data required
         ExecutionData memory prevStored = msgReceived[msgId];
-        if (prevStored.target != address(0)) {
-            if (
-                prevStored.target != _message.target || keccak256(prevStored.callData) != keccak256(_message.callData)
-                    || prevStored.expiration != _message.expiration || prevStored.nonce != _message.nonce
-            ) {
-                revert Error.NEW_MESSAGE_CONFLITS_WITH_OLD_DATA();
-            }
-        } else {
+        
+        /// stores the message if the amb is the first one delivering the message
+        if (prevStored.target == address(0)) {
             msgReceived[msgId] = ExecutionData(_message.target, _message.callData, _message.nonce, _message.expiration);
         }
 
