@@ -91,7 +91,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             }
         }
 
-        if (_quorumThreshold > trustedExecutor.length) {
+        if (_quorumThreshold > trustedExecutor.length || _quorumThreshold == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
@@ -202,7 +202,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @notice Update power quorum threshold of message execution.
     function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
         /// NOTE: should check 2/3 ?
-        if (_quorumThreshold <= trustedExecutor.length || _quorumThreshold == 0) {
+        if (_quorumThreshold > trustedExecutor.length || _quorumThreshold == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 

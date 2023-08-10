@@ -46,7 +46,7 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isprivilegedCaller(msg.sender)) {
+        if (!gac.isPrivilegedCaller(msg.sender)) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
