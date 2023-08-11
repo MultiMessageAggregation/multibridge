@@ -5,6 +5,7 @@ pragma solidity >=0.8.9;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// interfaces
+import "./interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
 
@@ -19,29 +20,32 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice minimum accumulated power precentage for each message to be executed
-    uint64 public quorumThreshold;
+    /// @notice minimum number of AMBs required for delivery before execution
+    uint64 public quorum;
 
-    /// @notice bridge receiver adapters that has already delivered this message.
-    /// @notice msgId => MsgInfo
-    struct MsgInfo {
-        bool executed;
-        mapping(address => bool) from;
+    struct ExecutionData {
+        address target;
+        bytes callData;
+        uint256 nonce;
+        uint256 expiration;
     }
 
-    mapping(bytes32 => MsgInfo) public msgInfos;
+    /// @notice stores each msg id related info
+    mapping(bytes32 => bool) public isExecuted;
+    mapping(bytes32 => ExecutionData) public msgReceived;
+    mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
+    mapping(bytes32 => uint256) public messageVotes;
 
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
 
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event MultiMessageSenderUpdated(uint256 chainId, address multiMessageSender);
-    event QuorumThresholdUpdated(uint64 quorumThreshold);
+    event quorumUpdated(uint64 quorum);
     event SingleBridgeMsgReceived(
-        bytes32 msgId, uint256 srcChainId, string indexed bridgeName, uint256 nonce, address receiverAdapter
+        bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
-    event MessageExecuted(bytes32 msgId, uint256 srcChainId, address target, uint256 nonce,  bytes callData);
+    event MessageExecuted(bytes32 msgId, address target, uint256 nonce, bytes callData);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -49,40 +53,60 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice A modifier used for restricting the caller of some functions to be configured receiver adapters.
     modifier onlyReceiverAdapter() {
-        require(isTrustedExecutor(msg.sender), "not allowed bridge receiver adapter");
+        if (!isTrustedExecutor(msg.sender)) {
+            revert Error.INVALID_RECEIVER_ADAPTER();
+        }
         _;
     }
 
-    ///  @notice A modifier used for restricting the caller of some functions to be this contract itself.
+    /// @notice A modifier used for restricting the caller of some functions to be this contract itself.
     modifier onlySelf() {
-        require(msg.sender == address(this), "not self");
+        if (msg.sender != address(this)) {
+            revert Error.INVALID_SELF_CALLER();
+        }
         _;
     }
+
+    /// 
 
     /*/////////////////////////////////////////////////////////////////
                                 INITIALIZER
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice A one-time function to initialize contract states.
-    function initialize(address[] calldata _receiverAdapters, uint64 _quorumThreshold) external initializer {
-        require(_receiverAdapters.length > 0, "empty receiver adapter list");
-        require(_quorumThreshold <= _receiverAdapters.length, "invalid threshold");
-        for (uint256 i; i < _receiverAdapters.length; ++i) {
-            require(_receiverAdapters[i] != address(0), "receiver adapter is zero address");
-            _updateReceiverAdapter(_receiverAdapters[i], true);
+    /// @notice sets the initial paramters
+    function initialize(address[] calldata _receiverAdapters, uint64 _quorum) external initializer {
+        uint256 len = _receiverAdapters.length;
+
+        if (len == 0) {
+            revert Error.ZERO_RECEIVER_ADAPTER();
         }
-        quorumThreshold = _quorumThreshold;
+
+        for (uint256 i; i < len;) {
+            if (_receiverAdapters[i] == address(0)) {
+                revert Error.ZERO_ADDRESS_INPUT();
+            }
+
+            _updateReceiverAdapter(_receiverAdapters[i], true);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (_quorum > trustedExecutor.length || _quorum == 0) {
+            revert Error.INVALID_QUORUM_THRESHOLD();
+        }
+
+        quorum = _quorum;
     }
 
     /*/////////////////////////////////////////////////////////////////
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice Receive messages from allowed bridge receiver adapters.
-    /// @dev If the accumulated power of a message has reached the power threshold,
-    /// this message will be executed immediately, which will invoke an external function call
-    /// according to the message content.
-    function receiveMessage(MessageLibrary.Message calldata _message, uint256 _srcChainId)
+    /// @notice receive messages from allowed bridge receiver adapters
+    /// @param _message is the crosschain message sent by the mma sender
+    function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName)
         external
         override
         onlyReceiverAdapter
@@ -91,45 +115,65 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_DST_CHAIN();
         }
 
-        /// This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
-        /// Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
-        bytes32 msgId = MessageLibrary.computeMsgId(_message, uint64(_srcChainId));
+        /// FIXME: could make this configurable through GAC, instead of hardcoding 1
+        if(_message.srcChainId != 1) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
 
-        MsgInfo storage msgInfo = msgInfos[msgId];
+        /// this msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
+        /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
+        bytes32 msgId = MessageLibrary.computeMsgId(_message);
 
-        if (msgInfo.from[msg.sender] == true) {
+        if (isDuplicateAdapter[msgId][msg.sender]) {
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
         }
 
-        msgInfo.from[msg.sender] = true;
-        emit SingleBridgeMsgReceived(msgId, _srcChainId, _message.bridgeName, _message.nonce, msg.sender);
+        if (isExecuted[msgId]) {
+            revert Error.MSG_ID_ALREADY_EXECUTED();
+        }
+
+        /// increment quorum
+        isDuplicateAdapter[msgId][msg.sender] = true;
+        ++messageVotes[msgId];
+
+        /// stores the execution data required
+        ExecutionData memory prevStored = msgReceived[msgId];
+        
+        /// stores the message if the amb is the first one delivering the message
+        if (prevStored.target == address(0)) {
+            msgReceived[msgId] = ExecutionData(_message.target, _message.callData, _message.nonce, _message.expiration);
+        }
+
+        emit SingleBridgeMsgReceived(msgId, _bridgeName, _message.nonce, msg.sender);
     }
 
     /// @notice Execute the message (invoke external call according to the message content) if the message
     /// @dev has reached the power threshold (the same message has been delivered by enough multiple bridges).
     /// Param values can be found in the MultiMessageMsgSent event from the source chain MultiMessageSender contract.
-    function executeMessage(
-        uint256 _srcChainId,
-        uint256 _dstChainId,
-        uint256 _nonce,
-        address _target,
-        bytes calldata _callData,
-        uint256 _expiration
-    ) external {
-        require(_expiration < block.timestamp || _expiration == 0, "message expired");
-        MessageLibrary.Message memory message =
-            MessageLibrary.Message(_dstChainId, _target, _nonce, _callData, _expiration, "");
+    function executeMessage(bytes32 msgId) external {
+        ExecutionData memory _execData = msgReceived[msgId];
 
-        bytes32 msgId = MessageLibrary.computeMsgId(message, _srcChainId);
-        MsgInfo storage msgInfo = msgInfos[msgId];
+        if (block.timestamp > _execData.expiration) {
+            revert Error.MSG_EXECUTION_PASSED_DEADLINE();
+        }
 
-        require(!msgInfo.executed, "message already executed");
-        msgInfo.executed = true;
-        require(_computeMessagePower(msgInfo) >= quorumThreshold, "threshold not met");
+        if (isExecuted[msgId]) {
+            revert Error.MSG_ID_ALREADY_EXECUTED();
+        }
 
-        (bool ok,) = _target.call(_callData);
-        require(ok, "external message execution failed");
-        emit MessageExecuted(msgId, _srcChainId, _target, _nonce, _callData);
+        isExecuted[msgId] = true;
+
+        if (messageVotes[msgId] < quorum) {
+            revert Error.INVALID_QUORUM_FOR_EXECUTION();
+        }
+
+        (bool status,) = _execData.target.call(_execData.callData);
+
+        if (!status) {
+            revert Error.EXECUTION_FAILS_ON_DST();
+        }
+
+        emit MessageExecuted(msgId, _execData.target, _execData.nonce, _execData.callData);
     }
 
     /// @notice Update bridge receiver adapters.
@@ -138,57 +182,65 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         external
         onlySelf
     {
-        require(_receiverAdapters.length == _operations.length, "mismatch length");
-        for (uint256 i; i < _receiverAdapters.length; ++i) {
+        uint256 len = _receiverAdapters.length;
+
+        if (len != _operations.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < len;) {
             _updateReceiverAdapter(_receiverAdapters[i], _operations[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
-        require(_quorumThreshold <= trustedExecutor.length && _quorumThreshold > 0, "invalid threshold");
-        quorumThreshold = _quorumThreshold;
-        emit QuorumThresholdUpdated(_quorumThreshold);
+    function updatequorum(uint64 _quorum) external onlySelf {
+        /// NOTE: should check 2/3 ?
+        if (_quorum > trustedExecutor.length || _quorum == 0) {
+            revert Error.INVALID_QUORUM_THRESHOLD();
+        }
+
+        quorum = _quorum;
+        emit quorumUpdated(_quorum);
     }
 
-    /// @notice View message info, return (executed, msgPower, delivered adapters)
-    function getMessageInfo(bytes32 msgId) public view returns (bool, uint64, address[] memory) {
-        MsgInfo storage msgInfo = msgInfos[msgId];
-        uint64 msgPower = _computeMessagePower(msgInfo);
-        address[] memory adapters = new address[](msgPower);
-        if (msgPower > 0) {
-            uint32 n = 0;
-            for (uint64 i = 0; i < trustedExecutor.length; i++) {
-                address adapter = trustedExecutor[i];
-                if (msgInfo.from[adapter]) {
-                    adapters[n++] = adapter;
-                }
+    /// @notice view message info, return (executed, msgPower, delivered adapters)
+    function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
+        uint256 msgCurrentQuorum = messageVotes[msgId];
+        string[] memory successfulBridge = new string[](msgCurrentQuorum);
+
+        uint256 currIndex;
+        for(uint256 i; i < trustedExecutor.length; ) {
+            if(isDuplicateAdapter[msgId][trustedExecutor[i]]) {
+               successfulBridge[currIndex] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
+               ++currIndex;
+            }    
+
+            unchecked {
+                ++i;
             }
         }
-        return (msgInfo.executed, msgPower, adapters);
+
+        return (isExecuted[msgId], msgCurrentQuorum, successfulBridge);
     }
 
     /*/////////////////////////////////////////////////////////////////
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function _computeMessagePower(MsgInfo storage _msgInfo) private view returns (uint64) {
-        uint64 msgPower;
-        for (uint256 i; i < trustedExecutor.length; ++i) {
-            address adapter = trustedExecutor[i];
-            if (_msgInfo.from[adapter]) {
-                ++msgPower;
-            }
-        }
-        return msgPower;
-    }
-
     function _updateReceiverAdapter(address _receiverAdapter, bool _add) private {
         if (_add) {
             _addTrustedExecutor(_receiverAdapter);
         } else {
             _removeTrustedExecutor(_receiverAdapter);
-            require(quorumThreshold <= trustedExecutor.length, "insufficient total power after removal");
+
+            if (quorum > trustedExecutor.length) {
+                revert Error.INVALID_QUORUM_THRESHOLD();
+            }
         }
         emit ReceiverAdapterUpdated(_receiverAdapter, _add);
     }

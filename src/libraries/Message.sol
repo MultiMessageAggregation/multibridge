@@ -5,29 +5,27 @@ pragma solidity >=0.8.9;
 /// @dev library for cross-chain message & related helper functions
 library MessageLibrary {
     /// @dev Message indicates a remote call to target contract on destination chain.
-    /// @param dstChainId is the id of chain where this message is sent to.
+    /// @param srcChainId is the id of chain where this message is sent from
+    /// @param dstChainId is the id of chain where this message is sent to
     /// @param nonce is an incrementing number held by MultiMessageSender to ensure msgId uniqueness
-    /// @param target is the contract to be called on dst chain.
-    /// @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData)).
-    /// @param expiration is the unix time when the message expires, zero means never expire.
-    /// @param bridgeName is the message bridge name used for sending this message.
+    /// @param target is the contract to be called on dst chain
+    /// @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData))
+    /// @param expiration is the unix time when the message expires, zero means never expire
     struct Message {
+        uint256 srcChainId;
         uint256 dstChainId;
         address target;
         uint256 nonce;
         bytes callData;
         uint256 expiration;
-        string bridgeName;
     }
 
     /// @notice computes the message id (32 byte hash of the encoded message parameters)
-    /// @notice message.bridgeName is not included in the message id.
     /// @param _message is the cross-chain message
-    /// @param _srcChainId is the identifier of the source chain
-    function computeMsgId(Message memory _message, uint256 _srcChainId) internal pure returns (bytes32) {
+    function computeMsgId(Message memory _message) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
-                _srcChainId,
+                _message.srcChainId,
                 _message.dstChainId,
                 _message.nonce,
                 _message.target,

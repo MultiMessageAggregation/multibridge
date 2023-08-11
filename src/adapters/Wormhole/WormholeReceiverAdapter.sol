@@ -3,6 +3,7 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
+import "forge-std/console.sol";
 
 /// local imports
 import "../../interfaces/IBridgeReceiverAdapter.sol";
@@ -17,6 +18,7 @@ import "../../libraries/Message.sol";
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
 /// the MMA receiver.
 contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
+    string public constant name = "wormhole";
     address public immutable relayer;
     IGAC public immutable gac;
 
@@ -27,7 +29,6 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     uint16 public senderChain;
 
     mapping(uint256 => uint16) public chainIdMap;
-    mapping(uint16 => uint256) public reversechainIdMap;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public deliveryHashStatus;
@@ -36,8 +37,8 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPrevilagedCaller(msg.sender)) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+        if (!gac.isPrivilegedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
     }
@@ -87,7 +88,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _whIds are the bridge allocated chain id
-    function setChainchainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _whIds.length) {
@@ -96,7 +97,6 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
 
         for (uint256 i; i < arrLength;) {
             chainIdMap[_origIds[i]] = _whIds[i];
-            reversechainIdMap[_whIds[i]] = _origIds[i];
 
             unchecked {
                 ++i;
@@ -121,6 +121,8 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
 
         /// @dev step-3: validate the source address
         if (TypeCasts.bytes32ToAddress(sourceAddress) != senderAdapter) {
+            console.log(TypeCasts.bytes32ToAddress(sourceAddress));
+            console.log(senderAdapter);
             revert Error.INVALID_SENDER_ADAPTER();
         }
 
@@ -137,15 +139,14 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         deliveryHashStatus[deliveryHash] = true;
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = reversechainIdMap[sourceChain];
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }

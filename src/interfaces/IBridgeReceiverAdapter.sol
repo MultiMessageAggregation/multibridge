@@ -14,6 +14,9 @@ interface IBridgeReceiverAdapter is MessageExecutor {
                             EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
+    /// @dev returns name of the message bridge wrapped by the adapter
+    function name() external view returns (string memory);
+
     /// @dev allows global admin to update the sender adapter
     /// @param _senderChain is the bridge native sender chain (ETH) as bytes
     /// @param _senderAdapter is the bridge's sender adapter deployed to Ethereum

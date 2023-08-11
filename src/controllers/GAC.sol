@@ -7,6 +7,7 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// local imports
 import {IGAC} from "../interfaces/IGAC.sol";
+import {Error} from "../libraries/Error.sol";
 
 /// @dev is the global access control contract for bridge adapters
 contract GAC is IGAC, Ownable {
@@ -14,11 +15,18 @@ contract GAC is IGAC, Ownable {
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
+    uint256 public msgExpiration;
+
+    address public refundAddress;
 
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
     address public multiMessageSender;
-    address public multiMessageReceiver;
+
+    /// @dev is the allowed caller for the multi-message sender
+    address public allowedCaller;
+    
+    mapping(uint256 chainId => address mmaReceiver) public multiMessageReceiver;
 
     /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -30,11 +38,41 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function setMultiMessageCoreContracts(address _mmaSender, address _mmaReceiver) external override onlyOwner {
-        multiMessageSender = _mmaSender;
-        multiMessageReceiver = _mmaReceiver;
+    function setMultiMessageSender(address _mmaSender) external override onlyOwner {
+        if (_mmaSender == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
 
-        emit CoreContractsUpdated(_mmaSender, _mmaReceiver);
+        multiMessageSender = _mmaSender;
+
+        emit MultiMessageSenderUpdated(_mmaSender);
+    }
+
+    /// @inheritdoc IGAC
+    function setMultiMessageCaller(address _mmaCaller) external override onlyOwner {
+        if(_mmaCaller == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        allowedCaller = _mmaCaller;
+
+        emit MultiMessageCallerUpdated(_mmaCaller);
+    }
+
+
+    /// @inheritdoc IGAC
+    function setMultiMessageReceiver(uint256 _chainId, address _mmaReceiver) external override onlyOwner {
+        if (_mmaReceiver == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        if (_chainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
+        multiMessageReceiver[_chainId] = _mmaReceiver;
+
+        emit MultiMessageReceiverUpdated(_chainId, _mmaReceiver);
     }
 
     /// @inheritdoc IGAC
@@ -45,12 +83,30 @@ contract GAC is IGAC, Ownable {
         emit DstGasLimitUpdated(oldLimit, _gasLimit);
     }
 
+    /// @inheritdoc IGAC
+    function setMsgExpiryTime(uint256 _timeInSeconds) external override onlyOwner {
+        if (_timeInSeconds == 0) {
+            revert Error.ZERO_EXPIRATION_TIME();
+        }
+
+        msgExpiration = _timeInSeconds;
+    }
+
+    /// @inheritdoc IGAC
+    function setRefundAddress(address _refundAddress) external override onlyOwner {
+        if (_refundAddress == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        refundAddress = _refundAddress;
+    }
+
     /*///////////////////////////////////////////////////////////////
                         EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function isPrevilagedCaller(address _caller) external view override returns (bool) {
+    function isPrivilegedCaller(address _caller) external view override returns (bool) {
         if (_caller == owner()) {
             return true;
         }
@@ -59,8 +115,23 @@ contract GAC is IGAC, Ownable {
     }
 
     /// @inheritdoc IGAC
+    function getGlobalOwner() external view override returns (address _owner) {
+        _owner = owner();
+    }
+
+    /// @inheritdoc IGAC
     function getGlobalMsgDeliveryGasLimit() external view override returns (uint256 _gasLimit) {
         _gasLimit = dstGasLimit;
+    }
+
+    /// @inheritdoc IGAC
+    function getMsgExpiryTime() external view override returns (uint256 _expiration) {
+        _expiration = msgExpiration;
+    }
+
+    /// @inheritdoc IGAC
+    function getRefundAddress() external view override returns (address _refundAddress) {
+        _refundAddress = refundAddress;
     }
 
     /// @inheritdoc IGAC
@@ -69,7 +140,12 @@ contract GAC is IGAC, Ownable {
     }
 
     /// @inheritdoc IGAC
-    function getMultiMessageReceiver() external view returns (address _mmaReceiver) {
-        _mmaReceiver = multiMessageReceiver;
+    function getMultiMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver) {
+        _mmaReceiver = multiMessageReceiver[_chainId];
+    }
+
+    /// @inheritdoc IGAC
+    function getMultiMessageCaller() external view returns (address _mmaCaller) {
+        _mmaCaller = allowedCaller;
     }
 }

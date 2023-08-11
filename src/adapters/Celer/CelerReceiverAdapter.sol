@@ -13,9 +13,7 @@ import "./libraries/Utils.sol";
 
 interface IMessageReceiverApp {
     enum ExecutionStatus {
-        Fail, // execution failed, finalized
-        Success, // execution succeeded, finalized
-        Retry // execution rejected, can retry later
+        Success // execution succeeded, finalized
     }
 
     /// @notice Called by MessageBus to execute a message
@@ -30,8 +28,7 @@ interface IMessageReceiverApp {
 }
 
 contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
-    string constant ABORT_PREFIX = "MSG::ABORT:";
-
+    string public constant name = "celer";
     address public immutable msgBus;
     IGAC public immutable gac;
 
@@ -50,8 +47,8 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyCaller() {
-        if (!gac.isPrevilagedCaller(msg.sender)) {
-            revert Error.INVALID_PREVILAGED_CALLER();
+        if (!gac.isPrivilegedCaller(msg.sender)) {
+            revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
     }
@@ -125,15 +122,14 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
         isMessageExecuted[decodedPayload.msgId] = true;
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        uint256 _srcChain = uint256(_srcChainId);
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, _srcChain) {
-            emit MessageIdExecuted(_srcChain, msgId);
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+            emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
         }
