@@ -55,7 +55,7 @@ contract MultiMessageSender {
 
     /// @dev checks if msg.sender is only the owner (global controller)
     modifier onlyOwner() {
-        if(msg.sender != gac.getGlobalOwner()) {
+        if (msg.sender != gac.getGlobalOwner()) {
             revert Error.CALLER_NOT_OWNER();
         }
         _;
@@ -97,6 +97,14 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData) external payable onlyCaller {
+        if (_dstChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
+        if (_target == address(0)) {
+            revert Error.INVALID_TARGET();
+        }
+
         /// @dev writes to memory for gas saving
         address[] memory adapters = senderAdapters;
         uint256 adapterLength = adapters.length;
@@ -120,13 +128,12 @@ contract MultiMessageSender {
 
             address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
 
-            if(mmaReceiver == address(0)) {
+            if (mmaReceiver == address(0)) {
                 revert Error.ZERO_RECEIVER_ADAPTER();
             }
-            
+
             /// @dev assumes CREATE2 deployment for mma sender & receiver
-            uint256 fee =
-                bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
+            uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
 
             /// @dev if one bridge is paused, the flow shouldn't be broken
             try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
@@ -189,16 +196,17 @@ contract MultiMessageSender {
         address _target,
         bytes calldata _callData
     ) public view returns (uint256 totalFee) {
-        MessageLibrary.Message memory message = MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0);
+        MessageLibrary.Message memory message =
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0);
         bytes memory data;
 
         /// @dev writes to memory for saving gas
         address[] storage adapters = senderAdapters;
 
-        for (uint256 i; i < adapters.length; ++i) {
-            /// @dev second update costs less gas
-            data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
+        /// @dev generates the dst chain function call
+        data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
 
+        for (uint256 i; i < adapters.length; ++i) {
             uint256 fee =
                 IBridgeSenderAdapter(adapters[i]).getMessageFee(uint256(_dstChainId), _multiMessageReceiver, data);
 

@@ -112,14 +112,13 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         uint16 sourceChain,
         bytes32 deliveryHash
     ) public payable override onlyRelayerContract {
+        /// @dev validate the caller (done in modifier)
         /// @dev step-1: validate incoming chain id
         if (sourceChain != senderChain) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
-        /// @dev step-2: validate the caller (done in modifier)
-
-        /// @dev step-3: validate the source address
+        /// @dev step-2: validate the source address
         if (TypeCasts.bytes32ToAddress(sourceAddress) != senderAdapter) {
             console.log(TypeCasts.bytes32ToAddress(sourceAddress));
             console.log(senderAdapter);
@@ -130,7 +129,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
         bytes32 msgId = decodedPayload.msgId;
 
-        /// @dev step-4: check for duplicate message
+        /// @dev step-3: check for duplicate message
         if (isMessageExecuted[msgId] || deliveryHashStatus[deliveryHash]) {
             revert MessageIdAlreadyExecuted(msgId);
         }
@@ -138,7 +137,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         isMessageExecuted[decodedPayload.msgId] = true;
         deliveryHashStatus[deliveryHash] = true;
 
-        /// @dev step-5: validate the destination
+        /// @dev step-4: validate the destination
         if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }

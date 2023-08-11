@@ -41,7 +41,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event quorumUpdated(uint64 quorum);
+    event quorumUpdated(uint64 oldValue, uint64 newValue);
     event SingleBridgeMsgReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
@@ -67,7 +67,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         _;
     }
 
-    /// 
+    ///
 
     /*/////////////////////////////////////////////////////////////////
                                 INITIALIZER
@@ -106,6 +106,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice receive messages from allowed bridge receiver adapters
     /// @param _message is the crosschain message sent by the mma sender
+    /// @param _bridgeName is the name of the bridge the relays the message
     function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName)
         external
         override
@@ -116,7 +117,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
 
         /// FIXME: could make this configurable through GAC, instead of hardcoding 1
-        if(_message.srcChainId != 1) {
+        if (_message.srcChainId != 1) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
@@ -132,13 +133,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.MSG_ID_ALREADY_EXECUTED();
         }
 
-        /// increment quorum
         isDuplicateAdapter[msgId][msg.sender] = true;
+
+        /// increment quorum
         ++messageVotes[msgId];
 
         /// stores the execution data required
         ExecutionData memory prevStored = msgReceived[msgId];
-        
+
         /// stores the message if the amb is the first one delivering the message
         if (prevStored.target == address(0)) {
             msgReceived[msgId] = ExecutionData(_message.target, _message.callData, _message.nonce, _message.expiration);
@@ -198,34 +200,37 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updatequorum(uint64 _quorum) external onlySelf {
+    function updateQuorum(uint64 _quorum) external onlySelf {
         /// NOTE: should check 2/3 ?
         if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
+        uint64 oldValue = quorum;
 
         quorum = _quorum;
-        emit quorumUpdated(_quorum);
+        emit quorumUpdated(oldValue, _quorum);
     }
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
     function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
-        uint256 msgCurrentQuorum = messageVotes[msgId];
-        string[] memory successfulBridge = new string[](msgCurrentQuorum);
+        uint256 msgCurrentVotes = messageVotes[msgId];
+        string[] memory successfulBridge = new string[](msgCurrentVotes);
 
-        uint256 currIndex;
-        for(uint256 i; i < trustedExecutor.length; ) {
-            if(isDuplicateAdapter[msgId][trustedExecutor[i]]) {
-               successfulBridge[currIndex] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
-               ++currIndex;
-            }    
+        if (msgCurrentVotes != 0) {
+            uint256 currIndex;
+            for (uint256 i; i < trustedExecutor.length;) {
+                if (isDuplicateAdapter[msgId][trustedExecutor[i]]) {
+                    successfulBridge[currIndex] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
+                    ++currIndex;
+                }
 
-            unchecked {
-                ++i;
+                unchecked {
+                    ++i;
+                }
             }
         }
 
-        return (isExecuted[msgId], msgCurrentQuorum, successfulBridge);
+        return (isExecuted[msgId], msgCurrentVotes, successfulBridge);
     }
 
     /*/////////////////////////////////////////////////////////////////

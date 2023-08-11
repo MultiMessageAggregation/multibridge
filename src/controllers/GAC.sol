@@ -25,7 +25,7 @@ contract GAC is IGAC, Ownable {
 
     /// @dev is the allowed caller for the multi-message sender
     address public allowedCaller;
-    
+
     mapping(uint256 chainId => address mmaReceiver) public multiMessageReceiver;
 
     /*///////////////////////////////////////////////////////////////
@@ -50,7 +50,7 @@ contract GAC is IGAC, Ownable {
 
     /// @inheritdoc IGAC
     function setMultiMessageCaller(address _mmaCaller) external override onlyOwner {
-        if(_mmaCaller == address(0)) {
+        if (_mmaCaller == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -58,7 +58,6 @@ contract GAC is IGAC, Ownable {
 
         emit MultiMessageCallerUpdated(_mmaCaller);
     }
-
 
     /// @inheritdoc IGAC
     function setMultiMessageReceiver(uint256 _chainId, address _mmaReceiver) external override onlyOwner {

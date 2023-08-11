@@ -125,7 +125,6 @@ abstract contract Setup is Test {
             gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 
-
             unchecked {
                 ++i;
             }

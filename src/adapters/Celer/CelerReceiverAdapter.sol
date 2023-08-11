@@ -98,14 +98,13 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
         bytes calldata _message,
         address // executor
     ) external payable override onlyMessageBus returns (ExecutionStatus) {
+        /// @dev validate the caller (done in modifier)
         /// @dev step-1: validate incoming chain id
         if (_srcChainId != senderChain) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
-        /// @dev step-2: validate the caller (done in modifier)
-
-        /// @dev step-3: validate the source address
+        /// @dev step-2: validate the source address
         if (_srcContract != senderAdapter) {
             revert Error.INVALID_SENDER_ADAPTER();
         }
@@ -114,14 +113,14 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
         AdapterPayload memory decodedPayload = abi.decode(_message, (AdapterPayload));
         bytes32 msgId = decodedPayload.msgId;
 
-        /// @dev step-4: check for duplicate message
+        /// @dev step-3: check for duplicate message
         if (isMessageExecuted[msgId]) {
             revert MessageIdAlreadyExecuted(msgId);
         }
 
         isMessageExecuted[decodedPayload.msgId] = true;
 
-        /// @dev step-5: validate the destination
+        /// @dev step-4: validate the destination
         if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }

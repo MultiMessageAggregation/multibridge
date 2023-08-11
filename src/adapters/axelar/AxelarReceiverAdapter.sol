@@ -18,6 +18,7 @@ import "./libraries/StringAddressConversion.sol";
 /// @notice receiver adapter for axelar bridge
 contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     using StringAddressConversion for string;
+
     string public constant name = "axelar";
 
     IAxelarGateway public immutable gateway;
@@ -114,7 +115,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
         commandIdStatus[commandId] = true;
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
-        
+
         try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
