@@ -23,10 +23,6 @@ contract MultiMessageSender {
     /// @dev bridge sender adapters available
     address[] public senderAdapters;
 
-    /// @dev contract that can use this multi-bridge sender for cross-chain remoteCall
-    /// @notice multi message sender is only intended to be used by a single sender (or) application
-    address public immutable caller;
-
     /// @dev nonce for msgId uniqueness
     uint256 public nonce;
 
@@ -56,9 +52,17 @@ contract MultiMessageSender {
                                 MODIFIERS
     ////////////////////////////////////////////////////////////////*/
 
+    /// @dev checks if msg.sender is only the owner (global controller)
+    modifier onlyOwner() {
+        if(msg.sender != gac.getGlobalOwner()) {
+            revert Error.CALLER_NOT_OWNER();
+        }
+        _;
+    }
+
     /// @dev checks if msg.sender is caller configured in the constructor
     modifier onlyCaller() {
-        if (msg.sender != caller) {
+        if (msg.sender != gac.getMultiMessageCaller()) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -68,14 +72,12 @@ contract MultiMessageSender {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _caller is the PRIVILEGED address to interact with MultiMessageSender
     /// @param _gac is the controller/registry of uniswap mma
-    constructor(address _caller, address _gac) {
-        if (_caller == address(0) || _gac == address(0)) {
+    constructor(address _gac) {
+        if (_gac == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        caller = _caller;
         gac = IGAC(_gac);
     }
 
@@ -149,7 +151,7 @@ contract MultiMessageSender {
 
     /// @notice Add bridge sender adapters
     /// @param _senderAdapters is the adapter address to add
-    function addSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
+    function addSenderAdapters(address[] calldata _senderAdapters) external onlyOwner {
         for (uint256 i; i < _senderAdapters.length;) {
             _addSenderAdapter(_senderAdapters[i]);
 
@@ -161,7 +163,7 @@ contract MultiMessageSender {
 
     /// @notice Remove bridge sender adapters
     /// @param _senderAdapters is the adapter address to remove
-    function removeSenderAdapters(address[] calldata _senderAdapters) external onlyCaller {
+    function removeSenderAdapters(address[] calldata _senderAdapters) external onlyOwner {
         for (uint256 i; i < _senderAdapters.length;) {
             _removeSenderAdapter(_senderAdapters[i]);
 

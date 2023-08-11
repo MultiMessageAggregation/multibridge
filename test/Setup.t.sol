@@ -122,6 +122,7 @@ abstract contract Setup is Test {
 
             GAC gac = new GAC{salt: _salt}();
             gac.setMsgExpiryTime(2 days);
+            gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 
 
@@ -242,7 +243,7 @@ abstract contract Setup is Test {
         /// @notice deploy mma sender to ETHEREUM
         vm.selectFork(fork[1]);
         contractAddress[1][bytes("MMA_SENDER")] =
-            address(new MultiMessageSender{salt: _salt}(caller, contractAddress[1][bytes("GAC")]));
+            address(new MultiMessageSender{salt: _salt}(contractAddress[1][bytes("GAC")]));
 
         /// @notice deploy amb helpers to BSC & POLYGON
         for (uint256 i; i < DST_CHAINS.length; i++) {
@@ -257,7 +258,7 @@ abstract contract Setup is Test {
     function _setupCoreContracts() internal {
         /// setup mma sender adapters
         vm.selectFork(fork[1]);
-        vm.startPrank(caller);
+        vm.startPrank(owner);
 
         address[] memory _senderAdapters = new address[](2);
         _senderAdapters[0] = contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")];

@@ -96,6 +96,9 @@ library Error {
     /// @dev is thrown if source sender is invalid
     error INVALID_SOURCE_SENDER();
 
+    /// @dev is thrown if caller is not the global owner
+    error CALLER_NOT_OWNER();
+
     /// @dev is thrown if caller is not router protocol's gateway
     error CALLER_NOT_ROUTER_GATEWAY();
 

@@ -59,13 +59,15 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         _;
     }
 
-    ///  @notice A modifier used for restricting the caller of some functions to be this contract itself.
+    /// @notice A modifier used for restricting the caller of some functions to be this contract itself.
     modifier onlySelf() {
         if (msg.sender != address(this)) {
             revert Error.INVALID_SELF_CALLER();
         }
         _;
     }
+
+    /// 
 
     /*/////////////////////////////////////////////////////////////////
                                 INITIALIZER

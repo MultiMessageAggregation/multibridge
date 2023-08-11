@@ -9,6 +9,8 @@ interface IGAC {
     //////////////////////////////////////////////////////////////*/
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
 
+    event MultiMessageCallerUpdated(address indexed mmaCaller);
+
     event MultiMessageSenderUpdated(address indexed mmaSender);
 
     event MultiMessageReceiverUpdated(uint256 chainId, address indexed mmaReceiver);
@@ -16,6 +18,10 @@ interface IGAC {
     /*///////////////////////////////////////////////////////////////
                         EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev sets the multi message sender caller
+    /// @param _mmaCaller is the multi message caller
+    function setMultiMessageCaller(address _mmaCaller) external;
 
     /// @dev sets the multi message sender on same chain
     /// @param _mmaSender is the multi message sender contracts
@@ -47,12 +53,19 @@ interface IGAC {
     /// @return boolean indicating the validity of the caller
     function isPrivilegedCaller(address _caller) external view returns (bool);
 
+    /// @dev returns the global owner address
+    /// @return _owner is the global owner address
+    function getGlobalOwner() external view returns (address _owner);
+
     /// @dev returns the global message delivery gas limit configured
     /// @return _gasLimit is the configured gas limit on dst
     function getGlobalMsgDeliveryGasLimit() external view returns (uint256 _gasLimit);
 
     /// @dev returns the multi message sender on the chain
     function getMultiMessageSender() external view returns (address _mmaSender);
+
+    /// @dev returns the multi message caller that can only call the multi message sender contract
+    function getMultiMessageCaller() external view returns (address _mmaCaller);
 
     /// @dev returns the multi message receiver on the chain
     function getMultiMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver);

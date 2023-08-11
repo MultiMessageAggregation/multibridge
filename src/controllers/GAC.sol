@@ -22,6 +22,9 @@ contract GAC is IGAC, Ownable {
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
     address public multiMessageSender;
+
+    /// @dev is the allowed caller for the multi-message sender
+    address public allowedCaller;
     
     mapping(uint256 chainId => address mmaReceiver) public multiMessageReceiver;
 
@@ -44,6 +47,18 @@ contract GAC is IGAC, Ownable {
 
         emit MultiMessageSenderUpdated(_mmaSender);
     }
+
+    /// @inheritdoc IGAC
+    function setMultiMessageCaller(address _mmaCaller) external override onlyOwner {
+        if(_mmaCaller == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        allowedCaller = _mmaCaller;
+
+        emit MultiMessageCallerUpdated(_mmaCaller);
+    }
+
 
     /// @inheritdoc IGAC
     function setMultiMessageReceiver(uint256 _chainId, address _mmaReceiver) external override onlyOwner {
@@ -100,6 +115,11 @@ contract GAC is IGAC, Ownable {
     }
 
     /// @inheritdoc IGAC
+    function getGlobalOwner() external view override returns (address _owner) {
+        _owner = owner();
+    }
+
+    /// @inheritdoc IGAC
     function getGlobalMsgDeliveryGasLimit() external view override returns (uint256 _gasLimit) {
         _gasLimit = dstGasLimit;
     }
@@ -122,5 +142,10 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getMultiMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver) {
         _mmaReceiver = multiMessageReceiver[_chainId];
+    }
+
+    /// @inheritdoc IGAC
+    function getMultiMessageCaller() external view returns (address _mmaCaller) {
+        _mmaCaller = allowedCaller;
     }
 }
