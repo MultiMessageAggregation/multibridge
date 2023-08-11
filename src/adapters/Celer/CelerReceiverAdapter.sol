@@ -28,6 +28,7 @@ interface IMessageReceiverApp {
 }
 
 contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
+    string public constant name = "celer";
     address public immutable msgBus;
     IGAC public immutable gac;
 
@@ -127,7 +128,7 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);

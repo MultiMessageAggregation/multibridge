@@ -11,7 +11,6 @@ library MessageLibrary {
     /// @param target is the contract to be called on dst chain
     /// @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData))
     /// @param expiration is the unix time when the message expires, zero means never expire
-    /// @param bridgeName is the message bridge name used for sending this message
     struct Message {
         uint256 srcChainId;
         uint256 dstChainId;
@@ -19,17 +18,15 @@ library MessageLibrary {
         uint256 nonce;
         bytes callData;
         uint256 expiration;
-        string bridgeName;
     }
 
     /// @notice computes the message id (32 byte hash of the encoded message parameters)
     /// @notice message.bridgeName is not included in the message id.
     /// @param _message is the cross-chain message
-    /// @param _srcChainId is the identifier of the source chain
-    function computeMsgId(Message memory _message, uint256 _srcChainId) internal pure returns (bytes32) {
+    function computeMsgId(Message memory _message) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
-                _srcChainId,
+                _message.srcChainId,
                 _message.dstChainId,
                 _message.nonce,
                 _message.target,

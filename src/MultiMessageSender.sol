@@ -109,11 +109,10 @@ contract MultiMessageSender {
         uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
 
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration, "");
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration);
 
         for (uint256 i; i < adapterLength;) {
             IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
-            message.bridgeName = bridgeAdapter.name();
 
             address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
 
@@ -137,7 +136,7 @@ contract MultiMessageSender {
             }
         }
 
-        bytes32 msgId = MessageLibrary.computeMsgId(message, block.chainid);
+        bytes32 msgId = MessageLibrary.computeMsgId(message);
 
         /// refund remaining fee
         /// FIXME: add an explicit refund address config
@@ -183,14 +182,13 @@ contract MultiMessageSender {
         address _target,
         bytes calldata _callData
     ) public view returns (uint256 totalFee) {
-        MessageLibrary.Message memory message = MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0, "");
+        MessageLibrary.Message memory message = MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0);
         bytes memory data;
 
         /// @dev writes to memory for saving gas
         address[] storage adapters = senderAdapters;
 
         for (uint256 i; i < adapters.length; ++i) {
-            message.bridgeName = IBridgeSenderAdapter(adapters[i]).name();
             /// @dev second update costs less gas
             data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
 

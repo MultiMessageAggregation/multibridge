@@ -5,6 +5,7 @@ pragma solidity >=0.8.9;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// interfaces
+import "./interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
 
@@ -20,7 +21,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice minimum number of AMBs required for delivery before execution
-    uint64 public quorumThreshold;
+    uint64 public quorum;
 
     struct ExecutionData {
         address target;
@@ -33,15 +34,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     mapping(bytes32 => bool) public isExecuted;
     mapping(bytes32 => ExecutionData) public msgReceived;
     mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
-    mapping(bytes32 => uint256) public quorum;
-    mapping(bytes32 => string[]) public successfulBridges;
+    mapping(bytes32 => uint256) public messageQuorum;
 
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
 
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event QuorumThresholdUpdated(uint64 quorumThreshold);
+    event quorumUpdated(uint64 quorum);
     event SingleBridgeMsgReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
@@ -72,7 +72,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sets the initial paramters
-    function initialize(address[] calldata _receiverAdapters, uint64 _quorumThreshold) external initializer {
+    function initialize(address[] calldata _receiverAdapters, uint64 _quorum) external initializer {
         uint256 len = _receiverAdapters.length;
 
         if (len == 0) {
@@ -91,22 +91,20 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             }
         }
 
-        if (_quorumThreshold > trustedExecutor.length || _quorumThreshold == 0) {
+        if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
-        quorumThreshold = _quorumThreshold;
+        quorum = _quorum;
     }
 
     /*/////////////////////////////////////////////////////////////////
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice Receive messages from allowed bridge receiver adapters.
-    /// @dev If the accumulated power of a message has reached the power threshold,
-    /// this message will be executed immediately, which will invoke an external function call
-    /// according to the message content.
-    function receiveMessage(MessageLibrary.Message calldata _message)
+    /// @notice receive messages from allowed bridge receiver adapters
+    /// @param _message is the crosschain message sent by the mma sender
+    function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName)
         external
         override
         onlyReceiverAdapter
@@ -120,9 +118,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
-        /// This msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
-        /// Although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
-        bytes32 msgId = MessageLibrary.computeMsgId(_message, uint64(_message.srcChainId));
+        /// this msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
+        /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
+        bytes32 msgId = MessageLibrary.computeMsgId(_message);
 
         if (isDuplicateAdapter[msgId][msg.sender]) {
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
@@ -134,7 +132,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         /// increment quorum
         isDuplicateAdapter[msgId][msg.sender] = true;
-        ++quorum[msgId];
+        ++messageQuorum[msgId];
 
         /// stores the execution data required
         ExecutionData memory prevStored = msgReceived[msgId];
@@ -144,9 +142,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             msgReceived[msgId] = ExecutionData(_message.target, _message.callData, _message.nonce, _message.expiration);
         }
 
-        successfulBridges[msgId].push(_message.bridgeName);
-
-        emit SingleBridgeMsgReceived(msgId, _message.bridgeName, _message.nonce, msg.sender);
+        emit SingleBridgeMsgReceived(msgId, _bridgeName, _message.nonce, msg.sender);
     }
 
     /// @notice Execute the message (invoke external call according to the message content) if the message
@@ -165,7 +161,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         isExecuted[msgId] = true;
 
-        if (quorum[msgId] < quorumThreshold) {
+        if (messageQuorum[msgId] < quorum) {
             revert Error.INVALID_QUORUM_FOR_EXECUTION();
         }
 
@@ -200,19 +196,32 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorumThreshold(uint64 _quorumThreshold) external onlySelf {
+    function updatequorum(uint64 _quorum) external onlySelf {
         /// NOTE: should check 2/3 ?
-        if (_quorumThreshold > trustedExecutor.length || _quorumThreshold == 0) {
+        if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
-        quorumThreshold = _quorumThreshold;
-        emit QuorumThresholdUpdated(_quorumThreshold);
+        quorum = _quorum;
+        emit quorumUpdated(_quorum);
     }
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
     function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
-        return (isExecuted[msgId], quorum[msgId], successfulBridges[msgId]);
+        uint256 msgCurrentQuorum = messageQuorum[msgId];
+        string[] memory successfulBridge = new string[](msgCurrentQuorum);
+
+        for(uint256 i; i < trustedExecutor.length; ) {
+            if(isDuplicateAdapter[msgId][trustedExecutor[i]]) {
+               successfulBridge[i] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
+            }    
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return (isExecuted[msgId], msgCurrentQuorum, successfulBridge);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -225,7 +234,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         } else {
             _removeTrustedExecutor(_receiverAdapter);
 
-            if (quorumThreshold > trustedExecutor.length) {
+            if (quorum > trustedExecutor.length) {
                 revert Error.INVALID_QUORUM_THRESHOLD();
             }
         }
