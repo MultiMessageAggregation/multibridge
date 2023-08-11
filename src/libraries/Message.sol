@@ -21,7 +21,6 @@ library MessageLibrary {
     }
 
     /// @notice computes the message id (32 byte hash of the encoded message parameters)
-    /// @notice message.bridgeName is not included in the message id.
     /// @param _message is the cross-chain message
     function computeMsgId(Message memory _message) internal pure returns (bytes32) {
         return keccak256(

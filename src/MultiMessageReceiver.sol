@@ -34,7 +34,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     mapping(bytes32 => bool) public isExecuted;
     mapping(bytes32 => ExecutionData) public msgReceived;
     mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
-    mapping(bytes32 => uint256) public messageQuorum;
+    mapping(bytes32 => uint256) public messageVotes;
 
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
@@ -134,7 +134,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         /// increment quorum
         isDuplicateAdapter[msgId][msg.sender] = true;
-        ++messageQuorum[msgId];
+        ++messageVotes[msgId];
 
         /// stores the execution data required
         ExecutionData memory prevStored = msgReceived[msgId];
@@ -163,7 +163,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         isExecuted[msgId] = true;
 
-        if (messageQuorum[msgId] < quorum) {
+        if (messageVotes[msgId] < quorum) {
             revert Error.INVALID_QUORUM_FOR_EXECUTION();
         }
 
@@ -210,12 +210,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
     function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
-        uint256 msgCurrentQuorum = messageQuorum[msgId];
+        uint256 msgCurrentQuorum = messageVotes[msgId];
         string[] memory successfulBridge = new string[](msgCurrentQuorum);
 
+        uint256 currIndex;
         for(uint256 i; i < trustedExecutor.length; ) {
             if(isDuplicateAdapter[msgId][trustedExecutor[i]]) {
-               successfulBridge[i] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
+               successfulBridge[currIndex] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
+               ++currIndex;
             }    
 
             unchecked {

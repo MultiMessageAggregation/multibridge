@@ -38,7 +38,8 @@ contract MultiMessageSender {
         address target,
         bytes callData,
         uint256 expiration,
-        address[] senderAdapters
+        address[] senderAdapters,
+        bool[] adapterSuccess
     );
 
     /// @dev is emitted when owner updates the sender adapter
@@ -98,7 +99,6 @@ contract MultiMessageSender {
     function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData) external payable onlyCaller {
         /// @dev writes to memory for gas saving
         address[] memory adapters = senderAdapters;
-
         uint256 adapterLength = adapters.length;
 
         if (adapterLength == 0) {
@@ -112,6 +112,8 @@ contract MultiMessageSender {
 
         MessageLibrary.Message memory message =
             MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration);
+
+        bool[] memory adapterSuccess = new bool[](adapterLength);
 
         for (uint256 i; i < adapterLength;) {
             IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
@@ -129,7 +131,10 @@ contract MultiMessageSender {
             /// @dev if one bridge is paused, the flow shouldn't be broken
             try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
                 _dstChainId, mmaReceiver, abi.encode(message)
-            ) {} catch {
+            ) {
+                adapterSuccess[i] = true;
+            } catch {
+                adapterSuccess[i] = false;
                 emit ErrorSendMessage(adapters[i], message);
             }
 
@@ -146,7 +151,7 @@ contract MultiMessageSender {
             _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
 
-        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, msgExpiration, adapters);
+        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, msgExpiration, adapters, adapterSuccess);
     }
 
     /// @notice Add bridge sender adapters
