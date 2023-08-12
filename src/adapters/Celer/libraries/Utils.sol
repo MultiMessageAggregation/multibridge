@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-
-pragma solidity >=0.8.0;
+pragma solidity >=0.8.9;
 
 library Utils {
     // https://ethereum.stackexchange.com/a/83577

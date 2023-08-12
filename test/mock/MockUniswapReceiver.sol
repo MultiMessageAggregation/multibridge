@@ -2,4 +2,10 @@
 pragma solidity >=0.8.9;
 
 /// @dev assumes mock interactor is the one that send / recieves message using the MMA infra
-contract MockUniswapInteractor {}
+contract MockUniswapReceiver {
+    uint256 public i;
+
+    function setValue() external {
+        i = type(uint256).max;
+    }
+}

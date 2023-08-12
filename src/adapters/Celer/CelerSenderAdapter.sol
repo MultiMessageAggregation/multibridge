@@ -1,53 +1,63 @@
 // SPDX-License-Identifier: GPL-3.0-only
+pragma solidity >=0.8.9;
 
-pragma solidity 0.8.17;
+import "../../interfaces/IGAC.sol";
+import "../../libraries/Error.sol";
+import "../../libraries/Types.sol";
+import "../BaseSenderAdapter.sol";
 
 import "./interfaces/IMessageBus.sol";
-import "../../interfaces/IBridgeSenderAdapter.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../base/BaseSenderAdapter.sol";
 
-contract CelerSenderAdapter is IBridgeSenderAdapter, Ownable, BaseSenderAdapter {
+/// @notice sender adapter for celer bridge
+contract CelerSenderAdapter is BaseSenderAdapter {
     string public constant name = "celer";
-    address public immutable msgBus;
-    // dstChainId => receiverAdapter address
-    mapping(uint256 => address) public receiverAdapters;
 
-    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
+    IMessageBus public immutable msgBus;
 
-    constructor(address _msgBus) {
-        msgBus = _msgBus;
+    /*/////////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
+    constructor(address _msgBus, address _gac) BaseSenderAdapter(_gac) {
+        msgBus = IMessageBus(_msgBus);
     }
 
-    function getMessageFee(uint256, address _to, bytes calldata _data) external view override returns (uint256) {
-        // fee is depended only on message length
-        return IMessageBus(msgBus).calcFee(abi.encode(bytes32(""), msg.sender, _to, _data));
-    }
+    /*/////////////////////////////////////////////////////////////////
+                            EXTERNAL FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
+    /// @notice sends a message via celer message bus
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
         external
         payable
         override
-        returns (bytes32)
+        onlyMultiMessageSender
+        returns (bytes32 msgId)
     {
-        require(receiverAdapters[_toChainId] != address(0), "no receiver adapter");
-        bytes32 msgId = _getNewMessageId(_toChainId, _to);
-        IMessageBus(msgBus).sendMessage{value: msg.value}(
-            receiverAdapters[_toChainId], _toChainId, abi.encode(msgId, msg.sender, _to, _data)
-        );
+        if (_toChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
+        address receiverAdapter = receiverAdapters[_toChainId];
+
+        if (receiverAdapter == address(0)) {
+            revert Error.ZERO_RECEIVER_ADAPTER();
+        }
+
+        msgId = _getNewMessageId(_toChainId, _to);
+        bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
+
+        IMessageBus(msgBus).sendMessage{value: msg.value}(receiverAdapter, _toChainId, payload);
+
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
-        return msgId;
     }
 
-    function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
-        external
-        override
-        onlyOwner
-    {
-        require(_dstChainIds.length == _receiverAdapters.length, "mismatch length");
-        for (uint256 i; i < _dstChainIds.length; ++i) {
-            receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
-            emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
-        }
+    /*/////////////////////////////////////////////////////////////////
+                        EXTERNAL VIEW FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IBridgeSenderAdapter
+    function getMessageFee(uint256, address _to, bytes calldata _data) external view override returns (uint256) {
+        /// @dev fee is depended only on message length
+        return IMessageBus(msgBus).calcFee(abi.encode(bytes32(""), msg.sender, _to, _data));
     }
 }
