@@ -122,6 +122,7 @@ abstract contract Setup is Test {
 
             GAC gac = new GAC{salt: _salt}();
             gac.setMsgExpiryTime(2 days);
+            gac.setMsgTimelock(1 days);
             gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 
@@ -249,7 +250,7 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            contractAddress[chainId][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver{salt: _salt}());
+            contractAddress[chainId][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver{salt: _salt}(contractAddress[1][bytes("GAC")]));
         }
     }
 

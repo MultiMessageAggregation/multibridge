@@ -38,6 +38,12 @@ library Error {
     /// @dev is thrown if expiration time is zero
     error ZERO_EXPIRATION_TIME();
 
+    /// @dev is thrown if timelock period is zero
+    error ZERO_TIMELOCK_PERIOD();
+
+    /// @dev is thrown if timelock period is less than minimum allowed limit
+    error TIMELOCK_PERIOD_LESS_THAN_MINIMUM();
+
     /// @dev is thrown if quorum threshold is greater than receiver adapters
     error INVALID_QUORUM_THRESHOLD();
 
@@ -49,6 +55,9 @@ library Error {
 
     /// @dev is thrown if deadline is lapsed
     error MSG_EXECUTION_PASSED_DEADLINE();
+
+    /// @dev is thrown if message is still in timelock period
+    error MSG_STILL_TIMELOCKED();
 
     /// @dev is thrown if quorum is not reached
     error INVALID_QUORUM_FOR_EXECUTION();

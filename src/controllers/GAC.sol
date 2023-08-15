@@ -12,10 +12,19 @@ import {Error} from "../libraries/Error.sol";
 /// @dev is the global access control contract for bridge adapters
 contract GAC is IGAC, Ownable {
     /*///////////////////////////////////////////////////////////////
+                             CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+    /// @dev NOTE: can discuss this with team and finalize
+    uint256 public constant MIN_TIMELOCK = 24 hours;
+
+    /*///////////////////////////////////////////////////////////////
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
     uint256 public msgExpiration;
+
+    /// @dev is the timelock to be used by multi-message receiver before execution
+    uint256 public msgTimelock;
 
     address public refundAddress;
 
@@ -92,6 +101,19 @@ contract GAC is IGAC, Ownable {
     }
 
     /// @inheritdoc IGAC
+    function setMsgTimelock(uint256 _timelockInSeconds) external override onlyOwner {
+        if (_timelockInSeconds == 0) {
+            revert Error.ZERO_TIMELOCK_PERIOD();
+        }
+
+        if(_timelockInSeconds < MIN_TIMELOCK) {
+            revert Error.TIMELOCK_PERIOD_LESS_THAN_MINIMUM();
+        }
+
+        msgTimelock = _timelockInSeconds;
+    }
+
+    /// @inheritdoc IGAC
     function setRefundAddress(address _refundAddress) external override onlyOwner {
         if (_refundAddress == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
@@ -126,6 +148,11 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getMsgExpiryTime() external view override returns (uint256 _expiration) {
         _expiration = msgExpiration;
+    }
+
+    /// @inheritdoc IGAC
+    function getMsgTimelock() external view returns (uint256 _timelock) {
+        _timelock = msgTimelock;
     }
 
     /// @inheritdoc IGAC

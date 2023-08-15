@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
+import "./interfaces/IGAC.sol";
 
 /// libraries
 import "./libraries/Error.sol";
@@ -16,6 +17,8 @@ import "./libraries/Message.sol";
 /// @title MultiMessageReceiver
 /// @dev receives message from bridge adapters
 contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializable {
+    IGAC public immutable gac;
+
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
@@ -35,6 +38,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     mapping(bytes32 => ExecutionData) public msgReceived;
     mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
     mapping(bytes32 => uint256) public messageVotes;
+    mapping(bytes32 => uint256) public deliveryTime;
 
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
@@ -66,8 +70,19 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
         _;
     }
+    
+    /*/////////////////////////////////////////////////////////////////
+                                CONSTRUCTOR
+    ////////////////////////////////////////////////////////////////*/
 
-    ///
+    /// @param _gac is the controller/registry of uniswap mma
+    constructor(address _gac) {
+        if (_gac == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        gac = IGAC(_gac);
+    }
 
     /*/////////////////////////////////////////////////////////////////
                                 INITIALIZER
@@ -138,6 +153,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         /// increment quorum
         ++messageVotes[msgId];
 
+        /// stores the delivery time
+        deliveryTime[msgId] = block.timestamp;
+
         /// stores the execution data required
         ExecutionData memory prevStored = msgReceived[msgId];
 
@@ -157,6 +175,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         if (block.timestamp > _execData.expiration) {
             revert Error.MSG_EXECUTION_PASSED_DEADLINE();
+        }
+
+        if(block.timestamp < deliveryTime[msgId] + gac.getMsgTimelock()) {
+            revert Error.MSG_STILL_TIMELOCKED();
         }
 
         if (isExecuted[msgId]) {

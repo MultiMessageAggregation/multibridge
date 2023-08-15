@@ -9,6 +9,7 @@ import "../Setup.t.sol";
 import "../mock/MockUniswapReceiver.sol";
 import {MultiMessageSender} from "../../src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "../../src/MultiMessageReceiver.sol";
+import {Error} from "../../src/libraries/Error.sol";
 
 contract MMA is Setup {
     MockUniswapReceiver target;
@@ -52,6 +53,12 @@ contract MMA is Setup {
         vm.selectFork(fork[137]);
 
         /// execute message received
+        vm.expectRevert(Error.MSG_STILL_TIMELOCKED.selector);
+        MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        assertEq(target.i(), 0);
+
+        /// increment the time by 1 day
+        vm.warp(block.timestamp + 1 days);
         MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         assertEq(target.i(), type(uint256).max);
     }
