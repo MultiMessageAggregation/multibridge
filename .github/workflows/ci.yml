@@ -5,7 +5,7 @@ on: [push]
 jobs:
   tests:
     name: Foundry Testing
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -45,7 +45,7 @@ jobs:
         
   slither:
     name: Slither Run
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
