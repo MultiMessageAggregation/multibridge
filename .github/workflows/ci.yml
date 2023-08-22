@@ -61,7 +61,7 @@ jobs:
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         with:
-          slither-args: 'fail-on: medium --exclude-optimization --exclude-informational'
+          fail-on: medium
           ignore-compile: true
           
 
