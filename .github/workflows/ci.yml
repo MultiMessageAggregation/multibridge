@@ -61,7 +61,6 @@ jobs:
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         with:
-          target: 'src/'
           fail-on: none
           ignore-compile: true
           
