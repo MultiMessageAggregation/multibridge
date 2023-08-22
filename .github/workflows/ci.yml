@@ -1,0 +1,66 @@
+name: ci
+
+on: [push]
+
+jobs:
+  tests:
+    name: Foundry Testing
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Setup Foundry Toolchain
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install Dependencies
+        run: forge install
+
+      - name: Run Size Check
+        run: forge build --sizes
+        env:
+          ETH_FORK_URL: ${{ secrets.ETH_FORK_URL }}
+          BSC_FORK_URL: ${{ secrets.BSC_FORK_URL }}
+          POLYGON_FORK_URL: ${{ secrets.POLYGON_FORK_URL }}
+          ARB_FORK_URL: ${{ secrets.ARB_FORK_URL }}
+      
+      - name: Run Tests
+        run: forge test -vvv
+        env:
+          ETH_FORK_URL: ${{ secrets.ETH_FORK_URL }}
+          BSC_FORK_URL: ${{ secrets.BSC_FORK_URL }}
+          POLYGON_FORK_URL: ${{ secrets.POLYGON_FORK_URL }}
+          ARB_FORK_URL: ${{ secrets.ARB_FORK_URL }}
+
+      - name: Run Coverage
+        run: forge coverage
+        env:
+          ETH_FORK_URL: ${{ secrets.ETH_FORK_URL }}
+          BSC_FORK_URL: ${{ secrets.BSC_FORK_URL }}
+          POLYGON_FORK_URL: ${{ secrets.POLYGON_FORK_URL }}
+          ARB_FORK_URL: ${{ secrets.ARB_FORK_URL }}
+        
+  slither:
+    name: Slither Run
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build the contracts
+        run: forge build --build-info
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        with:
+          ignore-compile: true
+          
+
