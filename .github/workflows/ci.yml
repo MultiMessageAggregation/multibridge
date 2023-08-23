@@ -80,6 +80,6 @@ jobs:
 
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
+        id: slither
         with:
           slither-config: "slither.config.json"
-          ignore-compile: true
