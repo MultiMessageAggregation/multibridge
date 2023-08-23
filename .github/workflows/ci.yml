@@ -82,4 +82,12 @@ jobs:
         uses: crytic/slither-action@v0.3.0
         id: slither
         with:
+          fail-on: none
+          sarif: results.sarif
+          solc-version: 0.8.19
           slither-config: "slither.config.json"
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
