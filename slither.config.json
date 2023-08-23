@@ -4,6 +4,5 @@
     "exclude_low": true,
     "exclude_medium": true,
     "exclude_high": false,
-    "json": "",
     "filter_paths": "(mocks/|test/|lib/)"
 }
