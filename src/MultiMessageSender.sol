@@ -195,6 +195,12 @@ contract MultiMessageSender {
             revert Error.INVALID_TARGET();
         }
 
+        address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
+
+        if (mmaReceiver == address(0)) {
+            revert Error.ZERO_RECEIVER_ADAPTER();
+        }
+
         /// @dev writes to memory for gas saving
         v.adapters = new address[](senderAdapters.length - _excludedAdapters.length);
 
@@ -240,12 +246,6 @@ contract MultiMessageSender {
 
         for (uint256 i; i < v.adapterLength;) {
             IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(v.adapters[i]);
-
-            address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
-
-            if (mmaReceiver == address(0)) {
-                revert Error.ZERO_RECEIVER_ADAPTER();
-            }
 
             /// @dev assumes CREATE2 deployment for mma sender & receiver
             uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
