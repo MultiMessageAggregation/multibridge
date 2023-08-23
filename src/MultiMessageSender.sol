@@ -153,7 +153,7 @@ contract MultiMessageSender {
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
         /// refund remaining fee
-        /// NOTE: we know the refund address is authorized by us
+        /// slither-disable-next-line arbitrary-send-eth
         if (address(this).balance > 0) {
             _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
