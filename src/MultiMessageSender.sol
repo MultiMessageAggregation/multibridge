@@ -267,7 +267,6 @@ contract MultiMessageSender {
     /// @param to recipient of the transfer
     /// @param value the amount to send
     function _safeTransferETH(address to, uint256 value) internal {
-        (bool success,) = to.call{value: value}(new bytes(0));
-        require(success, "safeTransferETH: ETH transfer failed");
+        payable(to).transfer(value);
     }
 }
