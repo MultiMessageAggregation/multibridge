@@ -197,7 +197,7 @@ contract MultiMessageSender {
 
         /// @dev writes to memory for gas saving
         v.adapters = new address[](senderAdapters.length - _excludedAdapters.length);
-        
+
         // TODO: Consider keeping both senderAdapters and _excludedAdapters sorted lexicographically
         v.adapterLength;
         for (uint256 i; i < senderAdapters.length;) {
@@ -213,7 +213,7 @@ contract MultiMessageSender {
                     ++j;
                 }
             }
-            
+
             if (!excluded) {
                 v.adapters[v.adapterLength] = currAdapter;
                 ++v.adapterLength;
@@ -265,7 +265,7 @@ contract MultiMessageSender {
             }
         }
 
-         v.msgId = MessageLibrary.computeMsgId(message);
+        v.msgId = MessageLibrary.computeMsgId(message);
 
         /// refund remaining fee
         /// FIXME: add an explicit refund address config
@@ -273,7 +273,9 @@ contract MultiMessageSender {
             _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
 
-        emit MultiMessageMsgSent(v.msgId, nonce, _dstChainId, _target, _callData, v.msgExpiration, v.adapters, v.adapterSuccess);
+        emit MultiMessageMsgSent(
+            v.msgId, nonce, _dstChainId, _target, _callData, v.msgExpiration, v.adapters, v.adapterSuccess
+        );
     }
 
     function _addSenderAdapter(address _senderAdapter) private {
