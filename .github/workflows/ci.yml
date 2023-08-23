@@ -81,5 +81,5 @@ jobs:
       - name: Run Slither
         uses: crytic/slither-action@v0.3.0
         with:
-          fail-on: none
+          slither-config: "slither.config.json"
           ignore-compile: true

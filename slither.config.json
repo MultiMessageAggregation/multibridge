@@ -1,0 +1,9 @@
+{
+    "detectors_to_exclude": "timestamp,naming-convention,pragma,solc-version,uninitialized-local,constable-states,unused-return",
+    "exclude_informational": true,
+    "exclude_low": true,
+    "exclude_medium": true,
+    "exclude_high": false,
+    "json": "",
+    "filter_paths": "(mocks/|test/|lib/)"
+}
