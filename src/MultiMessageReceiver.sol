@@ -38,7 +38,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     mapping(bytes32 => ExecutionData) public msgReceived;
     mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
     mapping(bytes32 => uint256) public messageVotes;
-    mapping(bytes32 => uint256) public deliveryTime;
 
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
@@ -63,14 +62,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         _;
     }
 
-    /// @notice A modifier used for restricting the caller of some functions to be this contract itself.
-    modifier onlySelf() {
-        if (msg.sender != address(this)) {
-            revert Error.INVALID_SELF_CALLER();
-        }
-        _;
-    }
-    
     /*/////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
@@ -153,9 +144,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         /// increment quorum
         ++messageVotes[msgId];
 
-        /// stores the delivery time
-        deliveryTime[msgId] = block.timestamp;
-
         /// stores the execution data required
         ExecutionData memory prevStored = msgReceived[msgId];
 
@@ -175,10 +163,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         if (block.timestamp > _execData.expiration) {
             revert Error.MSG_EXECUTION_PASSED_DEADLINE();
-        }
-
-        if(block.timestamp < deliveryTime[msgId] + gac.getMsgTimelock()) {
-            revert Error.MSG_STILL_TIMELOCKED();
         }
 
         if (isExecuted[msgId]) {

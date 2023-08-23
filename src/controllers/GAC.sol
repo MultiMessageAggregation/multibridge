@@ -106,7 +106,7 @@ contract GAC is IGAC, Ownable {
             revert Error.ZERO_TIMELOCK_PERIOD();
         }
 
-        if(_timelockInSeconds < MIN_TIMELOCK) {
+        if (_timelockInSeconds < MIN_TIMELOCK) {
             revert Error.TIMELOCK_PERIOD_LESS_THAN_MINIMUM();
         }
 

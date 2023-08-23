@@ -38,7 +38,7 @@ interface IGAC {
 
     /// @dev sets the message expiry time
     /// @param _timeInSeconds is the expiry time for the message on dst chain
-    function setMsgExpiryTime(uint256 _timeInSeconds) external; 
+    function setMsgExpiryTime(uint256 _timeInSeconds) external;
 
     /// @dev sets the message timelock before execution
     /// @param _timelockInSeconds is the timelock period for the message before execution on dst chain
@@ -76,7 +76,7 @@ interface IGAC {
 
     /// @dev returns the expiry time of message from the time of dispatch
     function getMsgExpiryTime() external view returns (uint256 _expiration);
-    
+
     /// @dev returns the timelock period of message in queue before execution
     function getMsgTimelock() external view returns (uint256 _timelock);
 
