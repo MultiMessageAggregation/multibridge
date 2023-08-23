@@ -153,7 +153,8 @@ contract MultiMessageSender {
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
         /// refund remaining fee
-        /// FIXME: add an explicit refund address config
+        /// slither-disable-next-line low-level-calls
+        /// NOTE: we know the refund address is authorized by us
         if (address(this).balance > 0) {
             _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
@@ -267,6 +268,7 @@ contract MultiMessageSender {
     /// @param to recipient of the transfer
     /// @param value the amount to send
     function _safeTransferETH(address to, uint256 value) internal {
-        payable(to).transfer(value);
+        (bool success,) = to.call{value: value}(new bytes(0));
+        require(success, "safeTransferETH: ETH transfer failed");
     }
 }
