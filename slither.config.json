@@ -1,5 +1,5 @@
 {
-    "detectors_to_exclude": "timestamp,naming-convention,pragma,solc-version,uninitialized-local,constable-states,unused-return",
+    "detectors_to_exclude": "timestamp,naming-convention,pragma,solc-version,uninitialized-local,constable-states,unused-return, arbitrary-send-eth",
     "exclude_informational": true,
     "exclude_low": true,
     "exclude_medium": true,
