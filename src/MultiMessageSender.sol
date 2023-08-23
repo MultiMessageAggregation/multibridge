@@ -171,12 +171,22 @@ contract MultiMessageSender {
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
+    struct LocalCallVars {
+        address[] adapters;
+        uint256 adapterLength;
+        uint256 msgExpiration;
+        bool[] adapterSuccess;
+        bytes32 msgId;
+    }
+
     function _remoteCall(
         uint256 _dstChainId,
         address _target,
         bytes calldata _callData,
         address[] memory _excludedAdapters
     ) private {
+        LocalCallVars memory v;
+
         if (_dstChainId == 0) {
             revert Error.ZERO_CHAIN_ID();
         }
@@ -186,9 +196,10 @@ contract MultiMessageSender {
         }
 
         /// @dev writes to memory for gas saving
-        address[] memory adapters = new address[](senderAdapters.length - _excludedAdapters.length);
+        v.adapters = new address[](senderAdapters.length - _excludedAdapters.length);
+        
         // TODO: Consider keeping both senderAdapters and _excludedAdapters sorted lexicographically
-        uint256 adapterLength;
+        v.adapterLength;
         for (uint256 i; i < senderAdapters.length;) {
             address currAdapter = senderAdapters[i];
             bool excluded = false;
@@ -202,9 +213,10 @@ contract MultiMessageSender {
                     ++j;
                 }
             }
+            
             if (!excluded) {
-                adapters[adapterLength] = currAdapter;
-                ++adapterLength;
+                v.adapters[v.adapterLength] = currAdapter;
+                ++v.adapterLength;
             }
 
             unchecked {
@@ -212,22 +224,22 @@ contract MultiMessageSender {
             }
         }
 
-        if (adapterLength == 0) {
+        if (v.adapterLength == 0) {
             revert Error.NO_SENDER_ADAPTER_FOUND();
         }
 
         /// @dev increments nonce
         ++nonce;
 
-        uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
+        v.msgExpiration = block.timestamp + gac.getMsgExpiryTime();
 
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration);
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, v.msgExpiration);
 
-        bool[] memory adapterSuccess = new bool[](adapterLength);
+        v.adapterSuccess = new bool[](v.adapterLength);
 
-        for (uint256 i; i < adapterLength;) {
-            IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
+        for (uint256 i; i < v.adapterLength;) {
+            IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(v.adapters[i]);
 
             address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
 
@@ -239,13 +251,13 @@ contract MultiMessageSender {
             uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
 
             /// @dev if one bridge is paused, the flow shouldn't be broken
-            try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
+            try IBridgeSenderAdapter(v.adapters[i]).dispatchMessage{value: fee}(
                 _dstChainId, mmaReceiver, abi.encode(message)
             ) {
-                adapterSuccess[i] = true;
+                v.adapterSuccess[i] = true;
             } catch {
-                adapterSuccess[i] = false;
-                emit ErrorSendMessage(adapters[i], message);
+                v.adapterSuccess[i] = false;
+                emit ErrorSendMessage(v.adapters[i], message);
             }
 
             unchecked {
@@ -253,7 +265,7 @@ contract MultiMessageSender {
             }
         }
 
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+         v.msgId = MessageLibrary.computeMsgId(message);
 
         /// refund remaining fee
         /// FIXME: add an explicit refund address config
@@ -261,7 +273,7 @@ contract MultiMessageSender {
             _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
 
-        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, msgExpiration, adapters, adapterSuccess);
+        emit MultiMessageMsgSent(v.msgId, nonce, _dstChainId, _target, _callData, v.msgExpiration, v.adapters, v.adapterSuccess);
     }
 
     function _addSenderAdapter(address _senderAdapter) private {
