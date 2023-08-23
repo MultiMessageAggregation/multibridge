@@ -82,7 +82,7 @@ jobs:
         uses: crytic/slither-action@v0.3.0
         id: slither
         with:
-          fail-on: config
+          fail-on: high
           ignore-compile: true
           solc-version: 0.8.19
           slither-config: "slither.config.json"
