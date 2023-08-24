@@ -1,0 +1,4 @@
+{
+    "detectors_to_exclude": "timestamp,naming-convention,pragma,solc-version,uninitialized-local,constable-states,unused-return, arbitrary-send-eth",
+    "filter_paths": "(mocks/|test/|lib/)"
+}

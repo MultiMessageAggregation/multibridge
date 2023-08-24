@@ -3,18 +3,18 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import {Test, Vm} from "forge-std/Test.sol";
-import "forge-std/Console.sol";
+import "forge-std/console.sol";
 
 /// @dev imports from Pigeon Helper (Facilitate State Transfer Mocks)
 import {WormholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
 import {AxelarHelper} from "pigeon/axelar/AxelarHelper.sol";
 
 /// local imports
-import {WormholeSenderAdapter} from "../src/adapters/wormhole/WormholeSenderAdapter.sol";
-import {WormholeReceiverAdapter} from "../src/adapters/wormhole/WormholeReceiverAdapter.sol";
+import {WormholeSenderAdapter} from "src/adapters/Wormhole/WormholeSenderAdapter.sol";
+import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
 
-import {AxelarSenderAdapter} from "../src/adapters/axelar/AxelarSenderAdapter.sol";
-import {AxelarReceiverAdapter} from "../src/adapters/axelar/AxelarReceiverAdapter.sol";
+import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
+import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
 import {GAC} from "../src/controllers/GAC.sol";
 import {MultiMessageSender} from "../src/MultiMessageSender.sol";
@@ -301,6 +301,7 @@ abstract contract Setup is Test {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
                     );
+                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(caller);
                 }
 
                 unchecked {
