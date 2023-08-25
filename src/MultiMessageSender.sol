@@ -97,68 +97,21 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData) external payable onlyCaller {
-        if (_dstChainId == 0) {
-            revert Error.ZERO_CHAIN_ID();
-        }
+        address[] memory excludedAdapters;
+        _remoteCall(_dstChainId, _target, _callData, excludedAdapters);
+    }
 
-        if (_target == address(0)) {
-            revert Error.INVALID_TARGET();
-        }
-
-        /// @dev writes to memory for gas saving
-        address[] memory adapters = senderAdapters;
-        uint256 adapterLength = adapters.length;
-
-        if (adapterLength == 0) {
-            revert Error.NO_SENDER_ADAPTER_FOUND();
-        }
-
-        /// @dev increments nonce
-        ++nonce;
-
-        uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
-
-        MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration);
-
-        bool[] memory adapterSuccess = new bool[](adapterLength);
-
-        for (uint256 i; i < adapterLength;) {
-            IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
-
-            address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
-
-            if (mmaReceiver == address(0)) {
-                revert Error.ZERO_RECEIVER_ADAPTER();
-            }
-
-            /// @dev assumes CREATE2 deployment for mma sender & receiver
-            uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
-
-            /// @dev if one bridge is paused, the flow shouldn't be broken
-            try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
-                _dstChainId, mmaReceiver, abi.encode(message)
-            ) {
-                adapterSuccess[i] = true;
-            } catch {
-                adapterSuccess[i] = false;
-                emit ErrorSendMessage(adapters[i], message);
-            }
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
-
-        /// refund remaining fee
-        /// FIXME: add an explicit refund address config
-        if (address(this).balance > 0) {
-            _safeTransferETH(gac.getRefundAddress(), address(this).balance);
-        }
-
-        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, msgExpiration, adapters, adapterSuccess);
+    /// @param _dstChainId is the destination chainId
+    /// @param _target is the target execution point on dst chain
+    /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
+    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
+    function remoteCall(
+        uint256 _dstChainId,
+        address _target,
+        bytes calldata _callData,
+        address[] calldata _excludedAdapters
+    ) external payable onlyCaller {
+        _remoteCall(_dstChainId, _target, _callData, _excludedAdapters);
     }
 
     /// @notice Add bridge sender adapters
@@ -217,6 +170,99 @@ contract MultiMessageSender {
     /*/////////////////////////////////////////////////////////////////
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
+
+    function _remoteCall(
+        uint256 _dstChainId,
+        address _target,
+        bytes calldata _callData,
+        address[] memory _excludedAdapters
+    ) private {
+        if (_dstChainId == 0) {
+            revert Error.ZERO_CHAIN_ID();
+        }
+
+        if (_target == address(0)) {
+            revert Error.INVALID_TARGET();
+        }
+
+        /// @dev writes to memory for gas saving
+        address[] memory adapters = new address[](senderAdapters.length - _excludedAdapters.length);
+        // TODO: Consider keeping both senderAdapters and _excludedAdapters sorted lexicographically
+        uint256 adapterLength;
+        for (uint256 i; i < senderAdapters.length;) {
+            address currAdapter = senderAdapters[i];
+            bool excluded = false;
+            for (uint256 j; j < _excludedAdapters.length;) {
+                if (_excludedAdapters[j] == currAdapter) {
+                    excluded = true;
+                    break;
+                }
+
+                unchecked {
+                    ++j;
+                }
+            }
+            if (!excluded) {
+                adapters[adapterLength] = currAdapter;
+                ++adapterLength;
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        if (adapterLength == 0) {
+            revert Error.NO_SENDER_ADAPTER_FOUND();
+        }
+
+        /// @dev increments nonce
+        ++nonce;
+
+        uint256 msgExpiration = block.timestamp + gac.getMsgExpiryTime();
+
+        MessageLibrary.Message memory message =
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, msgExpiration);
+
+        bool[] memory adapterSuccess = new bool[](adapterLength);
+
+        for (uint256 i; i < adapterLength;) {
+            IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(adapters[i]);
+
+            address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
+
+            if (mmaReceiver == address(0)) {
+                revert Error.ZERO_RECEIVER_ADAPTER();
+            }
+
+            /// @dev assumes CREATE2 deployment for mma sender & receiver
+            uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
+
+            /// @dev if one bridge is paused, the flow shouldn't be broken
+            try IBridgeSenderAdapter(adapters[i]).dispatchMessage{value: fee}(
+                _dstChainId, mmaReceiver, abi.encode(message)
+            ) {
+                adapterSuccess[i] = true;
+            } catch {
+                adapterSuccess[i] = false;
+                emit ErrorSendMessage(adapters[i], message);
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        bytes32 msgId = MessageLibrary.computeMsgId(message);
+
+        /// refund remaining fee
+        /// FIXME: add an explicit refund address config
+        if (address(this).balance > 0) {
+            _safeTransferETH(gac.getRefundAddress(), address(this).balance);
+        }
+
+        emit MultiMessageMsgSent(msgId, nonce, _dstChainId, _target, _callData, msgExpiration, adapters, adapterSuccess);
+    }
 
     function _addSenderAdapter(address _senderAdapter) private {
         if (_senderAdapter == address(0)) {
