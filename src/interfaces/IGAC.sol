@@ -48,6 +48,10 @@ interface IGAC {
     /// @param _refundAddress is the address to receive refunds from MMA sender
     function setRefundAddress(address _refundAddress) external;
 
+    /// @dev sets the governance timelock address for queuing dst chain actions
+    /// @param _governanceTimelock is the address of governance timelock
+    function setGovernanceTimelock(address _governanceTimelock) external;
+
     /*///////////////////////////////////////////////////////////////
                     EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -82,4 +86,7 @@ interface IGAC {
 
     /// @dev returns the refund address
     function getRefundAddress() external view returns (address _refundAddress);
+
+    /// @dev returns the governance timelock address before execution on dst chains
+    function getGovernanceTimelock() external view returns (address _governanceTimelock);
 }

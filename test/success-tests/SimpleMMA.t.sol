@@ -7,8 +7,11 @@ import {Vm} from "forge-std/Test.sol";
 /// local imports
 import "../Setup.t.sol";
 import "../mock/MockUniswapReceiver.sol";
+
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {Error} from "src/libraries/Error.sol";
+import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
 contract MMA is Setup {
     MockUniswapReceiver target;
@@ -47,18 +50,15 @@ contract MMA is Setup {
                 msgId = msgIdLogs[i].topics[1];
             }
         }
-        console.logBytes32(msgId);
 
         vm.selectFork(fork[137]);
 
-        /// execute message received
-        vm.expectRevert(Error.MSG_STILL_TIMELOCKED.selector);
+        /// execute the message and move it to governance timelock contract
         MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
-        assertEq(target.i(), 0);
 
-        /// increment the time by 1 day
+        /// increment the time by 2 day (delay time)
         vm.warp(block.timestamp + 1 days);
-        MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(1);
         assertEq(target.i(), type(uint256).max);
     }
 }

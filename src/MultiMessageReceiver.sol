@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
+import "./interfaces/IGovernanceTimelock.sol";
 import "./interfaces/IGAC.sol";
 
 /// libraries
@@ -58,6 +59,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     modifier onlyReceiverAdapter() {
         if (!isTrustedExecutor(msg.sender)) {
             revert Error.INVALID_RECEIVER_ADAPTER();
+        }
+        _;
+    }
+
+    /// @notice A modifier used for restricting the caller to just the governance timelock contract
+    modifier onlyGovernanceTimelock() {
+        if (msg.sender != gac.getGovernanceTimelock()) {
+            revert Error.CALLER_NOT_GOVERNANCE_TIMELOCK();
         }
         _;
     }
@@ -161,25 +170,30 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     function executeMessage(bytes32 msgId) external {
         ExecutionData memory _execData = msgReceived[msgId];
 
+        /// @dev validates if msg execution is not beyond expiration
         if (block.timestamp > _execData.expiration) {
             revert Error.MSG_EXECUTION_PASSED_DEADLINE();
         }
 
+        /// @dev validates if msgId is already executed
         if (isExecuted[msgId]) {
             revert Error.MSG_ID_ALREADY_EXECUTED();
         }
 
         isExecuted[msgId] = true;
 
+        /// @dev validates message quorum
         if (messageVotes[msgId] < quorum) {
             revert Error.INVALID_QUORUM_FOR_EXECUTION();
         }
 
-        (bool status,) = _execData.target.call(_execData.callData);
-
-        if (!status) {
-            revert Error.EXECUTION_FAILS_ON_DST();
-        }
+        /// @dev queues the action on timelock for execution
+        IGovernanceTimelock(gac.getGovernanceTimelock()).scheduleTransaction(
+            _execData.target,
+            0,
+            /// NOTE: should we ever send native fees
+            _execData.callData
+        );
 
         emit MessageExecuted(msgId, _execData.target, _execData.nonce, _execData.callData);
     }
@@ -188,7 +202,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @dev called by admin to update receiver bridge adapters on all other chains
     function updateReceiverAdapter(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
-        onlySelf
+        onlyGovernanceTimelock
     {
         uint256 len = _receiverAdapters.length;
 
@@ -206,7 +220,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorum(uint64 _quorum) external onlySelf {
+    function updateQuorum(uint64 _quorum) external onlyGovernanceTimelock {
         /// NOTE: should check 2/3 ?
         if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
@@ -216,6 +230,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         quorum = _quorum;
         emit quorumUpdated(oldValue, _quorum);
     }
+
+    /*/////////////////////////////////////////////////////////////////
+                            VIEW/READ-ONLY FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
     function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {

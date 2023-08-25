@@ -26,11 +26,15 @@ contract GAC is IGAC, Ownable {
     /// @dev is the timelock to be used by multi-message receiver before execution
     uint256 public msgTimelock;
 
+    /// @dev is the address to receive value refunds from remoteCall
     address public refundAddress;
 
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
     address public multiMessageSender;
+
+    /// @notice is the governance timelock contract on the chain to queue actions
+    address public governanceTimelock;
 
     /// @dev is the allowed caller for the multi-message sender
     address public allowedCaller;
@@ -122,6 +126,15 @@ contract GAC is IGAC, Ownable {
         refundAddress = _refundAddress;
     }
 
+    /// @inheritdoc IGAC
+    function setGovernanceTimelock(address _governanceTimelock) external override onlyOwner {
+        if (_governanceTimelock == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        governanceTimelock = _governanceTimelock;
+    }
+
     /*///////////////////////////////////////////////////////////////
                         EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -173,5 +186,10 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getMultiMessageCaller() external view returns (address _mmaCaller) {
         _mmaCaller = allowedCaller;
+    }
+
+    /// @inheritdoc IGAC
+    function getGovernanceTimelock() external view returns (address _governanceTimelock) {
+        _governanceTimelock = governanceTimelock;
     }
 }

@@ -17,6 +17,8 @@ import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
 import {GAC} from "../src/controllers/GAC.sol";
+import {GovernanceTimelock} from "../src/controllers/GovernanceTimelock.sol";
+
 import {MultiMessageSender} from "../src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
 
@@ -250,8 +252,10 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            contractAddress[chainId][bytes("MMA_RECEIVER")] =
-                address(new MultiMessageReceiver{salt: _salt}(contractAddress[1][bytes("GAC")]));
+            address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}(contractAddress[1][bytes("GAC")]));
+            contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
+            contractAddress[chainId][bytes("TIMELOCK")] =
+                address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver)));
         }
     }
 
@@ -302,6 +306,9 @@ abstract contract Setup is Test {
                 if (ALL_CHAINS[j] != 1) {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
+                    );
+                    GAC(contractAddress[chainId][bytes("GAC")]).setGovernanceTimelock(
+                        contractAddress[ALL_CHAINS[j]][bytes("TIMELOCK")]
                     );
                     GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(caller);
                 }

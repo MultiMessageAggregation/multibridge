@@ -65,12 +65,18 @@ library Error {
     /// @dev is thrown if message execution fails on the destination chain
     error EXECUTION_FAILS_ON_DST();
 
+    /// @dev is thrown if caller is not governance timelock contract
+    error CALLER_NOT_GOVERNANCE_TIMELOCK();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/
 
     /// @dev is thrown if caller is not multi message sender
     error CALLER_NOT_MULTI_MESSAGE_SENDER();
+
+    /// @dev is thrown if caller is not multi message receiver
+    error CALLER_NOT_MULTI_MESSAGE_RECEIVER();
 
     /// @dev is thrown if sender chain is not allowed on reciever adapter
     error INVALID_SENDER_CHAIN_ID();
@@ -128,4 +134,26 @@ library Error {
 
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
+
+    /*/////////////////////////////////////////////////////////////////
+                            TIMELOCK ERRORS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev is thrown if the delay is less than minimum delay
+    error INVALID_DELAY_MIN();
+
+    /// @dev is thrown if the delay is more than maximum delay
+    error INVALID_DELAY_MAX();
+
+    /// @dev is thrown if the new admin is zero
+    error ZERO_TIMELOCK_ADMIN();
+
+    /// @dev is thrown if tx id is zero (or) invalid
+    error INVALID_TX_ID();
+
+    /// @dev is thrown if tx id is already executed
+    error TX_ALREADY_EXECUTED();
+
+    /// @dev is thrown if timelock period is not over
+    error TX_TIMELOCKED();
 }
