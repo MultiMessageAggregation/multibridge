@@ -1,11 +1,11 @@
 [profile.default]
-solc = "0.8.19"
+src = "src"
+out = "out"
 libs = ["lib"]
+solc = "0.8.19"
+
 optimizer = true
 runs = 100
 viaIR = true
-verbosity = 0
-ffi = true
-fs_permissions = [{ access = "read-write", path = "./script/" }]
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
