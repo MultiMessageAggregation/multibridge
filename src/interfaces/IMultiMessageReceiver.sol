@@ -13,7 +13,7 @@ interface IMultiMessageReceiver {
         uint256 nonce;
         uint256 expiration;
     }
-    
+
     /*/////////////////////////////////////////////////////////////////
                                     EVENTS
     ////////////////////////////////////////////////////////////////*/
@@ -32,7 +32,7 @@ interface IMultiMessageReceiver {
     /// If the accumulated power of a message has reached the power threshold,
     /// this message will be executed immediately, which will invoke an external function call
     /// according to the message content.
-    
+
     /// @dev Every receiver adapter should call this function with decoded MessageStruct.Message
     /// when receiver adapter receives a message produced by a corresponding sender adapter on the source chain.
     function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName) external;
