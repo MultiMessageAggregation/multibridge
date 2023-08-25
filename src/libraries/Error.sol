@@ -142,6 +142,9 @@ library Error {
     /// @dev is thrown if the new admin is zero
     error ZERO_TIMELOCK_ADMIN();
 
+    /// @dev is thrown if timelock governance address input is zero
+    error ZERO_GOVERNANCE_TIMELOCK();
+
     /// @dev is thrown if tx id is zero (or) invalid
     error INVALID_TX_ID();
 

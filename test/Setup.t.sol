@@ -124,7 +124,6 @@ abstract contract Setup is Test {
 
             GAC gac = new GAC{salt: _salt}();
             gac.setMsgExpiryTime(2 days);
-            gac.setMsgTimelock(1 days);
             gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 
@@ -252,7 +251,7 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}(contractAddress[1][bytes("GAC")]));
+            address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}());
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
                 address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver)));
@@ -281,7 +280,7 @@ abstract contract Setup is Test {
             _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
-            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(_recieverAdapters, 2);
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(_recieverAdapters, 2, contractAddress[chainId]["TIMELOCK"]);
 
             unchecked {
                 ++i;
@@ -306,9 +305,6 @@ abstract contract Setup is Test {
                 if (ALL_CHAINS[j] != 1) {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
-                    );
-                    GAC(contractAddress[chainId][bytes("GAC")]).setGovernanceTimelock(
-                        contractAddress[ALL_CHAINS[j]][bytes("TIMELOCK")]
                     );
                     GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(caller);
                 }

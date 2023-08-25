@@ -9,7 +9,6 @@ import "./interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
 import "./interfaces/IGovernanceTimelock.sol";
-import "./interfaces/IGAC.sol";
 
 /// libraries
 import "./libraries/Error.sol";
@@ -18,8 +17,6 @@ import "./libraries/Message.sol";
 /// @title MultiMessageReceiver
 /// @dev receives message from bridge adapters
 contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializable {
-    IGAC public immutable gac;
-
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
@@ -27,29 +24,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @notice minimum number of AMBs required for delivery before execution
     uint64 public quorum;
 
-    struct ExecutionData {
-        address target;
-        bytes callData;
-        uint256 nonce;
-        uint256 expiration;
-    }
+    /// @dev is the address of governance timelock
+    address public governanceTimelock;
 
     /// @notice stores each msg id related info
     mapping(bytes32 => bool) public isExecuted;
     mapping(bytes32 => ExecutionData) public msgReceived;
     mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
     mapping(bytes32 => uint256) public messageVotes;
-
-    /*/////////////////////////////////////////////////////////////////
-                                EVENTS
-    ////////////////////////////////////////////////////////////////*/
-
-    event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event quorumUpdated(uint64 oldValue, uint64 newValue);
-    event SingleBridgeMsgReceived(
-        bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
-    );
-    event MessageExecuted(bytes32 msgId, address target, uint256 nonce, bytes callData);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -65,23 +47,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice A modifier used for restricting the caller to just the governance timelock contract
     modifier onlyGovernanceTimelock() {
-        if (msg.sender != gac.getGovernanceTimelock()) {
+        if (msg.sender != governanceTimelock) {
             revert Error.CALLER_NOT_GOVERNANCE_TIMELOCK();
         }
         _;
-    }
-
-    /*/////////////////////////////////////////////////////////////////
-                                CONSTRUCTOR
-    ////////////////////////////////////////////////////////////////*/
-
-    /// @param _gac is the controller/registry of uniswap mma
-    constructor(address _gac) {
-        if (_gac == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        gac = IGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -89,7 +58,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sets the initial paramters
-    function initialize(address[] calldata _receiverAdapters, uint64 _quorum) external initializer {
+    function initialize(address[] calldata _receiverAdapters, uint64 _quorum, address _governaneTimelock)
+        external
+        initializer
+    {
         uint256 len = _receiverAdapters.length;
 
         if (len == 0) {
@@ -112,7 +84,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
+        if (_governaneTimelock == address(0)) {
+            revert Error.ZERO_GOVERNANCE_TIMELOCK();
+        }
+
         quorum = _quorum;
+        governanceTimelock = _governaneTimelock;
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -188,7 +165,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
 
         /// @dev queues the action on timelock for execution
-        IGovernanceTimelock(gac.getGovernanceTimelock()).scheduleTransaction(
+        IGovernanceTimelock(governanceTimelock).scheduleTransaction(
             _execData.target,
             0,
             /// NOTE: should we ever send native fees
