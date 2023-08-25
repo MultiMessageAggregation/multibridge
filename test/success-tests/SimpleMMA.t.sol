@@ -7,9 +7,8 @@ import {Vm} from "forge-std/Test.sol";
 /// local imports
 import "../Setup.t.sol";
 import "../mock/MockUniswapReceiver.sol";
-import {MultiMessageSender} from "../../src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "../../src/MultiMessageReceiver.sol";
-import {Error} from "../../src/libraries/Error.sol";
+import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 
 contract MMA is Setup {
     MockUniswapReceiver target;
