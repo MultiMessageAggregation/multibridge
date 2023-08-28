@@ -154,6 +154,9 @@ library Error {
     /// @dev is thrown if tx id is already executed
     error TX_ALREADY_EXECUTED();
 
+    /// @dev is thrown if msg.value is not enough
+    error TX_UNDERPAID();
+
     /// @dev is thrown if timelock period is not over
     error TX_TIMELOCKED();
 

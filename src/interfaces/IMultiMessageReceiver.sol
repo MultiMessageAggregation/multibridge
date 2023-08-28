@@ -10,6 +10,7 @@ interface IMultiMessageReceiver {
     struct ExecutionData {
         address target;
         bytes callData;
+        uint256 value;
         uint256 nonce;
         uint256 expiration;
     }

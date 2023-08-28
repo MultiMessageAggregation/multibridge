@@ -23,7 +23,8 @@ contract GovernanceTimelock is IGovernanceTimelock {
     uint256 public txCounter;
     uint256 public delay = MINIMUM_DELAY;
     uint256 public execPeriod = MINIMUM_EXECUTION_PERIOD;
-    address public admin;     /// @dev the admin is the one allowed to schedule events
+    address public admin;
+    /// @dev the admin is the one allowed to schedule events
 
     mapping(uint256 txId => ScheduledTransaction) public scheduledTransaction;
 
@@ -66,11 +67,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGovernanceTimelock
-    function scheduleTransaction(address _target, uint256 _value, bytes memory _data)
-        external
-        override
-        onlyAdmin
-    {
+    function scheduleTransaction(address _target, uint256 _value, bytes memory _data) external override onlyAdmin {
         if (_target == address(0)) {
             revert Error.INVALID_TARGET();
         }
@@ -78,7 +75,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
         /// increment tx counter
         ++txCounter;
         uint256 eta = block.timestamp + delay;
-        uint256 expiry = eta + execPeriod; 
+        uint256 expiry = eta + execPeriod;
 
         scheduledTransaction[txCounter] = ScheduledTransaction(_target, _value, _data, eta, expiry, false);
 
@@ -86,7 +83,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
     }
 
     /// @inheritdoc IGovernanceTimelock
-    function executeTransaction(uint256 txId) external override {
+    function executeTransaction(uint256 txId) external payable override {
         /// @dev validates the txId
         if (txId == 0 || txId > txCounter) {
             revert Error.INVALID_TX_ID();
@@ -105,8 +102,13 @@ contract GovernanceTimelock is IGovernanceTimelock {
         }
 
         /// @dev checks if tx within execution period
-        if(block.timestamp > transaction.expiry) {
+        if (block.timestamp > transaction.expiry) {
             revert Error.TX_EXPIRED();
+        }
+
+        /// @dev checks native funding
+        if (msg.value != transaction.value) {
+            revert Error.TX_UNDERPAID();
         }
 
         transaction.isExecuted = true;
@@ -117,7 +119,9 @@ contract GovernanceTimelock is IGovernanceTimelock {
             revert Error.EXECUTION_FAILS_ON_DST();
         }
 
-        emit TransactionExecuted(txId, transaction.target, transaction.value, transaction.data, transaction.eta, transaction.expiry);
+        emit TransactionExecuted(
+            txId, transaction.target, transaction.value, transaction.data, transaction.eta, transaction.expiry
+        );
     }
 
     /// @inheritdoc IGovernanceTimelock

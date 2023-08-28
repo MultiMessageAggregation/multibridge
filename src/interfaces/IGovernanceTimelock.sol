@@ -18,8 +18,12 @@ interface IGovernanceTimelock {
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
-    event TransactionScheduled(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta, uint256 expiry);
-    event TransactionExecuted(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta, uint256 expiry);
+    event TransactionScheduled(
+        uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta, uint256 expiry
+    );
+    event TransactionExecuted(
+        uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta, uint256 expiry
+    );
 
     event ExecutionPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event DelayUpdated(uint256 oldDelay, uint256 newDelay);
@@ -38,7 +42,7 @@ interface IGovernanceTimelock {
 
     /// @notice Executes a previously scheduled transaction if it has reached its ETA.
     /// @param _txId is the unqiue identifier of the scheduled transaction
-    function executeTransaction(uint256 _txId) external;
+    function executeTransaction(uint256 _txId) external payable;
 
     /// @notice Updates the minimum delay for a transaction before it can be executed.
     /// @dev This can only be invoked by through this timelock contract, thus requiring that an update go through the required time delay first.

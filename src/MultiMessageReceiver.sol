@@ -135,7 +135,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         /// stores the message if the amb is the first one delivering the message
         if (prevStored.target == address(0)) {
-            msgReceived[msgId] = ExecutionData(_message.target, _message.callData, _message.nonce, _message.expiration);
+            msgReceived[msgId] = ExecutionData(
+                _message.target, _message.callData, _message.nativeValue, _message.nonce, _message.expiration
+            );
         }
 
         emit SingleBridgeMsgReceived(msgId, _bridgeName, _message.nonce, msg.sender);
@@ -166,10 +168,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         /// @dev queues the action on timelock for execution
         IGovernanceTimelock(governanceTimelock).scheduleTransaction(
-            _execData.target,
-            0,
-            /// NOTE: should we ever send native fees
-            _execData.callData
+            _execData.target, _execData.value, _execData.callData
         );
 
         emit MessageExecuted(msgId, _execData.target, _execData.nonce, _execData.callData);
