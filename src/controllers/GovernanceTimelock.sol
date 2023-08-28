@@ -14,17 +14,18 @@ contract GovernanceTimelock is IGovernanceTimelock {
     uint256 public constant MINIMUM_DELAY = 2 days;
     uint256 public constant MAXIMUM_DELAY = 14 days;
 
+    uint256 public constant MINIMUM_EXECUTION_PERIOD = 1 days;
+    uint256 public constant MAXIMUM_EXECUTION_PERIOD = 3 days;
+
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     uint256 public txCounter;
     uint256 public delay = MINIMUM_DELAY;
-
-    /// @dev the admin should be multi-message receiver
-    address public multiMessageReceiver;
+    uint256 public execPeriod = MINIMUM_EXECUTION_PERIOD;
+    address public admin;     /// @dev the admin is the one allowed to schedule events
 
     mapping(uint256 txId => ScheduledTransaction) public scheduledTransaction;
-    mapping(uint256 txId => bool executed) public isExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -38,10 +39,10 @@ contract GovernanceTimelock is IGovernanceTimelock {
         _;
     }
 
-    /// @notice A modifier used for restricting caller to mma receiver contract
-    modifier onlyMultiMessageReceiver() {
-        if (msg.sender != multiMessageReceiver) {
-            revert Error.CALLER_NOT_MULTI_MESSAGE_RECEIVER();
+    /// @notice A modifier used for restricting caller to admin contract
+    modifier onlyAdmin() {
+        if (msg.sender != admin) {
+            revert Error.CALLER_NOT_ADMIN();
         }
         _;
     }
@@ -50,13 +51,14 @@ contract GovernanceTimelock is IGovernanceTimelock {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _multiMessageReceiver is the address of multiMessageReceiver
-    constructor(address _multiMessageReceiver) {
-        if (_multiMessageReceiver == address(0)) {
+    /// @param _admin is the address of admin contract that schedule txs
+    constructor(address _admin) {
+        if (_admin == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        multiMessageReceiver = _multiMessageReceiver;
+        admin = _admin;
+        emit AdminUpdated(address(0), _admin);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -67,7 +69,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
     function scheduleTransaction(address _target, uint256 _value, bytes memory _data)
         external
         override
-        onlyMultiMessageReceiver
+        onlyAdmin
     {
         if (_target == address(0)) {
             revert Error.INVALID_TARGET();
@@ -76,10 +78,11 @@ contract GovernanceTimelock is IGovernanceTimelock {
         /// increment tx counter
         ++txCounter;
         uint256 eta = block.timestamp + delay;
+        uint256 expiry = eta + execPeriod; 
 
-        scheduledTransaction[txCounter] = ScheduledTransaction(_target, _value, _data, eta);
+        scheduledTransaction[txCounter] = ScheduledTransaction(_target, _value, _data, eta, expiry, false);
 
-        emit TransactionScheduled(txCounter, _target, _value, _data, eta);
+        emit TransactionScheduled(txCounter, _target, _value, _data, eta, expiry);
     }
 
     /// @inheritdoc IGovernanceTimelock
@@ -89,19 +92,24 @@ contract GovernanceTimelock is IGovernanceTimelock {
             revert Error.INVALID_TX_ID();
         }
 
+        ScheduledTransaction storage transaction = scheduledTransaction[txId];
+
         /// @dev checks if tx is already executed;
-        if (isExecuted[txId]) {
+        if (transaction.isExecuted) {
             revert Error.TX_ALREADY_EXECUTED();
         }
 
-        ScheduledTransaction memory transaction = scheduledTransaction[txId];
-
         /// @dev checks timelock
         if (transaction.eta < block.timestamp) {
-            revert Error.TX_TIMELOCKED();
+            revert Error.TX_EXPIRED();
         }
 
-        isExecuted[txId] = true;
+        /// @dev checks if tx within execution period
+        if(block.timestamp > transaction.expiry) {
+            revert Error.TX_EXPIRED();
+        }
+
+        transaction.isExecuted = true;
 
         (bool status,) = transaction.target.call(transaction.data);
 
@@ -109,7 +117,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
             revert Error.EXECUTION_FAILS_ON_DST();
         }
 
-        emit TransactionExecuted(txId, transaction.target, transaction.value, transaction.data, transaction.eta);
+        emit TransactionExecuted(txId, transaction.target, transaction.value, transaction.data, transaction.eta, transaction.expiry);
     }
 
     /// @inheritdoc IGovernanceTimelock
@@ -129,13 +137,29 @@ contract GovernanceTimelock is IGovernanceTimelock {
     }
 
     /// @inheritdoc IGovernanceTimelock
+    function setExecutionPeriod(uint256 _period) external override onlySelf {
+        if (_period < MINIMUM_EXECUTION_PERIOD) {
+            revert Error.INVALID_EXEC_PERIOD_MIN();
+        }
+
+        if (_period > MAXIMUM_EXECUTION_PERIOD) {
+            revert Error.INVALID_EXEC_PERIOD_MAX();
+        }
+
+        uint256 oldExecPeriod = execPeriod;
+        execPeriod = _period;
+
+        emit ExecutionPeriodUpdated(oldExecPeriod, _period);
+    }
+
+    /// @inheritdoc IGovernanceTimelock
     function setAdmin(address _newAdmin) external override onlySelf {
         if (_newAdmin == address(0)) {
             revert Error.ZERO_TIMELOCK_ADMIN();
         }
 
-        address oldAdmin = multiMessageReceiver;
-        multiMessageReceiver = _newAdmin;
+        address oldAdmin = admin;
+        admin = _newAdmin;
 
         emit AdminUpdated(oldAdmin, _newAdmin);
     }

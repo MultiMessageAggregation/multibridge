@@ -57,8 +57,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
                                 INITIALIZER
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice sets the initial paramters
-    function initialize(address[] calldata _receiverAdapters, uint64 _quorum, address _governaneTimelock)
+    /// @notice sets the initial parameters
+    function initialize(address[] calldata _receiverAdapters, uint64 _quorum, address _governanceTimelock)
         external
         initializer
     {
@@ -84,12 +84,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
-        if (_governaneTimelock == address(0)) {
+        if (_governanceTimelock == address(0)) {
             revert Error.ZERO_GOVERNANCE_TIMELOCK();
         }
 
         quorum = _quorum;
-        governanceTimelock = _governaneTimelock;
+        governanceTimelock = _governanceTimelock;
     }
 
     /*/////////////////////////////////////////////////////////////////

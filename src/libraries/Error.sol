@@ -50,9 +50,6 @@ library Error {
     /// @dev is thrown if deadline is lapsed
     error MSG_EXECUTION_PASSED_DEADLINE();
 
-    /// @dev is thrown if message is still in timelock period
-    error MSG_STILL_TIMELOCKED();
-
     /// @dev is thrown if quorum is not reached
     error INVALID_QUORUM_FOR_EXECUTION();
 
@@ -62,15 +59,15 @@ library Error {
     /// @dev is thrown if caller is not governance timelock contract
     error CALLER_NOT_GOVERNANCE_TIMELOCK();
 
+    /// @dev is thrown if caller is not admin of timelock
+    error CALLER_NOT_ADMIN();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/
 
     /// @dev is thrown if caller is not multi message sender
     error CALLER_NOT_MULTI_MESSAGE_SENDER();
-
-    /// @dev is thrown if caller is not multi message receiver
-    error CALLER_NOT_MULTI_MESSAGE_RECEIVER();
 
     /// @dev is thrown if sender chain is not allowed on reciever adapter
     error INVALID_SENDER_CHAIN_ID();
@@ -139,6 +136,12 @@ library Error {
     /// @dev is thrown if the delay is more than maximum delay
     error INVALID_DELAY_MAX();
 
+    /// @dev is thrown if the execution period is less than minimum execution period
+    error INVALID_EXEC_PERIOD_MIN();
+
+    /// @dev is thrown if the execution period is more than maximum execution period
+    error INVALID_EXEC_PERIOD_MAX();
+
     /// @dev is thrown if the new admin is zero
     error ZERO_TIMELOCK_ADMIN();
 
@@ -153,4 +156,7 @@ library Error {
 
     /// @dev is thrown if timelock period is not over
     error TX_TIMELOCKED();
+
+    /// @dev is thrown if transaction is expired
+    error TX_EXPIRED();
 }
