@@ -136,12 +136,6 @@ library Error {
     /// @dev is thrown if the delay is more than maximum delay
     error INVALID_DELAY_MAX();
 
-    /// @dev is thrown if the execution period is less than minimum execution period
-    error INVALID_EXEC_PERIOD_MIN();
-
-    /// @dev is thrown if the execution period is more than maximum execution period
-    error INVALID_EXEC_PERIOD_MAX();
-
     /// @dev is thrown if the new admin is zero
     error ZERO_TIMELOCK_ADMIN();
 
