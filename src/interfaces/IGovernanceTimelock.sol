@@ -11,19 +11,14 @@ interface IGovernanceTimelock {
         uint256 value;
         bytes data;
         uint256 eta;
-        uint256 expiry;
         bool isExecuted;
     }
 
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
-    event TransactionScheduled(
-        uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta, uint256 expiry
-    );
-    event TransactionExecuted(
-        uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta, uint256 expiry
-    );
+    event TransactionScheduled(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta);
+    event TransactionExecuted(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta);
 
     event ExecutionPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event DelayUpdated(uint256 oldDelay, uint256 newDelay);
@@ -47,10 +42,6 @@ interface IGovernanceTimelock {
     /// @notice Updates the minimum delay for a transaction before it can be executed.
     /// @dev This can only be invoked by through this timelock contract, thus requiring that an update go through the required time delay first.
     function setDelay(uint256 _delay) external;
-
-    /// @notice Updates the period after timelock where the transaction can be executed
-    /// @dev This can only be executed by through this timelock contract, thus requiring that an update go through the required time delay first.
-    function setExecutionPeriod(uint256 _period) external;
 
     /// @notice Updates the admin.
     /// @dev This can only be invoked by through this timelock contract, thus requiring that an update go through the required time delay first.

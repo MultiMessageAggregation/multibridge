@@ -12,19 +12,19 @@ contract GovernanceTimelock is IGovernanceTimelock {
                              CONSTANTS
     //////////////////////////////////////////////////////////////*/
     uint256 public constant MINIMUM_DELAY = 2 days;
-    uint256 public constant MAXIMUM_DELAY = 14 days;
+    uint256 public constant MAXIMUM_DELAY = 30 days;
 
-    uint256 public constant MINIMUM_EXECUTION_PERIOD = 1 days;
-    uint256 public constant MAXIMUM_EXECUTION_PERIOD = 3 days;
+    /// @notice The time window within which a transaction can be executed, following its ETA. Beyond this point a transaction is considered stale and cannot be executed.
+    uint256 public constant GRACE_PERIOD = 14 days;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     uint256 public txCounter;
     uint256 public delay = MINIMUM_DELAY;
-    uint256 public execPeriod = MINIMUM_EXECUTION_PERIOD;
+
+    /// @notice the admin is the one allowed to schedule events
     address public admin;
-    /// @dev the admin is the one allowed to schedule events
 
     mapping(uint256 txId => ScheduledTransaction) public scheduledTransaction;
 
@@ -75,11 +75,9 @@ contract GovernanceTimelock is IGovernanceTimelock {
         /// increment tx counter
         ++txCounter;
         uint256 eta = block.timestamp + delay;
-        uint256 expiry = eta + execPeriod;
 
-        scheduledTransaction[txCounter] = ScheduledTransaction(_target, _value, _data, eta, expiry, false);
-
-        emit TransactionScheduled(txCounter, _target, _value, _data, eta, expiry);
+        scheduledTransaction[txCounter] = ScheduledTransaction(_target, _value, _data, eta, false);
+        emit TransactionScheduled(txCounter, _target, _value, _data, eta);
     }
 
     /// @inheritdoc IGovernanceTimelock
@@ -98,11 +96,11 @@ contract GovernanceTimelock is IGovernanceTimelock {
 
         /// @dev checks timelock
         if (transaction.eta < block.timestamp) {
-            revert Error.TX_EXPIRED();
+            revert Error.TX_TIMELOCKED();
         }
 
         /// @dev checks if tx within execution period
-        if (block.timestamp > transaction.expiry) {
+        if (block.timestamp > transaction.eta + GRACE_PERIOD) {
             revert Error.TX_EXPIRED();
         }
 
@@ -119,9 +117,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
             revert Error.EXECUTION_FAILS_ON_DST();
         }
 
-        emit TransactionExecuted(
-            txId, transaction.target, transaction.value, transaction.data, transaction.eta, transaction.expiry
-        );
+        emit TransactionExecuted(txId, transaction.target, transaction.value, transaction.data, transaction.eta);
     }
 
     /// @inheritdoc IGovernanceTimelock
@@ -138,22 +134,6 @@ contract GovernanceTimelock is IGovernanceTimelock {
         delay = _delay;
 
         emit DelayUpdated(oldDelay, _delay);
-    }
-
-    /// @inheritdoc IGovernanceTimelock
-    function setExecutionPeriod(uint256 _period) external override onlySelf {
-        if (_period < MINIMUM_EXECUTION_PERIOD) {
-            revert Error.INVALID_EXEC_PERIOD_MIN();
-        }
-
-        if (_period > MAXIMUM_EXECUTION_PERIOD) {
-            revert Error.INVALID_EXEC_PERIOD_MAX();
-        }
-
-        uint256 oldExecPeriod = execPeriod;
-        execPeriod = _period;
-
-        emit ExecutionPeriodUpdated(oldExecPeriod, _period);
     }
 
     /// @inheritdoc IGovernanceTimelock
