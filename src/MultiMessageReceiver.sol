@@ -108,6 +108,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_DST_CHAIN();
         }
 
+        if (_message.target == address(0)) {
+            revert Error.INVALID_TARGET();
+        }
+
         /// FIXME: could make this configurable through GAC, instead of hardcoding 1
         if (_message.srcChainId != 1) {
             revert Error.INVALID_SENDER_CHAIN_ID();

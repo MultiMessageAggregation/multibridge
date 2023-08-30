@@ -114,7 +114,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
 
         /// @dev checks native funding
         if (msg.value != _value) {
-            revert Error.TX_UNDERPAID();
+            revert Error.INVALID_MSG_VALUE();
         }
 
         isExecuted[_txId] = true;
