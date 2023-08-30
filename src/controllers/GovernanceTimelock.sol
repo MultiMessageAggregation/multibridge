@@ -26,7 +26,8 @@ contract GovernanceTimelock is IGovernanceTimelock {
     /// @notice the admin is the one allowed to schedule events
     address public admin;
 
-    mapping(uint256 txId => ScheduledTransaction) public scheduledTransaction;
+    mapping(uint256 txId => bytes32) public scheduledTransaction;
+    mapping(uint256 txId => bool) public isExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -76,48 +77,55 @@ contract GovernanceTimelock is IGovernanceTimelock {
         ++txCounter;
         uint256 eta = block.timestamp + delay;
 
-        scheduledTransaction[txCounter] = ScheduledTransaction(_target, _value, _data, eta, false);
+        scheduledTransaction[txCounter] = keccak256(abi.encodePacked(_target, _value, _data, eta));
         emit TransactionScheduled(txCounter, _target, _value, _data, eta);
     }
 
     /// @inheritdoc IGovernanceTimelock
-    function executeTransaction(uint256 txId) external payable override {
+    function executeTransaction(uint256 _txId, address _target, uint256 _value, bytes memory _data, uint256 _eta)
+        external
+        payable
+        override
+    {
         /// @dev validates the txId
-        if (txId == 0 || txId > txCounter) {
+        if (_txId == 0 || _txId > txCounter) {
             revert Error.INVALID_TX_ID();
         }
 
-        ScheduledTransaction storage transaction = scheduledTransaction[txId];
-
         /// @dev checks if tx is already executed;
-        if (transaction.isExecuted) {
+        if (isExecuted[_txId]) {
             revert Error.TX_ALREADY_EXECUTED();
         }
 
+        /// @dev check the input params against hash
+        if (scheduledTransaction[_txId] != keccak256(abi.encodePacked(_target, _value, _data, _eta))) {
+            revert Error.INVALID_TX_INPUT();
+        }
+
         /// @dev checks timelock
-        if (transaction.eta < block.timestamp) {
+        if (_eta > block.timestamp) {
             revert Error.TX_TIMELOCKED();
         }
 
         /// @dev checks if tx within execution period
-        if (block.timestamp > transaction.eta + GRACE_PERIOD) {
+        if (block.timestamp > _eta + GRACE_PERIOD) {
             revert Error.TX_EXPIRED();
         }
 
         /// @dev checks native funding
-        if (msg.value != transaction.value) {
+        if (msg.value != _value) {
             revert Error.TX_UNDERPAID();
         }
 
-        transaction.isExecuted = true;
+        isExecuted[_txId] = true;
 
-        (bool status,) = transaction.target.call(transaction.data);
+        (bool status,) = _target.call(_data);
 
         if (!status) {
             revert Error.EXECUTION_FAILS_ON_DST();
         }
 
-        emit TransactionExecuted(txId, transaction.target, transaction.value, transaction.data, transaction.eta);
+        emit TransactionExecuted(_txId, _target, _value, _data, _eta);
     }
 
     /// @inheritdoc IGovernanceTimelock

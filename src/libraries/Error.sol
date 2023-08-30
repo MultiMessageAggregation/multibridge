@@ -145,6 +145,9 @@ library Error {
     /// @dev is thrown if tx id is zero (or) invalid
     error INVALID_TX_ID();
 
+    /// @dev is thrown if the hash stored mismatches
+    error INVALID_TX_INPUT();
+
     /// @dev is thrown if tx id is already executed
     error TX_ALREADY_EXECUTED();
 
