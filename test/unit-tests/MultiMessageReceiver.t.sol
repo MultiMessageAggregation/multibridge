@@ -14,7 +14,7 @@ import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 
 contract MultiMessageReceiverTest is Setup {
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event quorumUpdated(uint64 oldValue, uint64 newValue);
+    event QuorumUpdated(uint64 oldValue, uint64 newValue);
     event SingleBridgeMsgReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
@@ -51,7 +51,7 @@ contract MultiMessageReceiverTest is Setup {
         receiver.initialize(new address[](0), 0);
     }
 
-    /// @dev initializer cannot be called with zero adapter
+    /// @dev cannot be called with zero adapter
     function test_initialize_zero_receiver_adapter() public {
         vm.startPrank(caller);
 
@@ -60,7 +60,7 @@ contract MultiMessageReceiverTest is Setup {
         dummyReceiver.initialize(new address[](0), 0);
     }
 
-    /// @dev initializer cannot be called with zero address adapter
+    /// @dev cannot be called with zero address adapter
     function test_initialize_zero_address_input() public {
         vm.startPrank(caller);
 
@@ -71,13 +71,25 @@ contract MultiMessageReceiverTest is Setup {
         dummyReceiver.initialize(adapters, 1);
     }
 
-    /// @dev initializer quorum too large
+    /// @dev quorum cannot be larger than the number of receiver adapters
     function test_initialize_quorum_too_large() public {
         vm.startPrank(caller);
 
         MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
+        vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
+        dummyReceiver.initialize(adapters, 2);
+    }
+
+    /// @dev quorum cannot be larger than the number of unique receiver adapters
+    function test_initialize_quorum_larger_than_num_trusted_executors() public {
+        vm.startPrank(caller);
+
+        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        address[] memory adapters = new address[](2);
+        adapters[0] = address(42);
+        adapters[1] = address(42);
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
         dummyReceiver.initialize(adapters, 2);
     }
@@ -441,7 +453,7 @@ contract MultiMessageReceiverTest is Setup {
         receiver.updateReceiverAdapter(updatedAdapters, operations);
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit quorumUpdated(2, 3);
+        emit QuorumUpdated(2, 3);
 
         receiver.updateQuorum(3);
         assertEq(receiver.quorum(), 3);
