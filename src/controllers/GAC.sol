@@ -17,6 +17,7 @@ contract GAC is IGAC, Ownable {
     uint256 public dstGasLimit;
     uint256 public msgExpiration;
 
+    /// @dev is the address to receive value refunds from remoteCall
     address public refundAddress;
 
     /// @notice is the MMA Core Contracts on the chain

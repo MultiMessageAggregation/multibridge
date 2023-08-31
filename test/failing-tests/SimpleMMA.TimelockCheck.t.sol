@@ -13,7 +13,7 @@ import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-contract MMA is Setup {
+contract TimelockCheck is Setup {
     MockUniswapReceiver target;
 
     /// @dev intializes the setup
@@ -25,7 +25,7 @@ contract MMA is Setup {
     }
 
     /// @dev just sends a message
-    function test_mma_send_receive() public {
+    function test_timelockCheck() public {
         vm.selectFork(fork[1]);
         vm.startPrank(caller);
 
@@ -49,6 +49,14 @@ contract MMA is Setup {
         MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
+
+        /// increment the time by 1 day (less than delay time)
+        /// @notice should revert here with TX_TIMELOCKED error
+        vm.warp(block.timestamp + 1 days);
+        vm.expectRevert(Error.TX_TIMELOCKED.selector);
+        GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
+            txId, finalTarget, value, data, eta
+        );
 
         /// increment the time by 2 day (delay time)
         vm.warp(block.timestamp + 2 days);

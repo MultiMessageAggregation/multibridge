@@ -10,6 +10,7 @@ library MessageLibrary {
     /// @param nonce is an incrementing number held by MultiMessageSender to ensure msgId uniqueness
     /// @param target is the contract to be called on dst chain
     /// @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData))
+    /// @param nativeValue is the native token value to be sent to target in the low-level call(eg. address(target).call{value: nativeValue}(callData))
     /// @param expiration is the unix time when the message expires, zero means never expire
     struct Message {
         uint256 srcChainId;
@@ -17,6 +18,7 @@ library MessageLibrary {
         address target;
         uint256 nonce;
         bytes callData;
+        uint256 nativeValue;
         uint256 expiration;
     }
 
@@ -30,6 +32,7 @@ library MessageLibrary {
                 _message.nonce,
                 _message.target,
                 _message.callData,
+                _message.nativeValue,
                 _message.expiration
             )
         );
