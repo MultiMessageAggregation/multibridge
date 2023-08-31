@@ -17,10 +17,10 @@ import {MultiMessageSender} from "src/MultiMessageSender.sol";
 
 contract MultiMessageSenderTest is Setup {
     event MultiMessageMsgSent(
-        bytes32 msgId,
+        bytes32 indexed msgId,
         uint256 nonce,
-        uint256 dstChainId,
-        address target,
+        uint256 indexed dstChainId,
+        address indexed target,
         bytes callData,
         uint256 expiration,
         address[] senderAdapters,
@@ -114,13 +114,13 @@ contract MultiMessageSenderTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
+        // NOTE: caller is also configured as the refund address in this test setup
         uint256 balanceBefore = gac.getRefundAddress().balance;
         sender.remoteCall{value: 2 ether}(DST_CHAIN_ID, address(42), bytes("42"));
 
-        // TODO: Maybe try to make this precise
-        assertEq(address(sender).balance, 0);
         uint256 balanceAfter = gac.getRefundAddress().balance;
-        assertLt(balanceBefore - balanceAfter, 2 ether);
+        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"));
+        assertEq(balanceBefore - balanceAfter, fee);
     }
 
     /// @dev perform remote call with an excluded adapter
