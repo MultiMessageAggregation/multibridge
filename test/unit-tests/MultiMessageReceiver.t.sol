@@ -37,10 +37,16 @@ contract MultiMessageReceiverTest is Setup {
 
     /// @dev initializer
     function test_initialize() public {
-        // checks existing setup
-        assertEq(receiver.quorum(), 2);
-        assertEq(receiver.trustedExecutor(0), wormholeAdapterAddr);
-        assertEq(receiver.trustedExecutor(1), axelarAdapterAddr);
+        address[] memory adapters = new address[](2);
+        adapters[0] = wormholeAdapterAddr;
+        adapters[1] = axelarAdapterAddr;
+
+        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        dummyReceiver.initialize(adapters, 2);
+
+        assertEq(dummyReceiver.quorum(), 2);
+        assertEq(dummyReceiver.trustedExecutor(0), wormholeAdapterAddr);
+        assertEq(dummyReceiver.trustedExecutor(1), axelarAdapterAddr);
     }
 
     /// @dev initializer cannot be called twice
