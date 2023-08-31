@@ -47,7 +47,7 @@ contract MultiMessageSender {
     event SenderAdapterUpdated(address senderAdapter, bool add);
 
     /// @dev is emitted if cross-chain message fails
-    event ErrorSendMessage(address senderAdapters, MessageLibrary.Message message);
+    event ErrorSendMessage(address senderAdapter, MessageLibrary.Message message);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
