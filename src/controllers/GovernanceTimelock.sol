@@ -119,7 +119,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
 
         isExecuted[_txId] = true;
 
-        (bool status,) = _target.call(_data);
+        (bool status,) = _target.call{value: _value}(_data);
 
         if (!status) {
             revert Error.EXECUTION_FAILS_ON_DST();
