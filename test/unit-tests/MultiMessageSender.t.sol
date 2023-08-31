@@ -283,7 +283,18 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
-        sender.addSenderAdapters(new address[](0));
+        sender.addSenderAdapters(new address[](42));
+    }
+
+    /// @dev cannot add adapter with zero address
+    function test_add_sender_adapters_zero_address_input() public {
+        vm.startPrank(owner);
+
+        address[] memory adapters = new address[](1);
+        adapters[0] = address(0);
+
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        sender.addSenderAdapters(adapters);
     }
 
     /// @dev cannot add duplicate adapters
