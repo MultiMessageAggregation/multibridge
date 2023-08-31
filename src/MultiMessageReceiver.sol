@@ -175,7 +175,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             _execData.target, _execData.value, _execData.callData
         );
 
-        emit MessageExecuted(msgId, _execData.target, _execData.nonce, _execData.callData);
+        emit MessageExecuted(msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
     }
 
     /// @notice Update bridge receiver adapters.
