@@ -6,8 +6,8 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "../Setup.t.sol";
-import "../mock/FailingSenderAdapter.sol";
-import "../mock/ZeroAddressReceiverGac.sol";
+import "../contracts-mock/FailingSenderAdapter.sol";
+import "../contracts-mock/ZeroAddressReceiverGac.sol";
 import "src/interfaces/IBridgeSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
 import "src/interfaces/IGAC.sol";
@@ -82,18 +82,19 @@ contract MultiMessageSenderTest is Setup {
             target: address(42),
             nonce: 1,
             callData: bytes("42"),
+            nativeValue: 0,
             expiration: expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"));
+        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiMessageMsgSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"));
+        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0);
 
         assertEq(sender.nonce(), 1);
     }
@@ -104,22 +105,12 @@ contract MultiMessageSenderTest is Setup {
 
         uint256 expiration = block.timestamp + gac.getMsgExpiryTime();
 
-        MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
-            dstChainId: DST_CHAIN_ID,
-            target: address(42),
-            nonce: 0,
-            callData: bytes("42"),
-            expiration: expiration
-        });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
-
         // NOTE: caller is also configured as the refund address in this test setup
         uint256 balanceBefore = gac.getRefundAddress().balance;
-        sender.remoteCall{value: 2 ether}(DST_CHAIN_ID, address(42), bytes("42"));
+        sender.remoteCall{value: 2 ether}(DST_CHAIN_ID, address(42), bytes("42"), 0);
 
         uint256 balanceAfter = gac.getRefundAddress().balance;
-        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"));
+        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
         assertEq(balanceBefore - balanceAfter, fee);
     }
 
@@ -144,6 +135,7 @@ contract MultiMessageSenderTest is Setup {
             target: address(42),
             nonce: 1,
             callData: bytes("42"),
+            nativeValue: 0,
             expiration: expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
@@ -156,7 +148,7 @@ contract MultiMessageSenderTest is Setup {
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), excludedAdapters);
+        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, excludedAdapters);
     }
 
     /// @dev only caller can perform remote call
@@ -164,7 +156,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"));
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0);
     }
 
     /// @dev cannot call with dst chain ID of 0
@@ -172,7 +164,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        sender.remoteCall(0, address(42), bytes("42"));
+        sender.remoteCall(0, address(42), bytes("42"), 0);
     }
 
     /// @dev cannot call with target address of 0
@@ -180,7 +172,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.INVALID_TARGET.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"));
+        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"), 0);
     }
 
     /// @dev cannot call with receiver address of 0
@@ -190,7 +182,7 @@ contract MultiMessageSenderTest is Setup {
         MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGac(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"));
+        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0);
     }
 
     /// @dev cannot call with no sender adapter
@@ -207,7 +199,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.NO_SENDER_ADAPTER_FOUND.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"));
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0);
     }
 
     /// @dev should proceed with the call despite one failing adapter, emitting an error message
@@ -240,11 +232,12 @@ contract MultiMessageSenderTest is Setup {
             target: address(42),
             nonce: 1,
             callData: bytes("42"),
+            nativeValue: 0,
             expiration: expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"));
+        uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit ErrorSendMessage(failingAdapterAddr, message);
@@ -254,7 +247,7 @@ contract MultiMessageSenderTest is Setup {
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"));
+        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0);
     }
 
     /// @dev adds two sender adapters
@@ -371,10 +364,11 @@ contract MultiMessageSenderTest is Setup {
             target: address(42),
             nonce: 42,
             callData: bytes("42"),
+            nativeValue: 0,
             expiration: type(uint256).max
         });
 
-        uint256 totalFee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"));
+        uint256 totalFee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
         bytes memory data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
 
         uint256 expectedTotalFee;
