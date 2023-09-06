@@ -32,10 +32,10 @@ contract MultiMessageSender {
 
     /// @dev is emitted when a cross-chain message is sent
     event MultiMessageMsgSent(
-        bytes32 msgId,
+        bytes32 indexed msgId,
         uint256 nonce,
-        uint256 dstChainId,
-        address target,
+        uint256 indexed dstChainId,
+        address indexed target,
         bytes callData,
         uint256 expiration,
         address[] senderAdapters,
@@ -47,7 +47,7 @@ contract MultiMessageSender {
     event SenderAdapterUpdated(address senderAdapter, bool add);
 
     /// @dev is emitted if cross-chain message fails
-    event ErrorSendMessage(address senderAdapters, MessageLibrary.Message message);
+    event ErrorSendMessage(address senderAdapter, MessageLibrary.Message message);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
