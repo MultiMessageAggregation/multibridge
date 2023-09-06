@@ -22,6 +22,7 @@ contract MultiMessageSenderTest is Setup {
         uint256 indexed dstChainId,
         address indexed target,
         bytes callData,
+        uint256 nativeValue,
         uint256 expiration,
         address[] senderAdapters,
         bool[] adapterSuccess
@@ -91,7 +92,7 @@ contract MultiMessageSenderTest is Setup {
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiMessageMsgSent(
-            msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), expiration, senderAdapters, adapterSuccess
+            msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
         sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0);
@@ -145,7 +146,7 @@ contract MultiMessageSenderTest is Setup {
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiMessageMsgSent(
-            msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), expiration, senderAdapters, adapterSuccess
+            msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
         sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, excludedAdapters);
@@ -244,7 +245,7 @@ contract MultiMessageSenderTest is Setup {
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiMessageMsgSent(
-            msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), expiration, senderAdapters, adapterSuccess
+            msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
         sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0);
