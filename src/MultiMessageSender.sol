@@ -37,6 +37,7 @@ contract MultiMessageSender {
         uint256 dstChainId,
         address target,
         bytes callData,
+        uint256 nativeValue,
         uint256 expiration,
         address[] senderAdapters,
         bool[] adapterSuccess
@@ -283,7 +284,7 @@ contract MultiMessageSender {
         }
 
         emit MultiMessageMsgSent(
-            v.msgId, nonce, _dstChainId, _target, _callData, v.msgExpiration, v.adapters, v.adapterSuccess
+            v.msgId, nonce, _dstChainId, _target, _callData, _nativeValue, v.msgExpiration, v.adapters, v.adapterSuccess
         );
     }
 
