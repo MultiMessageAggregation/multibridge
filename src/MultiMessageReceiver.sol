@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "./interfaces/IBridgeReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
+import "./interfaces/IGovernanceTimelock.sol";
 
 /// libraries
 import "./libraries/Error.sol";
@@ -23,12 +24,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @notice minimum number of AMBs required for delivery before execution
     uint64 public quorum;
 
-    struct ExecutionData {
-        address target;
-        bytes callData;
-        uint256 nonce;
-        uint256 expiration;
-    }
+    /// @dev is the address of governance timelock
+    address public governanceTimelock;
 
     /// @notice stores each msg id related info
     mapping(bytes32 => bool) public isExecuted;
@@ -48,22 +45,23 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         _;
     }
 
-    /// @notice A modifier used for restricting the caller of some functions to be this contract itself.
-    modifier onlySelf() {
-        if (msg.sender != address(this)) {
-            revert Error.INVALID_SELF_CALLER();
+    /// @notice A modifier used for restricting the caller to just the governance timelock contract
+    modifier onlyGovernanceTimelock() {
+        if (msg.sender != governanceTimelock) {
+            revert Error.CALLER_NOT_GOVERNANCE_TIMELOCK();
         }
         _;
     }
-
-    ///
 
     /*/////////////////////////////////////////////////////////////////
                                 INITIALIZER
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice sets the initial paramters
-    function initialize(address[] calldata _receiverAdapters, uint64 _quorum) external initializer {
+    /// @notice sets the initial parameters
+    function initialize(address[] calldata _receiverAdapters, uint64 _quorum, address _governanceTimelock)
+        external
+        initializer
+    {
         uint256 len = _receiverAdapters.length;
 
         if (len == 0) {
@@ -86,7 +84,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
+        if (_governanceTimelock == address(0)) {
+            revert Error.ZERO_GOVERNANCE_TIMELOCK();
+        }
+
         quorum = _quorum;
+        governanceTimelock = _governanceTimelock;
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -103,6 +106,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     {
         if (_message.dstChainId != block.chainid) {
             revert Error.INVALID_DST_CHAIN();
+        }
+
+        if (_message.target == address(0)) {
+            revert Error.INVALID_TARGET();
         }
 
         /// FIXME: could make this configurable through GAC, instead of hardcoding 1
@@ -132,7 +139,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         /// stores the message if the amb is the first one delivering the message
         if (prevStored.target == address(0)) {
-            msgReceived[msgId] = ExecutionData(_message.target, _message.callData, _message.nonce, _message.expiration);
+            msgReceived[msgId] = ExecutionData(
+                _message.target, _message.callData, _message.nativeValue, _message.nonce, _message.expiration
+            );
         }
 
         emit SingleBridgeMsgReceived(msgId, _bridgeName, _message.nonce, msg.sender);
@@ -144,34 +153,36 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     function executeMessage(bytes32 msgId) external {
         ExecutionData memory _execData = msgReceived[msgId];
 
+        /// @dev validates if msg execution is not beyond expiration
         if (block.timestamp > _execData.expiration) {
             revert Error.MSG_EXECUTION_PASSED_DEADLINE();
         }
 
+        /// @dev validates if msgId is already executed
         if (isExecuted[msgId]) {
             revert Error.MSG_ID_ALREADY_EXECUTED();
         }
 
         isExecuted[msgId] = true;
 
+        /// @dev validates message quorum
         if (messageVotes[msgId] < quorum) {
             revert Error.INVALID_QUORUM_FOR_EXECUTION();
         }
 
-        (bool status,) = _execData.target.call(_execData.callData);
+        /// @dev queues the action on timelock for execution
+        IGovernanceTimelock(governanceTimelock).scheduleTransaction(
+            _execData.target, _execData.value, _execData.callData
+        );
 
-        if (!status) {
-            revert Error.EXECUTION_FAILS_ON_DST();
-        }
-
-        emit MessageExecuted(msgId, _execData.target, _execData.nonce, _execData.callData);
+        emit MessageExecuted(msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
     }
 
     /// @notice Update bridge receiver adapters.
     /// @dev called by admin to update receiver bridge adapters on all other chains
     function updateReceiverAdapter(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
-        onlySelf
+        onlyGovernanceTimelock
     {
         uint256 len = _receiverAdapters.length;
 
@@ -189,7 +200,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorum(uint64 _quorum) external onlySelf {
+    function updateQuorum(uint64 _quorum) external onlyGovernanceTimelock {
         /// NOTE: should check 2/3 ?
         if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
@@ -197,8 +208,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint64 oldValue = quorum;
 
         quorum = _quorum;
-        emit quorumUpdated(oldValue, _quorum);
+        emit QuorumUpdated(oldValue, _quorum);
     }
+
+    /*/////////////////////////////////////////////////////////////////
+                            VIEW/READ-ONLY FUNCTIONS
+    ////////////////////////////////////////////////////////////////*/
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
     function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {

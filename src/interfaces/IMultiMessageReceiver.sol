@@ -19,7 +19,7 @@ interface IMultiMessageReceiver {
                                     EVENTS
     ////////////////////////////////////////////////////////////////*/
     event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event quorumUpdated(uint64 oldValue, uint64 newValue);
+    event QuorumUpdated(uint64 oldValue, uint64 newValue);
     event SingleBridgeMsgReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
