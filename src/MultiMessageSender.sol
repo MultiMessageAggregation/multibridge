@@ -96,22 +96,29 @@ contract MultiMessageSender {
     /// @param _dstChainId is the destination chainId
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
-    function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData) external payable onlyCaller {
+    /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
+    function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData, uint256 _nativeValue)
+        external
+        payable
+        onlyCaller
+    {
         address[] memory excludedAdapters;
-        _remoteCall(_dstChainId, _target, _callData, excludedAdapters);
+        _remoteCall(_dstChainId, _target, _callData, _nativeValue, excludedAdapters);
     }
 
     /// @param _dstChainId is the destination chainId
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
+    /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
     function remoteCall(
         uint256 _dstChainId,
         address _target,
         bytes calldata _callData,
+        uint256 _nativeValue,
         address[] calldata _excludedAdapters
     ) external payable onlyCaller {
-        _remoteCall(_dstChainId, _target, _callData, _excludedAdapters);
+        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _excludedAdapters);
     }
 
     /// @notice Add bridge sender adapters
@@ -147,10 +154,11 @@ contract MultiMessageSender {
         uint256 _dstChainId,
         address _multiMessageReceiver,
         address _target,
-        bytes calldata _callData
+        bytes calldata _callData,
+        uint256 _nativeValue
     ) public view returns (uint256 totalFee) {
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, 0);
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, 0);
         bytes memory data;
 
         /// @dev writes to memory for saving gas
@@ -183,6 +191,7 @@ contract MultiMessageSender {
         uint256 _dstChainId,
         address _target,
         bytes calldata _callData,
+        uint256 _nativeValue,
         address[] memory _excludedAdapters
     ) private {
         LocalCallVars memory v;
@@ -240,7 +249,7 @@ contract MultiMessageSender {
         v.msgExpiration = block.timestamp + gac.getMsgExpiryTime();
 
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, v.msgExpiration);
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, v.msgExpiration);
 
         v.adapterSuccess = new bool[](v.adapterLength);
 

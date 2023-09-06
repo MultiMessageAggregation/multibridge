@@ -56,6 +56,12 @@ library Error {
     /// @dev is thrown if message execution fails on the destination chain
     error EXECUTION_FAILS_ON_DST();
 
+    /// @dev is thrown if caller is not governance timelock contract
+    error CALLER_NOT_GOVERNANCE_TIMELOCK();
+
+    /// @dev is thrown if caller is not admin of timelock
+    error CALLER_NOT_ADMIN();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/
@@ -119,4 +125,38 @@ library Error {
 
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
+
+    /*/////////////////////////////////////////////////////////////////
+                            TIMELOCK ERRORS
+    ////////////////////////////////////////////////////////////////*/
+
+    /// @dev is thrown if the delay is less than minimum delay
+    error INVALID_DELAY_MIN();
+
+    /// @dev is thrown if the delay is more than maximum delay
+    error INVALID_DELAY_MAX();
+
+    /// @dev is thrown if the new admin is zero
+    error ZERO_TIMELOCK_ADMIN();
+
+    /// @dev is thrown if timelock governance address input is zero
+    error ZERO_GOVERNANCE_TIMELOCK();
+
+    /// @dev is thrown if tx id is zero (or) invalid
+    error INVALID_TX_ID();
+
+    /// @dev is thrown if the hash stored mismatches
+    error INVALID_TX_INPUT();
+
+    /// @dev is thrown if tx id is already executed
+    error TX_ALREADY_EXECUTED();
+
+    /// @dev is thrown if msg.value is not equal to value
+    error INVALID_MSG_VALUE();
+
+    /// @dev is thrown if timelock period is not over
+    error TX_TIMELOCKED();
+
+    /// @dev is thrown if transaction is expired
+    error TX_EXPIRED();
 }

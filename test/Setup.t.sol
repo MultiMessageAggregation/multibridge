@@ -17,6 +17,8 @@ import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
 import {GAC} from "../src/controllers/GAC.sol";
+import {GovernanceTimelock} from "../src/controllers/GovernanceTimelock.sol";
+
 import {MultiMessageSender} from "../src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
 
@@ -249,7 +251,10 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            contractAddress[chainId][bytes("MMA_RECEIVER")] = address(new MultiMessageReceiver{salt: _salt}());
+            address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}());
+            contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
+            contractAddress[chainId][bytes("TIMELOCK")] =
+                address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver)));
         }
     }
 
@@ -275,7 +280,9 @@ abstract contract Setup is Test {
             _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
-            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(_recieverAdapters, 2);
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
+                _recieverAdapters, 2, contractAddress[chainId]["TIMELOCK"]
+            );
 
             unchecked {
                 ++i;
@@ -420,5 +427,32 @@ abstract contract Setup is Test {
         }
 
         return address(0);
+    }
+
+    /// @dev gets the message id from msg logs
+    function _getMsgId(Vm.Log[] memory logs) internal pure returns (bytes32 msgId) {
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256("SingleBridgeMsgReceived(bytes32,string,uint256,address)")) {
+                msgId = logs[i].topics[1];
+            }
+        }
+    }
+
+    /// @dev get execute tx info from logs
+    function _getExecParams(Vm.Log[] memory logs)
+        internal
+        pure
+        returns (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta)
+    {
+        bytes memory encodedArgs;
+
+        for (uint256 j; j < logs.length; j++) {
+            if (logs[j].topics[0] == keccak256("TransactionScheduled(uint256,address,uint256,bytes,uint256)")) {
+                txId = uint256(logs[j].topics[1]);
+
+                encodedArgs = logs[j].data;
+                (finalTarget, value, data, eta) = abi.decode(encodedArgs, (address, uint256, bytes, uint256));
+            }
+        }
     }
 }
