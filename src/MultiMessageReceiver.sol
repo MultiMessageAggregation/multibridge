@@ -208,7 +208,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint64 oldValue = quorum;
 
         quorum = _quorum;
-        emit quorumUpdated(oldValue, _quorum);
+        emit QuorumUpdated(oldValue, _quorum);
     }
 
     /*/////////////////////////////////////////////////////////////////
