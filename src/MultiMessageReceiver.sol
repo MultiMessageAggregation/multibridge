@@ -37,17 +37,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     mapping(bytes32 => uint256) public messageVotes;
 
     /*/////////////////////////////////////////////////////////////////
-                                EVENTS
-    ////////////////////////////////////////////////////////////////*/
-
-    event ReceiverAdapterUpdated(address receiverAdapter, bool add);
-    event QuorumUpdated(uint64 oldValue, uint64 newValue);
-    event SingleBridgeMsgReceived(
-        bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
-    );
-    event MessageExecuted(bytes32 msgId, address target, uint256 nonce, bytes callData);
-
-    /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////////*/
 
@@ -208,7 +197,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint64 oldValue = quorum;
 
         quorum = _quorum;
-        emit QuorumUpdated(oldValue, _quorum);
+        emit quorumUpdated(oldValue, _quorum);
     }
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
