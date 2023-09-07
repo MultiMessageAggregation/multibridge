@@ -5,15 +5,17 @@ pragma solidity >=0.8.9;
 import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import "../Setup.t.sol";
-import "../../contracts-mock/MockUniswapReceiver.sol";
+import "test/Setup.t.sol";
+import "test/contracts-mock/MockUniswapReceiver.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-contract TimelockCheck is Setup {
+/// @dev scenario 1: tries to execute the txId before timelock ends
+/// @dev scenario 2: tries to execute the txId post timelock ends and within expiry
+contract TimelockCheckTest is Setup {
     MockUniswapReceiver target;
 
     /// @dev intializes the setup

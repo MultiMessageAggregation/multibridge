@@ -5,34 +5,40 @@ pragma solidity >=0.8.9;
 import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import "../Setup.t.sol";
-import "../../contracts-mock/MockUniswapReceiver.sol";
+import "test/Setup.t.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-contract GracePeriodExpiry is Setup {
-    MockUniswapReceiver target;
-
+/// @dev scenario: admin updates config on dst chain using message from source chain
+contract RemoteAdapterAdd is Setup {
     /// @dev intializes the setup
     function setUp() public override {
         super.setUp();
-
-        vm.selectFork(fork[137]);
-        target = new MockUniswapReceiver();
     }
 
     /// @dev just sends a message
-    function test_timelockCheck() public {
+    function test_remoteAddReceiverAdapter() public {
         vm.selectFork(fork[1]);
         vm.startPrank(caller);
+
+        address[] memory adaptersToAdd = new address[](1);
+        adaptersToAdd[0] = address(420421422);
+
+        /// true = add
+        /// false = remove
+        bool[] memory operation = new bool[](1);
+        operation[0] = true;
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
-            137, address(target), abi.encode(MockUniswapReceiver.setValue.selector, ""), 0
+            137,
+            address(contractAddress[137][bytes("MMA_RECEIVER")]),
+            abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapter.selector, adaptersToAdd, operation),
+            0
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
@@ -50,12 +56,15 @@ contract GracePeriodExpiry is Setup {
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
-        /// increment the time by 20 day (beyond expiry, delay)
-        /// @notice should revert here with TX_EXPIRED error
-        vm.warp(block.timestamp + 20 days);
-        vm.expectRevert(Error.TX_EXPIRED.selector);
+        /// increment the time by 2 day (delay time)
+        vm.warp(block.timestamp + 2 days);
         GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
+
+        bool isTrusted = MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).isTrustedExecutor(
+            contractAddress[137]["AXELAR_RECEIVER_ADAPTER"]
+        );
+        assert(isTrusted);
     }
 }

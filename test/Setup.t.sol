@@ -32,6 +32,7 @@ abstract contract Setup is Test {
     /// @dev simulated caller
     address constant caller = address(10);
     address constant owner = address(420);
+    address constant refundAddress = address(420420);
 
     /// @dev constants for axelar
     address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;
@@ -308,7 +309,7 @@ abstract contract Setup is Test {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
                     );
-                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(caller);
+                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(refundAddress);
                 }
 
                 unchecked {

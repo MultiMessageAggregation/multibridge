@@ -5,9 +5,9 @@ pragma solidity >=0.8.9;
 import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import "../Setup.t.sol";
-import "../contracts-mock/FailingSenderAdapter.sol";
-import "../contracts-mock/ZeroAddressReceiverGac.sol";
+import "test/Setup.t.sol";
+import "test/contracts-mock/FailingSenderAdapter.sol";
+import "test/contracts-mock/ZeroAddressReceiverGac.sol";
 import "src/interfaces/IBridgeSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
 import "src/interfaces/IGAC.sol";
