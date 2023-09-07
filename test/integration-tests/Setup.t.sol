@@ -16,11 +16,11 @@ import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAda
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
-import {GAC} from "../src/controllers/GAC.sol";
-import {GovernanceTimelock} from "../src/controllers/GovernanceTimelock.sol";
+import {GAC} from "src/controllers/GAC.sol";
+import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-import {MultiMessageSender} from "../src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
+import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 
 /// @dev can inherit the setup in tests
 abstract contract Setup is Test {

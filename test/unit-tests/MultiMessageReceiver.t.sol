@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import "../Setup.t.sol";
+import "../integration-tests/Setup.t.sol";
 import "../contracts-mock/MockUniswapReceiver.sol";
 import "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";

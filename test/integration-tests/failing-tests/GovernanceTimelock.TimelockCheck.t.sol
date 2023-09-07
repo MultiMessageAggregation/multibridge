@@ -6,7 +6,7 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "../Setup.t.sol";
-import "../contracts-mock/MockUniswapReceiver.sol";
+import "../../contracts-mock/MockUniswapReceiver.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";

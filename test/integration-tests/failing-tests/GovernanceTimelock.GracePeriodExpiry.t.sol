@@ -6,14 +6,14 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "../Setup.t.sol";
-import "../contracts-mock/MockUniswapReceiver.sol";
+import "../../contracts-mock/MockUniswapReceiver.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-contract MMA is Setup {
+contract GracePeriodExpiry is Setup {
     MockUniswapReceiver target;
 
     /// @dev intializes the setup
@@ -25,7 +25,7 @@ contract MMA is Setup {
     }
 
     /// @dev just sends a message
-    function test_mma_send_receive() public {
+    function test_timelockCheck() public {
         vm.selectFork(fork[1]);
         vm.startPrank(caller);
 
@@ -50,11 +50,12 @@ contract MMA is Setup {
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
-        /// increment the time by 2 day (delay time)
-        vm.warp(block.timestamp + 2 days);
+        /// increment the time by 20 day (beyond expiry, delay)
+        /// @notice should revert here with TX_EXPIRED error
+        vm.warp(block.timestamp + 20 days);
+        vm.expectRevert(Error.TX_EXPIRED.selector);
         GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
-        assertEq(target.i(), type(uint256).max);
     }
 }
