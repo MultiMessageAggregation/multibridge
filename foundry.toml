@@ -4,9 +4,9 @@ out = "out"
 libs = ["lib"]
 solc = "0.8.19"
 
-optimizer = false
-runs = 200
-viaIR = false
+optimizer = true
+runs = 100
+viaIR = true
 
 [profile.local]
 src = "src"
