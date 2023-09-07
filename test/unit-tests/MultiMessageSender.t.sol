@@ -103,8 +103,6 @@ contract MultiMessageSenderTest is Setup {
     function test_remote_call_refund() public {
         vm.startPrank(caller);
 
-        uint256 expiration = block.timestamp + gac.getMsgExpiryTime();
-
         // NOTE: caller is also configured as the refund address in this test setup
         uint256 balanceBefore = gac.getRefundAddress().balance;
         sender.remoteCall{value: 2 ether}(DST_CHAIN_ID, address(42), bytes("42"), 0);

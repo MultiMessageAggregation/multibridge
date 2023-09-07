@@ -130,11 +130,11 @@ contract GovernanceTimelock is IGovernanceTimelock {
 
     /// @inheritdoc IGovernanceTimelock
     function setDelay(uint256 _delay) external override onlySelf {
-        if (delay < MINIMUM_DELAY) {
+        if (_delay < MINIMUM_DELAY) {
             revert Error.INVALID_DELAY_MIN();
         }
 
-        if (delay > MAXIMUM_DELAY) {
+        if (_delay > MAXIMUM_DELAY) {
             revert Error.INVALID_DELAY_MAX();
         }
 

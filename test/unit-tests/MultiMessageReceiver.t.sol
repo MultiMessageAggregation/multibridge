@@ -6,7 +6,6 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "../Setup.t.sol";
-import "../contracts-mock/MockUniswapReceiver.sol";
 import "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
@@ -20,7 +19,9 @@ contract MultiMessageReceiverTest is Setup {
     );
     event MessageExecuted(bytes32 indexed msgId, address target, uint256 nativeValue, uint256 nonce, bytes callData);
 
+    uint256 constant SRC_CHAIN_ID = 1;
     uint256 constant DST_CHAIN_ID = 137;
+
     MultiMessageReceiver receiver;
     address wormholeAdapterAddr;
     address axelarAdapterAddr;
@@ -135,7 +136,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -150,9 +151,9 @@ contract MultiMessageReceiverTest is Setup {
 
         receiver.receiveMessage(message, "WORMHOLE");
 
-        assertEq(receiver.isExecuted(msgId), false);
+        assertFalse(receiver.isExecuted(msgId));
 
-        assertEq(receiver.isDuplicateAdapter(msgId, wormholeAdapterAddr), true);
+        assertTrue(receiver.isDuplicateAdapter(msgId, wormholeAdapterAddr));
 
         assertEq(receiver.messageVotes(msgId), 1);
 
@@ -170,7 +171,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -195,7 +196,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_RECEIVER_ADAPTER.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: 1,
+                srcChainId: SRC_CHAIN_ID,
                 dstChainId: DST_CHAIN_ID,
                 target: address(0),
                 nonce: 0,
@@ -214,7 +215,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_DST_CHAIN.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: 1,
+                srcChainId: SRC_CHAIN_ID,
                 dstChainId: 56,
                 target: address(0),
                 nonce: 0,
@@ -233,7 +234,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_TARGET.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: 1,
+                srcChainId: SRC_CHAIN_ID,
                 dstChainId: DST_CHAIN_ID,
                 target: address(0),
                 nonce: 0,
@@ -269,7 +270,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -287,7 +288,7 @@ contract MultiMessageReceiverTest is Setup {
     /// @dev executed message should be rejected
     function test_receiver_message_msg_id_already_executed() public {
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -316,7 +317,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -336,7 +337,7 @@ contract MultiMessageReceiverTest is Setup {
 
         receiver.executeMessage(msgId);
 
-        assertEq(receiver.isExecuted(msgId), true);
+        assertTrue(receiver.isExecuted(msgId));
     }
 
     /// @dev cannot executes message past deadline
@@ -344,7 +345,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -365,7 +366,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -391,7 +392,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -522,7 +523,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: 1,
+            srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -535,7 +536,7 @@ contract MultiMessageReceiverTest is Setup {
         receiver.receiveMessage(message, "WORMHOLE");
 
         (bool isExecuted, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
-        assertEq(isExecuted, false);
+        assertFalse(isExecuted);
         assertEq(msgCurrentVotes, 1);
         assertEq(successfulBridge.length, 1);
         assertEq(successfulBridge[0], WormholeReceiverAdapter(wormholeAdapterAddr).name());
