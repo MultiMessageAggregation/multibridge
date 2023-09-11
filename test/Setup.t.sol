@@ -33,6 +33,7 @@ abstract contract Setup is Test {
     address constant caller = address(10);
     address constant owner = address(420);
     address constant refundAddress = address(420420);
+    uint256 constant EXPIRATION_CONSTANT = 5 days;
 
     /// @dev constants for axelar
     address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;
@@ -124,7 +125,6 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             GAC gac = new GAC{salt: _salt}();
-            gac.setMsgExpiryTime(2 days);
             gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 

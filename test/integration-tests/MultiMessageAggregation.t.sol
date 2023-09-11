@@ -32,7 +32,11 @@ contract MultiMessageAggregationTest is Setup {
         /// send cross-chain message using MMA infra
         vm.recordLogs();
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
-            137, address(target), abi.encode(MockUniswapReceiver.setValue.selector, ""), 0
+            137,
+            address(target),
+            abi.encode(MockUniswapReceiver.setValue.selector, ""),
+            0,
+            block.timestamp + EXPIRATION_CONSTANT
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

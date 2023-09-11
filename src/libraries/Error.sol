@@ -35,9 +35,6 @@ library Error {
     /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
     error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
 
-    /// @dev is thrown if expiration time is zero
-    error ZERO_EXPIRATION_TIME();
-
     /// @dev is thrown if quorum threshold is greater than receiver adapters
     error INVALID_QUORUM_THRESHOLD();
 
@@ -61,6 +58,12 @@ library Error {
 
     /// @dev is thrown if caller is not admin of timelock
     error CALLER_NOT_ADMIN();
+
+    /// @dev is thrown if the expiration is less than minimum expiration
+    error INVALID_EXPIRATION_MIN();
+
+    /// @dev is thrown if the delay is more than maximum delay
+    error INVALID_EXPIRATION_MAX();
 
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS

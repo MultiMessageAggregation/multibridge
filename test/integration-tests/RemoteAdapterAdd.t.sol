@@ -38,7 +38,8 @@ contract RemoteAdapterAdd is Setup {
             137,
             address(contractAddress[137][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapter.selector, adaptersToAdd, operation),
-            0
+            0,
+            block.timestamp + EXPIRATION_CONSTANT
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

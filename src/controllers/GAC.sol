@@ -15,7 +15,6 @@ contract GAC is IGAC, Ownable {
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
-    uint256 public msgExpiration;
 
     /// @dev is the address to receive value refunds from remoteCall
     address public refundAddress;
@@ -84,15 +83,6 @@ contract GAC is IGAC, Ownable {
     }
 
     /// @inheritdoc IGAC
-    function setMsgExpiryTime(uint256 _timeInSeconds) external override onlyOwner {
-        if (_timeInSeconds == 0) {
-            revert Error.ZERO_EXPIRATION_TIME();
-        }
-
-        msgExpiration = _timeInSeconds;
-    }
-
-    /// @inheritdoc IGAC
     function setRefundAddress(address _refundAddress) external override onlyOwner {
         if (_refundAddress == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
@@ -122,11 +112,6 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getGlobalMsgDeliveryGasLimit() external view override returns (uint256 _gasLimit) {
         _gasLimit = dstGasLimit;
-    }
-
-    /// @inheritdoc IGAC
-    function getMsgExpiryTime() external view override returns (uint256 _expiration) {
-        _expiration = msgExpiration;
     }
 
     /// @inheritdoc IGAC

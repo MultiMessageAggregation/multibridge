@@ -71,7 +71,8 @@ contract MessageDeadlineCheck is Setup {
             137,
             address(contractAddress[137][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapter.selector, adaptersToRemove, operation),
-            0
+            0,
+            block.timestamp + EXPIRATION_CONSTANT
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
@@ -122,6 +123,7 @@ contract MessageDeadlineCheck is Setup {
             address(contractAddress[137][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapter.selector, adaptersToRemove, operation),
             0,
+            block.timestamp + EXPIRATION_CONSTANT,
             excludeAxelar
         );
 
@@ -148,7 +150,8 @@ contract MessageDeadlineCheck is Setup {
             137,
             address(contractAddress[137][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateQuorum.selector, 1),
-            0
+            0,
+            block.timestamp + EXPIRATION_CONSTANT
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
@@ -166,8 +169,8 @@ contract MessageDeadlineCheck is Setup {
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
-        /// increment the time by 2 day (delay time)
-        vm.warp(block.timestamp + 2 days);
+        /// increment the time by expiration deadline (delay time)
+        vm.warp(block.timestamp + EXPIRATION_CONSTANT + 1 seconds);
 
         /// when quorum is updated here
         GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
