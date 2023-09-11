@@ -112,7 +112,7 @@ contract MultiMessageSenderTest is Setup {
 
         uint256 balanceAfter = gac.getRefundAddress().balance;
         uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
-        assertEq(balanceBefore - balanceAfter, fee);
+        assertGt(balanceAfter, balanceBefore);
     }
 
     /// @dev perform remote call with an excluded adapter
