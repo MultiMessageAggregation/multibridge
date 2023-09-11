@@ -12,45 +12,17 @@ import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-/// @dev scenario: admin updates sender adapters on dst chain using message from source chain
-/// @notice handles both single add and multiple add
-contract RemoteAdapterAdd is Setup {
+/// @dev scenario: admin updates timelock delay on dst chain using message from source chain
+contract RemoteTimelockUpdate is Setup {
     /// @dev intializes the setup
     function setUp() public override {
         super.setUp();
     }
 
-    /// @dev just add one adapter and assert
-    function test_remoteAddReceiverAdapterSingle() public {
-        address[] memory adaptersToAdd = new address[](1);
-        adaptersToAdd[0] = address(420421422);
+    /// @dev just set timelock delay to 19 days and assert
+    function test_remoteTimelockUpdate() public {
+        uint256 newDelay = 19 days;
 
-        /// true = add
-        /// false = remove
-        bool[] memory operation = new bool[](1);
-        operation[0] = true;
-
-        _adapterAdd(adaptersToAdd, operation);
-    }
-
-    /// @dev add multiple adapters and assert
-    function test_remoteAddReceiverAdapterMulti() public {
-        address[] memory adaptersToAdd = new address[](3);
-        adaptersToAdd[0] = address(42042142232313);
-        adaptersToAdd[1] = address(22132131);
-        adaptersToAdd[2] = address(22132132131);
-
-        /// true = add
-        /// false = remove
-        bool[] memory operation = new bool[](3);
-        operation[0] = true;
-        operation[1] = true;
-        operation[2] = true;
-
-        _adapterAdd(adaptersToAdd, operation);
-    }
-
-    function _adapterAdd(address[] memory adaptersToAdd, bool[] memory operation) internal {
         vm.selectFork(fork[1]);
         vm.startPrank(caller);
 
@@ -58,8 +30,8 @@ contract RemoteAdapterAdd is Setup {
         vm.recordLogs();
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             137,
-            address(contractAddress[137][bytes("MMA_RECEIVER")]),
-            abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapter.selector, adaptersToAdd, operation),
+            address(contractAddress[137][bytes("TIMELOCK")]),
+            abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, newDelay),
             0,
             block.timestamp + EXPIRATION_CONSTANT
         );
@@ -68,6 +40,7 @@ contract RemoteAdapterAdd is Setup {
         vm.stopPrank();
 
         vm.recordLogs();
+
         /// simulate off-chain actors
         _simulatePayloadDelivery(1, 137, logs);
         bytes32 msgId = _getMsgId(vm.getRecordedLogs());
@@ -79,16 +52,16 @@ contract RemoteAdapterAdd is Setup {
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
+        uint256 oldDelay = GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).delay();
+        assertEq(oldDelay, GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).MINIMUM_DELAY());
+
         /// increment the time by 2 day (delay time)
         vm.warp(block.timestamp + 2 days);
         GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
 
-        for (uint256 j; j < adaptersToAdd.length; ++j) {
-            bool isTrusted =
-                MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).isTrustedExecutor(adaptersToAdd[j]);
-            assert(isTrusted);
-        }
+        uint256 currDelay = GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).delay();
+        assertEq(currDelay, newDelay);
     }
 }

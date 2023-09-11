@@ -11,6 +11,9 @@ library Error {
     /// @dev is thrown when input is zero address
     error ZERO_ADDRESS_INPUT();
 
+    /// @dev is thrown when quorum is zero
+    error ZERO_QUORUM();
+
     /// @dev is thrown if the length of two arrays are mismatched
     error ARRAY_LENGTH_MISMATCHED();
 
