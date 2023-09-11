@@ -64,7 +64,7 @@ contract RemoteAdapterAdd is Setup {
         );
 
         bool isTrusted =
-            MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).isTrustedExecutor(address(420421422));
+            MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).isTrustedExecutor(adaptersToAdd[0]);
         assert(isTrusted);
     }
 }

@@ -105,13 +105,14 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        uint256 nativeValue = 2 ether;
 
         uint256 balanceBefore = gac.getRefundAddress().balance;
-        sender.remoteCall{value: 2 ether}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration);
+        sender.remoteCall{value: nativeValue}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration);
 
         uint256 balanceAfter = gac.getRefundAddress().balance;
         uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
-        assertEq(balanceAfter - balanceBefore, 2 ether - fee);
+        assertEq(balanceAfter - balanceBefore, nativeValue - fee);
     }
 
     /// @dev perform remote call with an excluded adapter
