@@ -339,7 +339,7 @@ contract MultiMessageReceiverTest is Setup {
         assertEq(receiver.isExecuted(msgId), true);
     }
 
-    /// @dev cannot executes message past deadline
+    /// @dev cannot execute message past deadline
     function test_execute_message_passed_deadline() public {
         vm.startPrank(wormholeAdapterAddr);
 
@@ -386,7 +386,7 @@ contract MultiMessageReceiverTest is Setup {
         receiver.executeMessage(msgId);
     }
 
-    /// @dev cannot executes message without quorum
+    /// @dev cannot execute message without quorum
     function test_execute_message_invalid_quorum_for_execution() public {
         vm.startPrank(wormholeAdapterAddr);
 
