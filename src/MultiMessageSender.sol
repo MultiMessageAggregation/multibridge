@@ -116,7 +116,7 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _expiration is the validity of the calldata; before which it should be executed on the remote chain
+    /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
     function remoteCall(
         uint256 _dstChainId,
         address _target,
@@ -133,7 +133,7 @@ contract MultiMessageSender {
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
-    /// @param _expiration is the validity of the calldata; before which it should be executed on the remote chain
+    /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
     function remoteCall(
         uint256 _dstChainId,
         address _target,
