@@ -58,27 +58,14 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sets the initial parameters
-    function initialize(address[] calldata _receiverAdapters, uint64 _quorum, address _governanceTimelock)
-        external
-        initializer
-    {
-        uint256 len = _receiverAdapters.length;
-
-        if (len == 0) {
-            revert Error.ZERO_RECEIVER_ADAPTER();
-        }
-
-        for (uint256 i; i < len;) {
-            if (_receiverAdapters[i] == address(0)) {
-                revert Error.ZERO_ADDRESS_INPUT();
-            }
-
-            _updateReceiverAdapter(_receiverAdapters[i], true);
-
-            unchecked {
-                ++i;
-            }
-        }
+    function initialize(
+        address[] calldata _receiverAdapters,
+        bool[] calldata _operations,
+        uint64 _quorum,
+        address _governanceTimelock
+    ) external initializer {
+        /// @dev adds the new receiver adapters  before setting quorum and validations
+        _updateReceiverAdapters(_receiverAdapters, _operations);
 
         if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
@@ -180,35 +167,30 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice Update bridge receiver adapters.
     /// @dev called by admin to update receiver bridge adapters on all other chains
-    function updateReceiverAdapter(address[] calldata _receiverAdapters, bool[] calldata _operations)
+    function updateReceiverAdapters(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
         onlyGovernanceTimelock
     {
-        uint256 len = _receiverAdapters.length;
+        _updateReceiverAdapters(_receiverAdapters, _operations);
+    }
 
-        if (len != _operations.length) {
-            revert Error.ARRAY_LENGTH_MISMATCHED();
-        }
+    /// @notice Update bridge receiver adapters after quorum update
+    /// @dev called by admin to update receiver bridge adapters on all other chains
+    function updateQuorumAndReceiverAdapter(
+        uint64 _newQuorum,
+        address[] calldata _receiverAdapters,
+        bool[] calldata _operations
+    ) external onlyGovernanceTimelock {
+        /// @dev updates quorum here
+        _updateQuorum(_newQuorum);
 
-        for (uint256 i; i < len;) {
-            _updateReceiverAdapter(_receiverAdapters[i], _operations[i]);
-
-            unchecked {
-                ++i;
-            }
-        }
+        /// @dev updates receiver adapter here
+        _updateReceiverAdapters(_receiverAdapters, _operations);
     }
 
     /// @notice Update power quorum threshold of message execution.
     function updateQuorum(uint64 _quorum) external onlyGovernanceTimelock {
-        /// NOTE: should check 2/3 ?
-        if (_quorum > trustedExecutor.length || _quorum == 0) {
-            revert Error.INVALID_QUORUM_THRESHOLD();
-        }
-        uint64 oldValue = quorum;
-
-        quorum = _quorum;
-        emit QuorumUpdated(oldValue, _quorum);
+        _updateQuorum(_quorum);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -240,6 +222,40 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /*/////////////////////////////////////////////////////////////////
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
+
+    function _updateQuorum(uint64 _quorum) internal {
+        if (_quorum > trustedExecutor.length || _quorum == 0) {
+            revert Error.INVALID_QUORUM_THRESHOLD();
+        }
+        uint64 oldValue = quorum;
+
+        quorum = _quorum;
+        emit QuorumUpdated(oldValue, _quorum);
+    }
+
+    function _updateReceiverAdapters(address[] memory _receiverAdapters, bool[] memory _operations) internal {
+        uint256 len = _receiverAdapters.length;
+
+        if (len == 0) {
+            revert Error.ZERO_RECEIVER_ADAPTER();
+        }
+
+        if (len != _operations.length) {
+            revert Error.ARRAY_LENGTH_MISMATCHED();
+        }
+
+        for (uint256 i; i < len;) {
+            if (_receiverAdapters[i] == address(0)) {
+                revert Error.ZERO_ADDRESS_INPUT();
+            }
+
+            _updateReceiverAdapter(_receiverAdapters[i], _operations[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
     function _updateReceiverAdapter(address _receiverAdapter, bool _add) private {
         if (_add) {

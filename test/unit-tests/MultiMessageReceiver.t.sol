@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import "../Setup.t.sol";
+import "test/Setup.t.sol";
 import "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
@@ -44,8 +44,12 @@ contract MultiMessageReceiverTest is Setup {
         adapters[0] = wormholeAdapterAddr;
         adapters[1] = axelarAdapterAddr;
 
+        bool[] memory operation = new bool[](2);
+        operation[0] = true;
+        operation[1] = true;
+
         MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        dummyReceiver.initialize(adapters, 2, timelockAddr);
+        dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
 
         assertEq(dummyReceiver.quorum(), 2);
         assertEq(dummyReceiver.trustedExecutor(0), wormholeAdapterAddr);
@@ -57,7 +61,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        receiver.initialize(new address[](0), 0, address(0));
+        receiver.initialize(new address[](0), new bool[](0), 0, address(0));
     }
 
     /// @dev cannot be called with zero adapter
@@ -67,7 +71,7 @@ contract MultiMessageReceiverTest is Setup {
         MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummyReceiver.initialize(new address[](0), 0, address(0));
+        dummyReceiver.initialize(new address[](0), new bool[](0), 0, address(0));
     }
 
     /// @dev cannot be called with zero address adapter
@@ -78,8 +82,11 @@ contract MultiMessageReceiverTest is Setup {
         address[] memory adapters = new address[](1);
         adapters[0] = address(0);
 
+        bool[] memory operation = new bool[](1);
+        operation[0] = true;
+
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        dummyReceiver.initialize(adapters, 1, timelockAddr);
+        dummyReceiver.initialize(adapters, operation, 1, timelockAddr);
     }
 
     /// @dev quorum cannot be larger than the number of receiver adapters
@@ -90,8 +97,11 @@ contract MultiMessageReceiverTest is Setup {
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
 
+        bool[] memory operation = new bool[](1);
+        operation[0] = true;
+
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(adapters, 2, timelockAddr);
+        dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
     }
 
     /// @dev quorum cannot be larger than the number of unique receiver adapters
@@ -103,8 +113,12 @@ contract MultiMessageReceiverTest is Setup {
         adapters[0] = address(42);
         adapters[1] = address(42);
 
+        bool[] memory operation = new bool[](2);
+        operation[0] = true;
+        operation[1] = true;
+
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(adapters, 2, timelockAddr);
+        dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
     }
 
     /// @dev initializer quorum cannot be zero
@@ -115,8 +129,11 @@ contract MultiMessageReceiverTest is Setup {
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
 
+        bool[] memory operation = new bool[](1);
+        operation[0] = true;
+
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(adapters, 0, timelockAddr);
+        dummyReceiver.initialize(adapters, operation, 0, timelockAddr);
     }
 
     /// @dev governance timelock cannot be zero address
@@ -127,8 +144,11 @@ contract MultiMessageReceiverTest is Setup {
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
 
+        bool[] memory operation = new bool[](1);
+        operation[0] = true;
+
         vm.expectRevert(Error.ZERO_GOVERNANCE_TIMELOCK.selector);
-        dummyReceiver.initialize(adapters, 1, address(0));
+        dummyReceiver.initialize(adapters, operation, 1, address(0));
     }
 
     /// @dev receives message from one adapter
@@ -420,7 +440,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectEmit(true, true, true, true, address(receiver));
         emit ReceiverAdapterUpdated(address(42), true);
 
-        receiver.updateReceiverAdapter(updatedAdapters, operations);
+        receiver.updateReceiverAdapters(updatedAdapters, operations);
 
         assertEq(receiver.trustedExecutor(0), wormholeAdapterAddr);
         assertEq(receiver.trustedExecutor(1), axelarAdapterAddr);
@@ -442,7 +462,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectEmit(true, true, true, true, address(receiver));
         emit ReceiverAdapterUpdated(wormholeAdapterAddr, false);
 
-        receiver.updateReceiverAdapter(updatedAdapters, operations);
+        receiver.updateReceiverAdapters(updatedAdapters, operations);
         assertEq(receiver.trustedExecutor(0), axelarAdapterAddr);
     }
 
@@ -451,7 +471,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.CALLER_NOT_GOVERNANCE_TIMELOCK.selector);
-        receiver.updateReceiverAdapter(new address[](0), new bool[](0));
+        receiver.updateReceiverAdapters(new address[](0), new bool[](0));
     }
 
     /// @dev adapters and operations length mismatched
@@ -459,9 +479,12 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(timelockAddr);
 
         vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        receiver.updateReceiverAdapter(new address[](0), operations);
+        address[] memory adapters = new address[](1);
+        adapters[0] = address(420);
+
+        bool[] memory operations = new bool[](2);
+
+        receiver.updateReceiverAdapters(adapters, operations);
     }
 
     /// @dev cannot remove one receiver adapter without reducing quorum first
@@ -473,7 +496,7 @@ contract MultiMessageReceiverTest is Setup {
         bool[] memory operations = new bool[](1);
         operations[0] = false;
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        receiver.updateReceiverAdapter(updatedAdapters, operations);
+        receiver.updateReceiverAdapters(updatedAdapters, operations);
     }
 
     /// @dev updates quorum
@@ -485,7 +508,7 @@ contract MultiMessageReceiverTest is Setup {
         updatedAdapters[0] = address(42);
         bool[] memory operations = new bool[](1);
         operations[0] = true;
-        receiver.updateReceiverAdapter(updatedAdapters, operations);
+        receiver.updateReceiverAdapters(updatedAdapters, operations);
 
         vm.expectEmit(true, true, true, true, address(receiver));
         emit QuorumUpdated(2, 3);
@@ -516,6 +539,38 @@ contract MultiMessageReceiverTest is Setup {
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
         receiver.updateQuorum(0);
+    }
+
+    /// @dev valid quorum and receiver updater in one single call
+    function test_quorum_and_receiver_updater() public {
+        vm.startPrank(timelockAddr);
+
+        address[] memory adapters = new address[](2);
+        adapters[0] = address(420);
+        adapters[1] = address(421);
+
+        bool[] memory addOps = new bool[](2);
+        addOps[0] = true;
+        addOps[1] = true;
+
+        /// @dev adds the adapters before removal
+        receiver.updateReceiverAdapters(adapters, addOps);
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.isTrustedExecutor(adapters[0]), true);
+        assertEq(receiver.isTrustedExecutor(adapters[1]), true);
+
+        adapters = new address[](1);
+        adapters[0] = address(420);
+
+        uint64 newQuorum = 1;
+
+        /// @dev removes the newly updated adapter by reducing quorum by one
+        receiver.updateQuorumAndReceiverAdapter(newQuorum, adapters, new bool[](1));
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(adapters[0]), false);
     }
 
     /// @dev should get message info

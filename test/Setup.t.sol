@@ -16,11 +16,11 @@ import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAda
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
-import {GAC} from "../src/controllers/GAC.sol";
-import {GovernanceTimelock} from "../src/controllers/GovernanceTimelock.sol";
+import {GAC} from "src/controllers/GAC.sol";
+import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-import {MultiMessageSender} from "../src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
+import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 
 /// @dev can inherit the setup in tests
 abstract contract Setup is Test {
@@ -32,6 +32,8 @@ abstract contract Setup is Test {
     /// @dev simulated caller
     address constant caller = address(10);
     address constant owner = address(420);
+    address constant refundAddress = address(420420);
+    uint256 constant EXPIRATION_CONSTANT = 5 days;
 
     /// @dev constants for axelar
     address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;
@@ -123,7 +125,6 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             GAC gac = new GAC{salt: _salt}();
-            gac.setMsgExpiryTime(2 days);
             gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 
@@ -280,8 +281,12 @@ abstract contract Setup is Test {
             _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
+            bool[] memory _operations = new bool[](2);
+            _operations[0] = true;
+            _operations[1] = true;
+
             MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                _recieverAdapters, 2, contractAddress[chainId]["TIMELOCK"]
+                _recieverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
             unchecked {
@@ -308,7 +313,7 @@ abstract contract Setup is Test {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
                     );
-                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(caller);
+                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(refundAddress);
                 }
 
                 unchecked {
