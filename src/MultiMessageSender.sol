@@ -14,7 +14,13 @@ import "./libraries/Error.sol";
 /// @title MultiMessageSender
 /// @dev handles the routing of message from external sender to bridge adapters
 contract MultiMessageSender {
+    /*///////////////////////////////////////////////////////////////
+                             CONSTANTS
+    //////////////////////////////////////////////////////////////*/
     IGAC public immutable gac;
+
+    uint256 public constant MINIMUM_EXPIRATION = 2 days;
+    uint256 public constant MAXIMUM_EXPIRATION = 30 days;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -70,6 +76,18 @@ contract MultiMessageSender {
         _;
     }
 
+    /// @dev validates the expiration provided by the user
+    modifier validateExpiration(uint256 _expiration) {
+        if (_expiration < MINIMUM_EXPIRATION) {
+            revert Error.INVALID_EXPIRATION_MIN();
+        }
+
+        if (_expiration > MAXIMUM_EXPIRATION) {
+            revert Error.INVALID_EXPIRATION_MAX();
+        }
+        _;
+    }
+
     /*/////////////////////////////////////////////////////////////////
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
@@ -98,13 +116,16 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    function remoteCall(uint256 _dstChainId, address _target, bytes calldata _callData, uint256 _nativeValue)
-        external
-        payable
-        onlyCaller
-    {
+    /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    function remoteCall(
+        uint256 _dstChainId,
+        address _target,
+        bytes calldata _callData,
+        uint256 _nativeValue,
+        uint256 _expiration
+    ) external payable onlyCaller {
         address[] memory excludedAdapters;
-        _remoteCall(_dstChainId, _target, _callData, _nativeValue, excludedAdapters);
+        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, excludedAdapters);
     }
 
     /// @param _dstChainId is the destination chainId
@@ -112,14 +133,16 @@ contract MultiMessageSender {
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
+    /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
     function remoteCall(
         uint256 _dstChainId,
         address _target,
         bytes calldata _callData,
         uint256 _nativeValue,
+        uint256 _expiration,
         address[] calldata _excludedAdapters
     ) external payable onlyCaller {
-        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _excludedAdapters);
+        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _excludedAdapters);
     }
 
     /// @notice Add bridge sender adapters
@@ -183,7 +206,6 @@ contract MultiMessageSender {
     struct LocalCallVars {
         address[] adapters;
         uint256 adapterLength;
-        uint256 msgExpiration;
         bool[] adapterSuccess;
         bytes32 msgId;
     }
@@ -193,6 +215,7 @@ contract MultiMessageSender {
         address _target,
         bytes calldata _callData,
         uint256 _nativeValue,
+        uint256 _expiration,
         address[] memory _excludedAdapters
     ) private {
         LocalCallVars memory v;
@@ -247,10 +270,8 @@ contract MultiMessageSender {
         /// @dev increments nonce
         ++nonce;
 
-        v.msgExpiration = block.timestamp + gac.getMsgExpiryTime();
-
         MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, v.msgExpiration);
+            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, _expiration);
 
         v.adapterSuccess = new bool[](v.adapterLength);
 
@@ -284,7 +305,7 @@ contract MultiMessageSender {
         }
 
         emit MultiMessageMsgSent(
-            v.msgId, nonce, _dstChainId, _target, _callData, _nativeValue, v.msgExpiration, v.adapters, v.adapterSuccess
+            v.msgId, nonce, _dstChainId, _target, _callData, _nativeValue, _expiration, v.adapters, v.adapterSuccess
         );
     }
 
