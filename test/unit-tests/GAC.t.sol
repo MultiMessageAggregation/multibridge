@@ -23,9 +23,6 @@ contract GACTest is Setup {
     event MultiMessageSenderUpdated(address indexed mmaSender);
     event MultiMessageReceiverUpdated(uint256 chainId, address indexed mmaReceiver);
 
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
-
     address senderAddr;
     address receiverAddr;
     IGAC gac;
