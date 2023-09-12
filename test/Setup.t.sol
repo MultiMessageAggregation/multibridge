@@ -281,8 +281,12 @@ abstract contract Setup is Test {
             _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
+            bool[] memory _operations = new bool[](2);
+            _operations[0] = true;
+            _operations[1] = true;
+
             MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                _recieverAdapters, 2, contractAddress[chainId]["TIMELOCK"]
+                _recieverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
             unchecked {

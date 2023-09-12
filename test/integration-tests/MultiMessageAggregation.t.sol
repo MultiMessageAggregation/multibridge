@@ -25,7 +25,7 @@ contract MultiMessageAggregationTest is Setup {
     }
 
     /// @dev just sends a message
-    function test_mmaTest() public {
+    function test_mmaSendMessage() public {
         vm.selectFork(fork[1]);
         vm.startPrank(caller);
 

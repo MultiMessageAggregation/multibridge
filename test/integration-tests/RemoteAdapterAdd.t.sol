@@ -59,7 +59,7 @@ contract RemoteAdapterAdd is Setup {
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             137,
             address(contractAddress[137][bytes("MMA_RECEIVER")]),
-            abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapter.selector, adaptersToAdd, operation),
+            abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation),
             0,
             block.timestamp + EXPIRATION_CONSTANT
         );

@@ -114,7 +114,7 @@ contract RemoteAdapterRemove is Setup {
         operation[0] = true;
 
         vm.startPrank(contractAddress[137]["TIMELOCK"]);
-        MultiMessageReceiver(contractAddress[137]["MMA_RECEIVER"]).updateReceiverAdapter(newDummyAdapter, operation);
+        MultiMessageReceiver(contractAddress[137]["MMA_RECEIVER"]).updateReceiverAdapters(newDummyAdapter, operation);
         vm.stopPrank();
     }
 }
