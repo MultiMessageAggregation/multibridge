@@ -482,7 +482,7 @@ contract MultiMessageReceiverTest is Setup {
         adapters[0] = address(420);
 
         bool[] memory operations = new bool[](2);
-        
+
         receiver.updateReceiverAdapters(adapters, operations);
     }
 
@@ -554,7 +554,7 @@ contract MultiMessageReceiverTest is Setup {
 
         /// @dev adds the adapters before removal
         receiver.updateReceiverAdapters(adapters, addOps);
-        
+
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.isTrustedExecutor(adapters[0]), true);
         assertEq(receiver.isTrustedExecutor(adapters[1]), true);
