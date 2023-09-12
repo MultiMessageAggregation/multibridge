@@ -540,6 +540,38 @@ contract MultiMessageReceiverTest is Setup {
         receiver.updateQuorum(0);
     }
 
+    /// @dev valid quorum and receiver updater in one single call
+    function test_quorum_and_receiver_updater() public {
+        vm.startPrank(timelockAddr);
+
+        address[] memory adapters = new address[](2);
+        adapters[0] = address(420);
+        adapters[1] = address(421);
+
+        bool[] memory addOps = new bool[](2);
+        addOps[0] = true;
+        addOps[1] = true;
+
+        /// @dev adds the adapters before removal
+        receiver.updateReceiverAdapters(adapters, addOps);
+        
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.isTrustedExecutor(adapters[0]), true);
+        assertEq(receiver.isTrustedExecutor(adapters[1]), true);
+
+        adapters = new address[](1);
+        adapters[0] = address(420);
+
+        uint64 newQuorum = 1;
+
+        /// @dev removes the newly updated adapter by reducing quorum by one
+        receiver.updateQuorumAndReceiverAdapter(newQuorum, adapters, new bool[](1));
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(adapters[0]), false);
+    }
+
     /// @dev should get message info
     function test_get_message_info() public {
         vm.startPrank(wormholeAdapterAddr);
