@@ -17,9 +17,6 @@ contract GovernanceTimelockTest is Setup {
     event DelayUpdated(uint256 oldDelay, uint256 newDelay);
     event AdminUpdated(address oldAdmin, address newAdmin);
 
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
-
     GovernanceTimelock timelock;
     address admin;
 
@@ -37,14 +34,14 @@ contract GovernanceTimelockTest is Setup {
     function test_constructor() public {
         // checks existing setup
         assertEq(address(timelock.admin()), admin);
-        assertEq(timelock.delay(), timelock.MINIMUM_DELAY());
+        assertEq(timelock.delay(), 3 days);
         assertEq(timelock.txCounter(), 0);
     }
 
     /// @dev cannot be called with zero address admin
     function test_constructor_zero_address_input() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new GovernanceTimelock(address(0));
+        new GovernanceTimelock(address(0), 3 days);
     }
 
     /// @dev schedule transaction
@@ -264,5 +261,35 @@ contract GovernanceTimelockTest is Setup {
 
         vm.expectRevert(Error.ZERO_TIMELOCK_ADMIN.selector);
         timelock.setAdmin(address(0));
+    }
+
+    /// @dev sets delay via scheduled transaction
+    function test_set_delay_scheduled() public {
+        vm.startPrank(address(admin));
+
+        bytes memory data = abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, 10 days);
+        timelock.scheduleTransaction(address(timelock), 0, data);
+        uint256 eta = block.timestamp + timelock.delay();
+
+        skip(3 days);
+
+        timelock.executeTransaction(1, address(timelock), 0, data, eta);
+
+        assertEq(timelock.delay(), 10 days);
+    }
+
+    /// @dev sets admin via scheduled transaction
+    function test_set_admin_scheduled() public {
+        vm.startPrank(address(admin));
+
+        bytes memory data = abi.encodeWithSelector(GovernanceTimelock.setAdmin.selector, address(42));
+        timelock.scheduleTransaction(address(timelock), 0, data);
+        uint256 eta = block.timestamp + timelock.delay();
+
+        skip(3 days);
+
+        timelock.executeTransaction(1, address(timelock), 0, data, eta);
+
+        assertEq(timelock.admin(), address(42));
     }
 }

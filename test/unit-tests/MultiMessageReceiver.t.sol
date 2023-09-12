@@ -19,9 +19,6 @@ contract MultiMessageReceiverTest is Setup {
     );
     event MessageExecuted(bytes32 indexed msgId, address target, uint256 nativeValue, uint256 nonce, bytes callData);
 
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
-
     MultiMessageReceiver receiver;
     address wormholeAdapterAddr;
     address axelarAdapterAddr;
@@ -236,7 +233,7 @@ contract MultiMessageReceiverTest is Setup {
         receiver.receiveMessage(
             MessageLibrary.Message({
                 srcChainId: SRC_CHAIN_ID,
-                dstChainId: 56,
+                dstChainId: BSC_CHAIN_ID,
                 target: address(0),
                 nonce: 0,
                 callData: bytes(""),
@@ -273,7 +270,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: 56,
+                srcChainId: BSC_CHAIN_ID,
                 dstChainId: DST_CHAIN_ID,
                 target: address(42),
                 nonce: 0,

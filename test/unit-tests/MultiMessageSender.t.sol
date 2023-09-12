@@ -30,9 +30,6 @@ contract MultiMessageSenderTest is Setup {
     event SenderAdapterUpdated(address senderAdapter, bool add);
     event ErrorSendMessage(address senderAdapter, MessageLibrary.Message message);
 
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
-
     MultiMessageSender sender;
     address receiver;
     IGAC gac;
