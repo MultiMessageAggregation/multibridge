@@ -29,6 +29,15 @@ abstract contract Setup is Test {
     /*///////////////////////////////////////////////////////////////
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
+    /// @dev chain IDs
+    uint256 constant ETHEREUM_CHAIN_ID = 1;
+    uint256 constant BSC_CHAIN_ID = 56;
+    uint256 constant POLYGON_CHAIN_ID = 137;
+
+    /// @dev common src and dst chain IDs
+    uint256 constant SRC_CHAIN_ID = ETHEREUM_CHAIN_ID;
+    uint256 constant DST_CHAIN_ID = POLYGON_CHAIN_ID;
+
     /// @dev simulated caller
     address constant caller = address(10);
     address constant owner = address(420);
@@ -54,10 +63,10 @@ abstract contract Setup is Test {
     //////////////////////////////////////////////////////////////*/
     /// @notice configure all the chain ids we use for the tests (including src chain)
     /// id 0 represents src chain
-    uint256[] public ALL_CHAINS = [1, 56, 137];
+    uint256[] public ALL_CHAINS = [ETHEREUM_CHAIN_ID, BSC_CHAIN_ID, POLYGON_CHAIN_ID];
 
     /// @notice configure any new dst chains here
-    uint256[] public DST_CHAINS = [56, 137];
+    uint256[] public DST_CHAINS = [BSC_CHAIN_ID, POLYGON_CHAIN_ID];
 
     /// @notice configure all wormhole parameters in order of DST_CHAINS
     address[] public WORMHOLE_RELAYERS = [BSC_RELAYER, POLYGON_RELAYER];
@@ -255,7 +264,7 @@ abstract contract Setup is Test {
             address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}());
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
-                address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver)));
+                address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver, 3 days)));
         }
     }
 
