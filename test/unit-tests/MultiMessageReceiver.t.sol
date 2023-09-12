@@ -6,6 +6,7 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "test/Setup.t.sol";
+import "test/contracts-mock/MockUniswapReceiver.sol";
 import "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
@@ -19,6 +20,7 @@ contract MultiMessageReceiverTest is Setup {
     );
     event MessageExecuted(bytes32 indexed msgId, address target, uint256 nativeValue, uint256 nonce, bytes callData);
 
+    uint256 constant DST_CHAIN_ID = 137;
     MultiMessageReceiver receiver;
     address wormholeAdapterAddr;
     address axelarAdapterAddr;
@@ -153,7 +155,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -168,9 +170,9 @@ contract MultiMessageReceiverTest is Setup {
 
         receiver.receiveMessage(message, "WORMHOLE");
 
-        assertFalse(receiver.isExecuted(msgId));
+        assertEq(receiver.isExecuted(msgId), false);
 
-        assertTrue(receiver.isDuplicateAdapter(msgId, wormholeAdapterAddr));
+        assertEq(receiver.isDuplicateAdapter(msgId, wormholeAdapterAddr), true);
 
         assertEq(receiver.messageVotes(msgId), 1);
 
@@ -188,7 +190,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -213,7 +215,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_RECEIVER_ADAPTER.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: SRC_CHAIN_ID,
+                srcChainId: 1,
                 dstChainId: DST_CHAIN_ID,
                 target: address(0),
                 nonce: 0,
@@ -232,8 +234,8 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_DST_CHAIN.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: SRC_CHAIN_ID,
-                dstChainId: BSC_CHAIN_ID,
+                srcChainId: 1,
+                dstChainId: 56,
                 target: address(0),
                 nonce: 0,
                 callData: bytes(""),
@@ -251,7 +253,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_TARGET.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: SRC_CHAIN_ID,
+                srcChainId: 1,
                 dstChainId: DST_CHAIN_ID,
                 target: address(0),
                 nonce: 0,
@@ -270,7 +272,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
         receiver.receiveMessage(
             MessageLibrary.Message({
-                srcChainId: BSC_CHAIN_ID,
+                srcChainId: 56,
                 dstChainId: DST_CHAIN_ID,
                 target: address(42),
                 nonce: 0,
@@ -287,7 +289,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -305,7 +307,7 @@ contract MultiMessageReceiverTest is Setup {
     /// @dev executed message should be rejected
     function test_receiver_message_msg_id_already_executed() public {
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -334,7 +336,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -354,7 +356,7 @@ contract MultiMessageReceiverTest is Setup {
 
         receiver.executeMessage(msgId);
 
-        assertTrue(receiver.isExecuted(msgId));
+        assertEq(receiver.isExecuted(msgId), true);
     }
 
     /// @dev cannot executes message past deadline
@@ -362,7 +364,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -383,7 +385,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -409,7 +411,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -575,7 +577,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
-            srcChainId: SRC_CHAIN_ID,
+            srcChainId: 1,
             dstChainId: DST_CHAIN_ID,
             target: address(42),
             nonce: 42,
@@ -588,7 +590,7 @@ contract MultiMessageReceiverTest is Setup {
         receiver.receiveMessage(message, "WORMHOLE");
 
         (bool isExecuted, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
-        assertFalse(isExecuted);
+        assertEq(isExecuted, false);
         assertEq(msgCurrentVotes, 1);
         assertEq(successfulBridge.length, 1);
         assertEq(successfulBridge[0], WormholeReceiverAdapter(wormholeAdapterAddr).name());

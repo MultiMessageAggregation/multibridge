@@ -15,7 +15,7 @@ import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 /// @dev scenario: admin updates sender adapters on dst chain using message from source chain
 /// @notice handles both single add and multiple add
 contract RemoteAdapterAdd is Setup {
-    /// @dev initializes the setup
+    /// @dev intializes the setup
     function setUp() public override {
         super.setUp();
     }
@@ -56,9 +56,9 @@ contract RemoteAdapterAdd is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
-            DST_CHAIN_ID,
-            address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+            137,
+            address(contractAddress[137][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation),
             0,
             block.timestamp + EXPIRATION_CONSTANT
@@ -69,25 +69,25 @@ contract RemoteAdapterAdd is Setup {
 
         vm.recordLogs();
         /// simulate off-chain actors
-        _simulatePayloadDelivery(SRC_CHAIN_ID, DST_CHAIN_ID, logs);
+        _simulatePayloadDelivery(1, 137, logs);
         bytes32 msgId = _getMsgId(vm.getRecordedLogs());
 
-        vm.selectFork(fork[DST_CHAIN_ID]);
+        vm.selectFork(fork[137]);
         vm.recordLogs();
         /// execute the message and move it to governance timelock contract
-        MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
-        /// increment the time by 3 days (delay time)
-        vm.warp(block.timestamp + 3 days);
-        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+        /// increment the time by 2 day (delay time)
+        vm.warp(block.timestamp + 2 days);
+        GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
 
         for (uint256 j; j < adaptersToAdd.length; ++j) {
-            bool isTrusted = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
-                .isTrustedExecutor(adaptersToAdd[j]);
+            bool isTrusted =
+                MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).isTrustedExecutor(adaptersToAdd[j]);
             assert(isTrusted);
         }
     }

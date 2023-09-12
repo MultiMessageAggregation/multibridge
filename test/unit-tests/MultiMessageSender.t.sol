@@ -30,6 +30,9 @@ contract MultiMessageSenderTest is Setup {
     event SenderAdapterUpdated(address senderAdapter, bool add);
     event ErrorSendMessage(address senderAdapter, MessageLibrary.Message message);
 
+    uint256 constant SRC_CHAIN_ID = 1;
+    uint256 constant DST_CHAIN_ID = 137;
+
     MultiMessageSender sender;
     address receiver;
     IGAC gac;
@@ -101,7 +104,6 @@ contract MultiMessageSenderTest is Setup {
     function test_remote_call_refund() public {
         vm.startPrank(caller);
 
-        // NOTE: caller is also configured as the refund address in this test setup
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
         uint256 nativeValue = 2 ether;
 

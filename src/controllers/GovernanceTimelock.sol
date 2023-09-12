@@ -54,17 +54,13 @@ contract GovernanceTimelock is IGovernanceTimelock {
     ////////////////////////////////////////////////////////////////*/
 
     /// @param _admin is the address of admin contract that schedule txs
-    /// @param _delay is the initial delay
-    constructor(address _admin, uint256 _delay) {
+    constructor(address _admin) {
         if (_admin == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
-        _checkDelay(_delay);
 
         admin = _admin;
         emit AdminUpdated(address(0), _admin);
-
-        delay = _delay;
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -134,7 +130,13 @@ contract GovernanceTimelock is IGovernanceTimelock {
 
     /// @inheritdoc IGovernanceTimelock
     function setDelay(uint256 _delay) external override onlySelf {
-        _checkDelay(_delay);
+        if (delay < MINIMUM_DELAY) {
+            revert Error.INVALID_DELAY_MIN();
+        }
+
+        if (delay > MAXIMUM_DELAY) {
+            revert Error.INVALID_DELAY_MAX();
+        }
 
         uint256 oldDelay = delay;
         delay = _delay;
@@ -152,19 +154,5 @@ contract GovernanceTimelock is IGovernanceTimelock {
         admin = _newAdmin;
 
         emit AdminUpdated(oldAdmin, _newAdmin);
-    }
-
-    /*/////////////////////////////////////////////////////////////////
-                            PRIVATE/INTERNAL FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
-
-    function _checkDelay(uint256 _delay) internal pure {
-        if (_delay < MINIMUM_DELAY) {
-            revert Error.INVALID_DELAY_MIN();
-        }
-
-        if (_delay > MAXIMUM_DELAY) {
-            revert Error.INVALID_DELAY_MAX();
-        }
     }
 }

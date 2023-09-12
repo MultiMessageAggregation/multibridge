@@ -15,7 +15,7 @@ import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 /// @dev scenario: admin updates sender adapters on dst chain using message from source chain
 /// @notice handles both single add and multiple remove
 contract RemoteAdapterRemove is Setup {
-    /// @dev initializes the setup
+    /// @dev intializes the setup
     function setUp() public override {
         super.setUp();
     }
@@ -23,7 +23,7 @@ contract RemoteAdapterRemove is Setup {
     /// @dev just remove one adapter and assert
     function test_remoteRemoveReceiverAdapterSingle() public {
         address[] memory adaptersToRemove = new address[](1);
-        adaptersToRemove[0] = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
+        adaptersToRemove[0] = contractAddress[137]["AXELAR_RECEIVER_ADAPTER"];
 
         /// true = add
         /// false = remove
@@ -41,8 +41,8 @@ contract RemoteAdapterRemove is Setup {
         _updateDummy();
 
         address[] memory adaptersToRemove = new address[](2);
-        adaptersToRemove[0] = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
-        adaptersToRemove[1] = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
+        adaptersToRemove[0] = contractAddress[137]["AXELAR_RECEIVER_ADAPTER"];
+        adaptersToRemove[1] = contractAddress[137]["WORMHOLE_RECEIVER_ADAPTER"];
 
         /// true = add
         /// false = remove
@@ -61,9 +61,9 @@ contract RemoteAdapterRemove is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
-            DST_CHAIN_ID,
-            address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
+        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+            137,
+            address(contractAddress[137][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(
                 MultiMessageReceiver.updateQuorumAndReceiverAdapter.selector, newQuorum, adaptersToRemove, operation
             ),
@@ -76,30 +76,30 @@ contract RemoteAdapterRemove is Setup {
 
         vm.recordLogs();
         /// simulate off-chain actors
-        _simulatePayloadDelivery(SRC_CHAIN_ID, DST_CHAIN_ID, logs);
+        _simulatePayloadDelivery(1, 137, logs);
         bytes32 msgId = _getMsgId(vm.getRecordedLogs());
 
-        vm.selectFork(fork[DST_CHAIN_ID]);
+        vm.selectFork(fork[137]);
         vm.recordLogs();
         /// execute the message and move it to governance timelock contract
-        MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
-        /// increment the time by 7 days (delay time)
-        vm.warp(block.timestamp + 7 days);
-        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+        /// increment the time by 2 day (delay time)
+        vm.warp(block.timestamp + 2 days);
+        GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
 
         /// @dev validates quorum post update
-        uint256 currQuorum = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum();
+        uint256 currQuorum = MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).quorum();
         assertEq(currQuorum, newQuorum);
 
         /// @dev validates adapters post update
         for (uint256 j; j < adaptersToRemove.length; ++j) {
-            bool isTrusted = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
-                .isTrustedExecutor(adaptersToRemove[j]);
+            bool isTrusted =
+                MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).isTrustedExecutor(adaptersToRemove[j]);
             assert(!isTrusted);
         }
     }
@@ -113,10 +113,8 @@ contract RemoteAdapterRemove is Setup {
         bool[] memory operation = new bool[](1);
         operation[0] = true;
 
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        MultiMessageReceiver(contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"]).updateReceiverAdapters(
-            newDummyAdapter, operation
-        );
+        vm.startPrank(contractAddress[137]["TIMELOCK"]);
+        MultiMessageReceiver(contractAddress[137]["MMA_RECEIVER"]).updateReceiverAdapters(newDummyAdapter, operation);
         vm.stopPrank();
     }
 }
