@@ -36,9 +36,9 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyCaller() {
-        if (!gac.isPrivilegedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILEGED_CALLER();
+    modifier onlyGlobalOwner() {
+        if (!gac.isGlobalOwner(msg.sender)) {
+            revert Error.CALLER_NOT_OWNER();
         }
         _;
     }
@@ -56,7 +56,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyGlobalOwner {
         string memory _senderChainDecoded = abi.decode(_senderChain, (string));
 
         if (keccak256(abi.encode(_senderChainDecoded)) == keccak256(abi.encode(""))) {

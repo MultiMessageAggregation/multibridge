@@ -72,7 +72,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _axlIds are the bridge allocated chain id
-    function setChainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, string[] calldata _axlIds) external onlyGlobalOwner {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _axlIds.length) {

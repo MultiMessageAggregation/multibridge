@@ -25,8 +25,8 @@ abstract contract BaseSenderAdapter is IBridgeSenderAdapter {
         _;
     }
 
-    modifier onlyCaller() {
-        if (!gac.isPrivilegedCaller(msg.sender)) {
+    modifier onlyGlobalOwner() {
+        if (!gac.isGlobalOwner(msg.sender)) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -53,7 +53,7 @@ abstract contract BaseSenderAdapter is IBridgeSenderAdapter {
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
         external
         override
-        onlyCaller
+        onlyGlobalOwner
     {
         uint256 arrLength = _dstChainIds.length;
 

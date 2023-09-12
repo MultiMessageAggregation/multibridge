@@ -159,29 +159,12 @@ contract GACTest is Setup {
         gac.setGlobalMsgDeliveryGasLimit(420000);
     }
 
-    /// @dev sets message expiry time
-    function test_set_msg_expiry_time() public {
+    /// @dev cannot set a gas limit lower than the minimum
+    function test_set_global_msg_delivery_gas_limit_lower_than_min() public {
         vm.startPrank(owner);
 
-        gac.setMsgExpiryTime(42000);
-
-        assertEq(gac.getMsgExpiryTime(), 42000);
-    }
-
-    /// @dev only owner can set message expiry time
-    function test_set_msg_expiry_time_only_owner() public {
-        vm.startPrank(caller);
-
-        vm.expectRevert("Ownable: caller is not the owner");
-        gac.setMsgExpiryTime(42000);
-    }
-
-    /// @dev cannot set message expiry time to zero
-    function test_set_msg_expiry_time_zero() public {
-        vm.startPrank(owner);
-
-        vm.expectRevert(Error.ZERO_EXPIRATION_TIME.selector);
-        gac.setMsgExpiryTime(0);
+        vm.expectRevert(Error.INVALID_DST_GAS_LIMIT_MIN.selector);
+        gac.setGlobalMsgDeliveryGasLimit(30000);
     }
 
     /// @dev sets refund address
@@ -209,10 +192,10 @@ contract GACTest is Setup {
         gac.setRefundAddress(address(0));
     }
 
-    /// @dev only owner is privileged caller
-    function test_is_privileged_caller() public {
-        assertTrue(gac.isPrivilegedCaller(owner));
-        assertFalse(gac.isPrivilegedCaller(caller));
+    /// @dev checks if address is the global owner
+    function test_is_global_owner() public {
+        assertTrue(gac.isGlobalOwner(owner));
+        assertFalse(gac.isGlobalOwner(caller));
     }
 
     /// @dev gets the global owner

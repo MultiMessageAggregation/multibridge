@@ -12,6 +12,11 @@ import {Error} from "../libraries/Error.sol";
 /// @dev is the global access control contract for bridge adapters
 contract GAC is IGAC, Ownable {
     /*///////////////////////////////////////////////////////////////
+                             CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+    uint256 public constant MINIMUM_DST_GAS_LIMIT = 50000;
+
+    /*///////////////////////////////////////////////////////////////
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
@@ -76,6 +81,10 @@ contract GAC is IGAC, Ownable {
 
     /// @inheritdoc IGAC
     function setGlobalMsgDeliveryGasLimit(uint256 _gasLimit) external override onlyOwner {
+        if (_gasLimit < MINIMUM_DST_GAS_LIMIT) {
+            revert Error.INVALID_DST_GAS_LIMIT_MIN();
+        }
+
         uint256 oldLimit = dstGasLimit;
         dstGasLimit = _gasLimit;
 
@@ -96,7 +105,7 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function isPrivilegedCaller(address _caller) external view override returns (bool) {
+    function isGlobalOwner(address _caller) external view override returns (bool) {
         if (_caller == owner()) {
             return true;
         }

@@ -47,7 +47,7 @@ interface IGAC {
     /// @dev returns `true` if the caller is global access controller
     /// @param _caller is the msg.sender to validate
     /// @return boolean indicating the validity of the caller
-    function isPrivilegedCaller(address _caller) external view returns (bool);
+    function isGlobalOwner(address _caller) external view returns (bool);
 
     /// @dev returns the global owner address
     /// @return _owner is the global owner address
