@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+/// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
 /// library imports
@@ -36,9 +36,9 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyCaller() {
-        if (!gac.isPrivilegedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILEGED_CALLER();
+    modifier onlyGlobalOwner() {
+        if (!gac.isGlobalOwner(msg.sender)) {
+            revert Error.CALLER_NOT_OWNER();
         }
         _;
     }
@@ -67,7 +67,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyGlobalOwner {
         uint16 _senderChainDecoded = abi.decode(_senderChain, (uint16));
 
         if (_senderChainDecoded == 0) {
@@ -88,7 +88,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _whIds are the bridge allocated chain id
-    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyGlobalOwner {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _whIds.length) {

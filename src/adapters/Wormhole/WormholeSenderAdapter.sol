@@ -69,7 +69,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id
     /// @dev _whIds are the bridge allocated chain id
-    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyCaller {
+    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyGlobalOwner {
         uint256 arrLength = _origIds.length;
 
         if (arrLength != _whIds.length) {

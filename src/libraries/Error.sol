@@ -165,4 +165,10 @@ library Error {
 
     /// @dev is thrown if transaction is expired
     error TX_EXPIRED();
+
+    /*/////////////////////////////////////////////////////////////////
+                            GAC ERRORS
+    ////////////////////////////////////////////////////////////////*/
+    /// @dev is thrown if the gas limit is less than minimum
+    error INVALID_DST_GAS_LIMIT_MIN();
 }
