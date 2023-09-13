@@ -11,9 +11,6 @@ library Error {
     /// @dev is thrown when input is zero address
     error ZERO_ADDRESS_INPUT();
 
-    /// @dev is thrown when quorum is zero
-    error ZERO_QUORUM();
-
     /// @dev is thrown if the length of two arrays are mismatched
     error ARRAY_LENGTH_MISMATCHED();
 
@@ -40,9 +37,6 @@ library Error {
 
     /// @dev is thrown if sender adapter array has duplicates
     error DUPLICATE_SENDER_ADAPTER();
-
-    /// @dev is thrown if receiver adapter array has duplicates
-    error DUPLICATE_RECEIVER_ADAPTER();
 
     /// @dev is thrown if deadline is lapsed
     error MSG_EXECUTION_PASSED_DEADLINE();
@@ -84,9 +78,6 @@ library Error {
     /// @dev is thrown if chain id is zero
     error ZERO_CHAIN_ID();
 
-    /// @dev is thrown if receiverAdapter in decoded message is not the same
-    error RECEIVER_ADAPTER_MISMATCHED();
-
     /// @dev is thrown if receiver adapter is zero address
     error ZERO_RECEIVER_ADAPTER();
 
@@ -99,12 +90,6 @@ library Error {
     /// @dev is thrown when the destination chain id is invalid
     error INVALID_DST_CHAIN();
 
-    /// @dev is thrown if caller is not telepathy router
-    error CALLER_NOT_TELEPATHY_ROUTER();
-
-    /// @dev is thrown if source sender is invalid
-    error INVALID_SOURCE_SENDER();
-
     /// @dev is thrown if the target is invalid in remote call
     error INVALID_TARGET();
 
@@ -113,18 +98,9 @@ library Error {
 
     /// @dev is thrown if caller is not router protocol's gateway
     error CALLER_NOT_ROUTER_GATEWAY();
-
-    /// @dev is thrown if caller is not hyperlane's mailbox
-    error CALLER_NOT_HYPERLANE_MAILBOX();
-
     /// @dev is thrown if caller is not celer's message bus
     error CALLER_NOT_CELER_BUS();
 
-    /// @dev is thrown if caller is not de-bridge gate
-    error CALLER_NOT_DEBRIDGE_GATE();
-
-    /// @dev is thrown if msg.value is less than required fees
-    error INSUFFICIENT_FEES();
 
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
