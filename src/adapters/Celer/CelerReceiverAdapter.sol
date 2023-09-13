@@ -31,6 +31,7 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
     string public constant name = "celer";
     address public immutable msgBus;
     IGAC public immutable gac;
+    uint64 public immutable senderChain = 1; // Ethereum
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -38,7 +39,6 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
 
     /// @dev adapter deployed to Ethereum
     address public senderAdapter;
-    uint64 public senderChain;
 
     /// @dev tracks the msg id status to prevent replay
     mapping(bytes32 => bool) public isMessageExecuted;
