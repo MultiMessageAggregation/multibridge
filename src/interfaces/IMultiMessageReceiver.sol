@@ -23,7 +23,9 @@ interface IMultiMessageReceiver {
     event SingleBridgeMsgReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
-    event MessageExecuted(bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData);
+    event MessageExecuted(
+        bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
+    );
 
     /*/////////////////////////////////////////////////////////////////
                                 EXTERNAL FUNCTIONS

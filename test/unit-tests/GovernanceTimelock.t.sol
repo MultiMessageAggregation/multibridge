@@ -10,8 +10,8 @@ import "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
 contract GovernanceTimelockTest is Setup {
-    event TransactionScheduled(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta);
-    event TransactionExecuted(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta);
+    event TransactionScheduled(uint256 indexed txId, address indexed target, uint256 value, bytes data, uint256 eta);
+    event TransactionExecuted(uint256 indexed txId, address indexed target, uint256 value, bytes data, uint256 eta);
 
     event ExecutionPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event DelayUpdated(uint256 oldDelay, uint256 newDelay);

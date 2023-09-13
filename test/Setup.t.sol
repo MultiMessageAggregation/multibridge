@@ -463,9 +463,9 @@ abstract contract Setup is Test {
         for (uint256 j; j < logs.length; j++) {
             if (logs[j].topics[0] == keccak256("TransactionScheduled(uint256,address,uint256,bytes,uint256)")) {
                 txId = uint256(logs[j].topics[1]);
-
+                finalTarget = abi.decode(bytes.concat(logs[j].topics[2]), (address));
                 encodedArgs = logs[j].data;
-                (finalTarget, value, data, eta) = abi.decode(encodedArgs, (address, uint256, bytes, uint256));
+                (value, data, eta) = abi.decode(encodedArgs, (uint256, bytes, uint256));
             }
         }
     }
