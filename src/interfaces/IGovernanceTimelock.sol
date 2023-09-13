@@ -6,8 +6,8 @@ interface IGovernanceTimelock {
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
-    event TransactionScheduled(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta);
-    event TransactionExecuted(uint256 indexed txId, address target, uint256 value, bytes data, uint256 eta);
+    event TransactionScheduled(uint256 indexed txId, address indexed target, uint256 value, bytes data, uint256 eta);
+    event TransactionExecuted(uint256 indexed txId, address indexed target, uint256 value, bytes data, uint256 eta);
 
     event ExecutionPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event DelayUpdated(uint256 oldDelay, uint256 newDelay);
@@ -18,7 +18,7 @@ interface IGovernanceTimelock {
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice Schedules the provided transaction for execution after a specified ETA.
-    /// @dev this function can only be called by the bridge adapter on the remote chain
+    /// @dev this function can only be called by an authorised bridge adapter on the remote chain
     /// @param _target the contract to call
     /// @param _value the amount to pass when calling target
     /// @param _data the abieencoded function selector and arguments data, to execute on target
@@ -35,10 +35,10 @@ interface IGovernanceTimelock {
         payable;
 
     /// @notice Updates the minimum delay for a transaction before it can be executed.
-    /// @dev This can only be invoked by through this timelock contract, thus requiring that an update go through the required time delay first.
+    /// @dev This can only be invoked by the timelock contract itself, thus requiring that this change go through the same time delay as other governance actions.
     function setDelay(uint256 _delay) external;
 
     /// @notice Updates the admin.
-    /// @dev This can only be invoked by through this timelock contract, thus requiring that an update go through the required time delay first.
+    /// @dev This can only be invoked by the timelock contract itself, thus requiring that this change go through the same time delay as other governance actions.
     function setAdmin(address newAdmin) external;
 }

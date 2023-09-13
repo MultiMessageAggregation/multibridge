@@ -9,7 +9,7 @@ interface IMessageSenderAdapter is SingleMessageDispatcher {
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
-    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
+    event ReceiverAdapterUpdated(uint256 indexed dstChainId, address indexed receiverAdapter);
 
     /*/////////////////////////////////////////////////////////////////
                             EXTERNAL FUNCTIONS
@@ -17,7 +17,7 @@ interface IMessageSenderAdapter is SingleMessageDispatcher {
 
     /// @dev allows owner to update the receiver adapters on different destination chains
     /// @param _dstChainIds are the destination chain identifier
-    /// @param _receiverAdapters are different receiver adapters
+    /// @param _receiverAdapters are the corresponding receiver adapter addresses
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters) external;
 
     /*/////////////////////////////////////////////////////////////////

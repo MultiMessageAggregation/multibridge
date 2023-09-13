@@ -17,8 +17,8 @@ interface IMessageReceiverAdapter is MessageExecutor {
     /// @dev returns name of the message bridge wrapped by the adapter
     function name() external view returns (string memory);
 
-    /// @dev allows global admin to update the sender adapter
-    /// @param _senderAdapter is the bridge's sender adapter deployed to Ethereum
+    /// @dev allows the admin to update the sender adapter
+    /// @param _senderAdapter is the bridge's sender adapter deployed on the source chain (i.e. Ethereum)
     /// note: access controlled to be called by the global admin contract
     function updateSenderAdapter(address _senderAdapter) external;
 }
