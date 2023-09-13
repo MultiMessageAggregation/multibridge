@@ -6,7 +6,7 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "test/Setup.t.sol";
-import "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
+import "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";

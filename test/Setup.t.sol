@@ -10,8 +10,8 @@ import {WormholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
 import {AxelarHelper} from "pigeon/axelar/AxelarHelper.sol";
 
 /// local imports
-import {WormholeSenderAdapter} from "src/adapters/Wormhole/WormholeSenderAdapter.sol";
-import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
+import {WormholeSenderAdapter} from "src/adapters/wormhole/WormholeSenderAdapter.sol";
+import {WormholeReceiverAdapter} from "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
