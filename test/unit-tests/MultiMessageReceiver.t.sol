@@ -6,18 +6,20 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "test/Setup.t.sol";
-import "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
+import "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 
 contract MultiMessageReceiverTest is Setup {
-    event ReceiverAdapterUpdated(address receiverAdapter, bool add);
+    event ReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
     event QuorumUpdated(uint64 oldValue, uint64 newValue);
     event SingleBridgeMsgReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
-    event MessageExecuted(bytes32 indexed msgId, address target, uint256 nativeValue, uint256 nonce, bytes callData);
+    event MessageExecuted(
+        bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
+    );
 
     MultiMessageReceiver receiver;
     address wormholeAdapterAddr;

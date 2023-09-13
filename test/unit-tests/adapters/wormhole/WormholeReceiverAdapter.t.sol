@@ -12,7 +12,7 @@ import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import "src/libraries/Types.sol";
 import "src/libraries/TypeCasts.sol";
-import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
+import {WormholeReceiverAdapter} from "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 
 contract WormholeReceiverAdapterTest is Setup {
     event MessageIdExecuted(uint256 indexed fromChainId, bytes32 indexed messageId);

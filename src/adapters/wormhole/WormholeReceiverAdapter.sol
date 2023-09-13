@@ -3,10 +3,9 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
-import "forge-std/console.sol";
 
 /// local imports
-import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMessageReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
@@ -17,7 +16,7 @@ import "../../libraries/Message.sol";
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
 /// the MMA receiver.
-contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
+contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     string public constant name = "wormhole";
     address public immutable relayer;
     IGAC public immutable gac;
@@ -66,7 +65,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeReceiverAdapter
+    /// @inheritdoc IMessageReceiverAdapter
     function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
@@ -113,8 +112,6 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
 
         /// @dev step-2: validate the source address
         if (TypeCasts.bytes32ToAddress(sourceAddress) != senderAdapter) {
-            console.log(TypeCasts.bytes32ToAddress(sourceAddress));
-            console.log(senderAdapter);
             revert Error.INVALID_SENDER_ADAPTER();
         }
 

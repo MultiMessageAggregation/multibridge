@@ -10,7 +10,7 @@ import "src/libraries/Error.sol";
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 
 contract AxelarSenderAdapterTest is Setup {
-    event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
+    event ReceiverAdapterUpdated(uint256 indexed dstChainId, address indexed receiverAdapter);
 
     // Test base contract with Axelar adapter
     AxelarSenderAdapter adapter;

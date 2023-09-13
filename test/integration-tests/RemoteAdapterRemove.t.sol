@@ -56,7 +56,7 @@ contract RemoteAdapterRemove is Setup {
     }
 
     function _adapterRemove(uint256 newQuorum, address[] memory adaptersToRemove, bool[] memory operation) internal {
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         vm.startPrank(caller);
 
         /// send cross-chain message using MMA infra

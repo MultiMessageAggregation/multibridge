@@ -3,9 +3,9 @@ pragma solidity >=0.8.9;
 
 import "../interfaces/IGAC.sol";
 import "../libraries/Error.sol";
-import "../interfaces/IBridgeSenderAdapter.sol";
+import "../interfaces/IMessageSenderAdapter.sol";
 
-abstract contract BaseSenderAdapter is IBridgeSenderAdapter {
+abstract contract BaseSenderAdapter is IMessageSenderAdapter {
     IGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ abstract contract BaseSenderAdapter is IBridgeSenderAdapter {
                             EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeSenderAdapter
+    /// @inheritdoc IMessageSenderAdapter
     function updateReceiverAdapter(uint256[] calldata _dstChainIds, address[] calldata _receiverAdapters)
         external
         override

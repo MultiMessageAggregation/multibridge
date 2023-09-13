@@ -10,8 +10,8 @@ import {WormholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
 import {AxelarHelper} from "pigeon/axelar/AxelarHelper.sol";
 
 /// local imports
-import {WormholeSenderAdapter} from "src/adapters/Wormhole/WormholeSenderAdapter.sol";
-import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAdapter.sol";
+import {WormholeSenderAdapter} from "src/adapters/wormhole/WormholeSenderAdapter.sol";
+import {WormholeReceiverAdapter} from "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
@@ -91,7 +91,7 @@ abstract contract Setup is Test {
         /// @notice chain id: 1 (always source chain)
         /// @notice chain id: 137
         /// @notice chain id: 56
-        fork[1] = vm.createSelectFork(vm.envString("ETH_FORK_URL"));
+        fork[ETHEREUM_CHAIN_ID] = vm.createSelectFork(vm.envString("ETH_FORK_URL"));
         vm.deal(caller, 100 ether);
 
         fork[56] = vm.createSelectFork(vm.envString("BSC_FORK_URL"));
@@ -146,7 +146,7 @@ abstract contract Setup is Test {
     /// @dev deploys the wormhole adapters to all configured chains
     function _deployWormholeAdapters() internal {
         /// @notice deploy source adapter to SRC_CHAIN (ETH)
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
 
         contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")] =
             address(new WormholeSenderAdapter{salt: _salt}(ETH_RELAYER, contractAddress[1][bytes("GAC")]));
@@ -172,7 +172,7 @@ abstract contract Setup is Test {
         }
 
         /// @dev sets some configs to sender adapter (ETH_CHAIN_ADAPTER)
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
 
         WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).updateReceiverAdapter(
             DST_CHAINS, _receiverAdapters
@@ -186,7 +186,7 @@ abstract contract Setup is Test {
     /// @dev deploys the axelar adapters to all configured chains
     function _deployAxelarAdapters() internal {
         /// @notice deploy source adapter to Ethereum
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")] = address(
             new AxelarSenderAdapter{salt: _salt}(ETH_GAS_SERVICE, ETH_GATEWAY, contractAddress[1][bytes("GAC")])
         );
@@ -211,7 +211,7 @@ abstract contract Setup is Test {
             }
         }
 
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
 
         AxelarSenderAdapter(contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")]).updateReceiverAdapter(
             DST_CHAINS, _receiverAdapters
@@ -225,7 +225,7 @@ abstract contract Setup is Test {
     /// @dev deploys the amb helpers to all configured chains
     function _deployHelpers() internal {
         /// @notice deploy amb helpers to Ethereum
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         contractAddress[1][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper());
         contractAddress[1][bytes("AXELAR_HELPER")] = address(new AxelarHelper());
 
@@ -252,7 +252,7 @@ abstract contract Setup is Test {
     /// @dev deploys the mma sender and receiver adapters to all configured chains
     function _deployCoreContracts() internal {
         /// @notice deploy mma sender to ETHEREUM
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         contractAddress[1][bytes("MMA_SENDER")] =
             address(new MultiMessageSender{salt: _salt}(contractAddress[1][bytes("GAC")]));
 
@@ -271,7 +271,7 @@ abstract contract Setup is Test {
     /// @dev setup core contracts
     function _setupCoreContracts() internal {
         /// setup mma sender adapters
-        vm.selectFork(fork[1]);
+        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         vm.startPrank(owner);
 
         address[] memory _senderAdapters = new address[](2);
@@ -463,9 +463,9 @@ abstract contract Setup is Test {
         for (uint256 j; j < logs.length; j++) {
             if (logs[j].topics[0] == keccak256("TransactionScheduled(uint256,address,uint256,bytes,uint256)")) {
                 txId = uint256(logs[j].topics[1]);
-
+                finalTarget = abi.decode(bytes.concat(logs[j].topics[2]), (address));
                 encodedArgs = logs[j].data;
-                (finalTarget, value, data, eta) = abi.decode(encodedArgs, (address, uint256, bytes, uint256));
+                (value, data, eta) = abi.decode(encodedArgs, (uint256, bytes, uint256));
             }
         }
     }

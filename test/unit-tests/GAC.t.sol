@@ -10,7 +10,7 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../Setup.t.sol";
 import "../contracts-mock/FailingSenderAdapter.sol";
 import "../contracts-mock/ZeroAddressReceiverGac.sol";
-import "src/interfaces/IBridgeSenderAdapter.sol";
+import "src/interfaces/IMessageSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
 import "src/interfaces/IGAC.sol";
 import "src/libraries/Error.sol";

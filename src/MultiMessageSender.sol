@@ -3,7 +3,7 @@
 pragma solidity >=0.8.9;
 
 /// interfaces
-import "./interfaces/IBridgeSenderAdapter.sol";
+import "./interfaces/IMessageSenderAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/IGAC.sol";
 
@@ -193,7 +193,7 @@ contract MultiMessageSender {
 
         for (uint256 i; i < adapters.length; ++i) {
             uint256 fee =
-                IBridgeSenderAdapter(adapters[i]).getMessageFee(uint256(_dstChainId), _multiMessageReceiver, data);
+                IMessageSenderAdapter(adapters[i]).getMessageFee(uint256(_dstChainId), _multiMessageReceiver, data);
 
             totalFee += fee;
         }
@@ -276,13 +276,13 @@ contract MultiMessageSender {
         v.adapterSuccess = new bool[](v.adapterLength);
 
         for (uint256 i; i < v.adapterLength;) {
-            IBridgeSenderAdapter bridgeAdapter = IBridgeSenderAdapter(v.adapters[i]);
+            IMessageSenderAdapter bridgeAdapter = IMessageSenderAdapter(v.adapters[i]);
 
             /// @dev assumes CREATE2 deployment for mma sender & receiver
             uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, mmaReceiver, abi.encode(message));
 
             /// @dev if one bridge is paused, the flow shouldn't be broken
-            try IBridgeSenderAdapter(v.adapters[i]).dispatchMessage{value: fee}(
+            try IMessageSenderAdapter(v.adapters[i]).dispatchMessage{value: fee}(
                 _dstChainId, mmaReceiver, abi.encode(message)
             ) {
                 v.adapterSuccess[i] = true;

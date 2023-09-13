@@ -7,7 +7,7 @@ import {Vm} from "forge-std/Test.sol";
 /// local imports
 import "../../../Setup.t.sol";
 import "src/libraries/Error.sol";
-import {WormholeSenderAdapter} from "src/adapters/Wormhole/WormholeSenderAdapter.sol";
+import {WormholeSenderAdapter} from "src/adapters/wormhole/WormholeSenderAdapter.sol";
 import {IWormholeRelayer} from "lib/wormhole-solidity-sdk/src/interfaces/IWormholeRelayer.sol";
 
 contract WormholeSenderAdapterTest is Setup {

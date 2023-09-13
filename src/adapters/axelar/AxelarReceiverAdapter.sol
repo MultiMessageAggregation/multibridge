@@ -4,7 +4,7 @@ pragma solidity >=0.8.9;
 import "forge-std/console.sol";
 
 /// local imports
-import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMessageReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
@@ -16,7 +16,7 @@ import "./interfaces/IAxelarExecutable.sol";
 import "./libraries/StringAddressConversion.sol";
 
 /// @notice receiver adapter for axelar bridge
-contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
+contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     using StringAddressConversion for string;
 
     string public constant name = "axelar";
@@ -55,7 +55,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
                          EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeReceiverAdapter
+    /// @inheritdoc IMessageReceiverAdapter
     function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
