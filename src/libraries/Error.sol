@@ -32,9 +32,6 @@ library Error {
     /// @dev is thrown if msg id is already executed
     error MSG_ID_ALREADY_EXECUTED();
 
-    /// @dev is thrown if message conflicts with current storage
-    error NEW_MESSAGE_CONFLICTS_WITH_OLD_DATA();
-
     /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
     error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
 

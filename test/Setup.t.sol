@@ -286,16 +286,16 @@ abstract contract Setup is Test {
             /// setup receiver adapters
             vm.selectFork(fork[chainId]);
 
-            address[] memory _recieverAdapters = new address[](2);
-            _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
-            _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
+            address[] memory _receiverAdapters = new address[](2);
+            _receiverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
+            _receiverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
             bool[] memory _operations = new bool[](2);
             _operations[0] = true;
             _operations[1] = true;
 
             MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                _recieverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
+                _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
             unchecked {
@@ -345,11 +345,11 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             WormholeReceiverAdapter(contractAddress[chainId]["WORMHOLE_RECEIVER_ADAPTER"]).updateSenderAdapter(
-                contractAddress[1]["WORMHOLE_SENDER_ADAPTER"]
+                contractAddress[ETHEREUM_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"]
             );
 
             AxelarReceiverAdapter(contractAddress[chainId]["AXELAR_RECEIVER_ADAPTER"]).updateSenderAdapter(
-                contractAddress[1]["AXELAR_SENDER_ADAPTER"]
+                contractAddress[ETHEREUM_CHAIN_ID]["AXELAR_SENDER_ADAPTER"]
             );
 
             unchecked {
@@ -377,15 +377,15 @@ abstract contract Setup is Test {
 
     /// @dev returns the chain id of wormhole for local chain id
     function _wormholeChainId(uint256 _chainId) internal pure returns (uint16) {
-        if (_chainId == 1) {
+        if (_chainId == ETHEREUM_CHAIN_ID) {
             return uint16(2);
         }
 
-        if (_chainId == 56) {
+        if (_chainId == BSC_CHAIN_ID) {
             return uint16(4);
         }
 
-        if (_chainId == 137) {
+        if (_chainId == POLYGON_CHAIN_ID) {
             return uint16(5);
         }
 
@@ -394,15 +394,15 @@ abstract contract Setup is Test {
 
     /// @dev returns the chain id of axelar for local chain id
     function _axelarChainId(uint256 _chainId) internal pure returns (string memory) {
-        if (_chainId == 1) {
+        if (_chainId == ETHEREUM_CHAIN_ID) {
             return "ethereum";
         }
 
-        if (_chainId == 56) {
+        if (_chainId == BSC_CHAIN_ID) {
             return "binance";
         }
 
-        if (_chainId == 137) {
+        if (_chainId == POLYGON_CHAIN_ID) {
             return "polygon";
         }
 
@@ -428,15 +428,15 @@ abstract contract Setup is Test {
 
     /// @dev returns the gateway of axelar for chain id
     function _axelarGateway(uint256 _chainId) internal pure returns (address) {
-        if (_chainId == 1) {
+        if (_chainId == ETHEREUM_CHAIN_ID) {
             return ETH_GATEWAY;
         }
 
-        if (_chainId == 56) {
+        if (_chainId == BSC_CHAIN_ID) {
             return BSC_GATEWAY;
         }
 
-        if (_chainId == 137) {
+        if (_chainId == POLYGON_CHAIN_ID) {
             return POLYGON_GATEWAY;
         }
 
