@@ -13,10 +13,6 @@ import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarGasService.sol";
 import "./libraries/StringAddressConversion.sol";
 
-interface IMultiBridgeSender {
-    function caller() external view returns (address);
-}
-
 contract AxelarSenderAdapter is BaseSenderAdapter {
     string public constant name = "axelar";
 
@@ -92,7 +88,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
                             EXTERNAL VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeSenderAdapter
+    /// @inheritdoc IMessageSenderAdapter
     function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
         /// FIXME: axelar has no on-chain message fee estimate. should have to overpay and get refund
         return 1 ether;

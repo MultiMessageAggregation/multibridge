@@ -89,7 +89,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
                             EXTERNAL VIEW FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeSenderAdapter
+    /// @inheritdoc IMessageSenderAdapter
     function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256 fee) {
         /// note: 50000 GAS is commonly used across the MMA; move to some global contract
         (fee,) = relayer.quoteEVMDeliveryPrice(chainIdMap[_toChainId], 0, gac.getGlobalMsgDeliveryGasLimit());

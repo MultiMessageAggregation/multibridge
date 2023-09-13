@@ -4,8 +4,8 @@ pragma solidity >=0.8.9;
 
 import "./EIP5164/SingleMessageDispatcher.sol";
 
-/// @dev interface for bridge sender adapters
-interface IBridgeSenderAdapter is SingleMessageDispatcher {
+/// @dev interface for message sender adapters
+interface IMessageSenderAdapter is SingleMessageDispatcher {
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/

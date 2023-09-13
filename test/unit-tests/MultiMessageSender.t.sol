@@ -8,7 +8,7 @@ import {Vm} from "forge-std/Test.sol";
 import "test/Setup.t.sol";
 import "test/contracts-mock/FailingSenderAdapter.sol";
 import "test/contracts-mock/ZeroAddressReceiverGac.sol";
-import "src/interfaces/IBridgeSenderAdapter.sol";
+import "src/interfaces/IMessageSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
 import "src/interfaces/IGAC.sol";
 import "src/libraries/Error.sol";
@@ -140,7 +140,7 @@ contract MultiMessageSenderTest is Setup {
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
         uint256 fee =
-            IBridgeSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, abi.encode(message));
+            IMessageSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, abi.encode(message));
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiMessageMsgSent(
@@ -371,8 +371,8 @@ contract MultiMessageSenderTest is Setup {
         bytes memory data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
 
         uint256 expectedTotalFee;
-        expectedTotalFee += IBridgeSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, data);
-        expectedTotalFee += IBridgeSenderAdapter(axelarAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, data);
+        expectedTotalFee += IMessageSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, data);
+        expectedTotalFee += IMessageSenderAdapter(axelarAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, data);
 
         assertEq(totalFee, expectedTotalFee);
     }

@@ -6,7 +6,7 @@ import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
 import "forge-std/console.sol";
 
 /// local imports
-import "../../interfaces/IBridgeReceiverAdapter.sol";
+import "../../interfaces/IMessageReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
 import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
@@ -17,7 +17,7 @@ import "../../libraries/Message.sol";
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
 /// the MMA receiver.
-contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
+contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     string public constant name = "wormhole";
     address public immutable relayer;
     IGAC public immutable gac;
@@ -66,7 +66,7 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IBridgeReceiverAdapter
+    /// @inheritdoc IMessageReceiverAdapter
     function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();

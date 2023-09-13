@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// interfaces
-import "./interfaces/IBridgeReceiverAdapter.sol";
+import "./interfaces/IMessageReceiverAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
 import "./interfaces/IGovernanceTimelock.sol";
@@ -206,7 +206,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             uint256 currIndex;
             for (uint256 i; i < trustedExecutor.length;) {
                 if (isDuplicateAdapter[msgId][trustedExecutor[i]]) {
-                    successfulBridge[currIndex] = IBridgeReceiverAdapter(trustedExecutor[i]).name();
+                    successfulBridge[currIndex] = IMessageReceiverAdapter(trustedExecutor[i]).name();
                     ++currIndex;
                 }
 

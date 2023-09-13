@@ -3,8 +3,8 @@ pragma solidity >=0.8.9;
 
 import "./EIP5164/MessageExecutor.sol";
 
-//// @dev interface for bridge receiver adapters
-interface IBridgeReceiverAdapter is MessageExecutor {
+//// @dev interface for message receiver adapters
+interface IMessageReceiverAdapter is MessageExecutor {
     /*/////////////////////////////////////////////////////////////////
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
