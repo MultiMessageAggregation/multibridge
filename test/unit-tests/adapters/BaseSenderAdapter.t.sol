@@ -12,9 +12,6 @@ import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 contract AxelarSenderAdapterTest is Setup {
     event ReceiverAdapterUpdated(uint256 dstChainId, address receiverAdapter);
 
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
-
     // Test base contract with Axelar adapter
     AxelarSenderAdapter adapter;
 
@@ -30,29 +27,26 @@ contract AxelarSenderAdapterTest is Setup {
     function test_update_receiver_adapter() public {
         vm.startPrank(owner);
 
-        uint256[] memory dstChainIds = new uint256[](2);
-        dstChainIds[0] = 56;
-        dstChainIds[1] = DST_CHAIN_ID;
         address[] memory receiverAdapters = new address[](2);
         receiverAdapters[0] = address(42);
         receiverAdapters[1] = address(43);
 
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ReceiverAdapterUpdated(56, address(42));
+        emit ReceiverAdapterUpdated(BSC_CHAIN_ID, address(42));
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ReceiverAdapterUpdated(DST_CHAIN_ID, address(43));
+        emit ReceiverAdapterUpdated(POLYGON_CHAIN_ID, address(43));
 
-        adapter.updateReceiverAdapter(dstChainIds, receiverAdapters);
+        adapter.updateReceiverAdapter(DST_CHAINS, receiverAdapters);
 
-        assertEq(adapter.receiverAdapters(56), address(42));
-        assertEq(adapter.receiverAdapters(DST_CHAIN_ID), address(43));
+        assertEq(adapter.receiverAdapters(BSC_CHAIN_ID), address(42));
+        assertEq(adapter.receiverAdapters(POLYGON_CHAIN_ID), address(43));
     }
 
-    /// @dev only privileged caller can update receiver adapter
-    function test_update_receiver_adapter_only_privileged_caller() public {
+    /// @dev only global owner can update receiver adapter
+    function test_update_receiver_adapter_only_global_owner() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
         adapter.updateReceiverAdapter(new uint256[](0), new address[](0));
     }
 

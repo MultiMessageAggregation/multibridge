@@ -345,11 +345,11 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             WormholeReceiverAdapter(contractAddress[chainId]["WORMHOLE_RECEIVER_ADAPTER"]).updateSenderAdapter(
-                abi.encode(_wormholeChainId(1)), contractAddress[1]["WORMHOLE_SENDER_ADAPTER"]
+                contractAddress[1]["WORMHOLE_SENDER_ADAPTER"]
             );
 
             AxelarReceiverAdapter(contractAddress[chainId]["AXELAR_RECEIVER_ADAPTER"]).updateSenderAdapter(
-                abi.encode(_axelarChainId(1)), contractAddress[1]["AXELAR_SENDER_ADAPTER"]
+                contractAddress[1]["AXELAR_SENDER_ADAPTER"]
             );
 
             unchecked {

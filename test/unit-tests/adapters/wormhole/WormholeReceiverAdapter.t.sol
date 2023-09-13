@@ -16,10 +16,7 @@ import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAda
 
 contract WormholeReceiverAdapterTest is Setup {
     event MessageIdExecuted(uint256 indexed fromChainId, bytes32 indexed messageId);
-    event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter, bytes senderChain);
-
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
+    event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter);
 
     WormholeReceiverAdapter adapter;
 
@@ -48,38 +45,28 @@ contract WormholeReceiverAdapterTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit SenderAdapterUpdated(
-            contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"], address(42), abi.encode(uint16(2))
-        );
+        emit SenderAdapterUpdated(contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"], address(42));
 
-        adapter.updateSenderAdapter(abi.encode(uint16(2)), address(42));
+        adapter.updateSenderAdapter(address(42));
 
         assertEq(adapter.senderAdapter(), address(42));
         assertEq(adapter.senderChain(), uint16(2));
     }
 
-    /// @dev only privileged caller can update sender adapter
-    function test_update_sender_adapter_only_privileged_caller() public {
+    /// @dev only global owner can update sender adapter
+    function test_update_sender_adapter_only_global_owner() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
-        adapter.updateSenderAdapter(abi.encode(uint16(2)), address(42));
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
+        adapter.updateSenderAdapter(address(42));
     }
-
-    /// @dev cannot update sender adapter with zero chain ID
-    function test_update_sender_adapter_zero_chain_id() public {
-        vm.startPrank(owner);
-
-        vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        adapter.updateSenderAdapter(abi.encode(uint16(0)), address(42));
-    }
-
     /// @dev cannot update sender adapter with zero address
+
     function test_update_sender_adapter_zero_address_input() public {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        adapter.updateSenderAdapter(abi.encode(uint16(2)), address(0));
+        adapter.updateSenderAdapter(address(0));
     }
 
     /// @dev sets chain ID map
@@ -95,11 +82,11 @@ contract WormholeReceiverAdapterTest is Setup {
         assertEq(adapter.chainIdMap(1234), uint16(5678));
     }
 
-    /// @dev only privileged caller can set chain ID map
-    function test_set_chain_id_map_only_privileged_caller() public {
+    /// @dev only global owner can set chain ID map
+    function test_set_chain_id_map_only_global_owner() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
         adapter.setChainIdMap(new uint256[](0), new uint16[](0));
     }
 
@@ -131,7 +118,7 @@ contract WormholeReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(adapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -167,7 +154,7 @@ contract WormholeReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(adapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -197,14 +184,14 @@ contract WormholeReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(adapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
 
         vm.expectRevert(Error.INVALID_SENDER_ADAPTER.selector);
         adapter.receiveWormholeMessages(
-            abi.encode(payload), new bytes[](0), TypeCasts.addressToBytes32(address(44)), uint16(2), bytes32("1234")
+            abi.encode(payload), new bytes[](0), TypeCasts.addressToBytes32(address(43)), uint16(2), bytes32("1234")
         );
     }
 
@@ -228,7 +215,7 @@ contract WormholeReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(adapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -237,6 +224,36 @@ contract WormholeReceiverAdapterTest is Setup {
             abi.encode(payload), new bytes[](0), TypeCasts.addressToBytes32(senderAdapter), uint16(2), bytes32("1234")
         );
         vm.expectRevert(abi.encodeWithSelector(MessageExecutor.MessageIdAlreadyExecuted.selector, msgId));
+        adapter.receiveWormholeMessages(
+            abi.encode(payload), new bytes[](0), TypeCasts.addressToBytes32(senderAdapter), uint16(2), bytes32("1234")
+        );
+    }
+
+    /// @dev cannot receive message with invalid receiver adapter
+    function test_receive_wormhole_messages_invalid_receiver_adapter() public {
+        vm.startPrank(POLYGON_RELAYER);
+
+        address senderAdapter = contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"];
+        MessageLibrary.Message memory message = MessageLibrary.Message({
+            srcChainId: SRC_CHAIN_ID,
+            dstChainId: DST_CHAIN_ID,
+            target: address(42),
+            nonce: 0,
+            callData: bytes("42"),
+            nativeValue: 0,
+            expiration: type(uint256).max
+        });
+        bytes32 msgId = MessageLibrary.computeMsgId(message);
+
+        AdapterPayload memory payload = AdapterPayload({
+            msgId: msgId,
+            senderAdapterCaller: address(42),
+            receiverAdapter: address(43),
+            finalDestination: address(44),
+            data: abi.encode(message)
+        });
+
+        vm.expectRevert(Error.INVALID_RECEIVER_ADAPTER.selector);
         adapter.receiveWormholeMessages(
             abi.encode(payload), new bytes[](0), TypeCasts.addressToBytes32(senderAdapter), uint16(2), bytes32("1234")
         );
@@ -261,8 +278,8 @@ contract WormholeReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
-            finalDestination: address(44),
+            receiverAdapter: address(adapter),
+            finalDestination: address(43),
             data: abi.encode(message)
         });
 
@@ -292,13 +309,16 @@ contract WormholeReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(adapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
 
-        // NOTE: Forge mangles low level error and doesn't allow checking for partial signature match
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MessageExecutor.MessageFailure.selector, msgId, abi.encodePacked(Error.INVALID_TARGET.selector)
+            )
+        );
         adapter.receiveWormholeMessages(
             abi.encode(payload), new bytes[](0), TypeCasts.addressToBytes32(senderAdapter), uint16(2), bytes32("1234")
         );

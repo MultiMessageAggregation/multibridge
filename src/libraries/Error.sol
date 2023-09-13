@@ -17,7 +17,7 @@ library Error {
     /// @dev is thrown if the length of two arrays are mismatched
     error ARRAY_LENGTH_MISMATCHED();
 
-    /// @dev is thrown if caller is not owner of the contract
+    /// @dev is thrown if caller is not the privileged caller
     error INVALID_PRIVILEGED_CALLER();
 
     /// @dev is thrown if caller is invalid receiver adapter
@@ -33,7 +33,7 @@ library Error {
     error MSG_ID_ALREADY_EXECUTED();
 
     /// @dev is thrown if message conflicts with current storage
-    error NEW_MESSAGE_CONFLITS_WITH_OLD_DATA();
+    error NEW_MESSAGE_CONFLICTS_WITH_OLD_DATA();
 
     /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
     error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
@@ -75,13 +75,13 @@ library Error {
     /// @dev is thrown if caller is not multi message sender
     error CALLER_NOT_MULTI_MESSAGE_SENDER();
 
-    /// @dev is thrown if sender chain is not allowed on reciever adapter
+    /// @dev is thrown if sender chain is not allowed on receiver adapter
     error INVALID_SENDER_CHAIN_ID();
 
-    /// @dev is thrown if sender adapter is not allowed on reciever adapter
+    /// @dev is thrown if sender adapter is not allowed on receiver adapter
     error INVALID_SENDER_ADAPTER();
 
-    /// @dev is thrown if final destination is not mma receiver on reciever adapter
+    /// @dev is thrown if final destination is not mma receiver on receiver adapter
     error INVALID_FINAL_DESTINATION();
 
     /// @dev is thrown if chain id is zero

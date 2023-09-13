@@ -14,9 +14,6 @@ contract AxelarSenderAdapterTest is Setup {
         bytes32 indexed messageId, address indexed from, uint256 indexed toChainId, address to, bytes data
     );
 
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
-
     address senderAddr;
     AxelarSenderAdapter adapter;
 
@@ -99,11 +96,11 @@ contract AxelarSenderAdapterTest is Setup {
         assertEq(adapter.chainIdMap(DST_CHAIN_ID), "42");
     }
 
-    /// @dev only privileged caller can set chain ID map
-    function test_set_chain_id_map_only_privileged_caller() public {
+    /// @dev only global owner can set chain ID map
+    function test_set_chain_id_map_only_global_owner() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
         adapter.setChainIdMap(new uint256[](0), new string[](0));
     }
 

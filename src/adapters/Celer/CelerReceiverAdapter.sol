@@ -73,22 +73,15 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyGlobalOwner {
-        uint64 _senderChainDecoded = abi.decode(_senderChain, (uint64));
-
-        if (_senderChainDecoded == 0) {
-            revert Error.ZERO_CHAIN_ID();
-        }
-
+    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
-        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
     }
 
     /// @dev accepts incoming messages from celer message bus

@@ -19,10 +19,7 @@ contract AxelarReceiverAdapterTest is Setup {
     using StringAddressConversion for address;
 
     event MessageIdExecuted(uint256 indexed fromChainId, bytes32 indexed messageId);
-    event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter, bytes senderChain);
-
-    uint256 constant SRC_CHAIN_ID = 1;
-    uint256 constant DST_CHAIN_ID = 137;
+    event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter);
 
     AxelarReceiverAdapter adapter;
 
@@ -39,6 +36,7 @@ contract AxelarReceiverAdapterTest is Setup {
         // checks existing setup
         assertEq(address(adapter.gateway()), POLYGON_GATEWAY);
         assertEq(address(adapter.gac()), contractAddress[DST_CHAIN_ID]["GAC"]);
+        assertEq(adapter.senderChain(), "ethereum");
     }
 
     /// @dev gets the name
@@ -51,30 +49,19 @@ contract AxelarReceiverAdapterTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit SenderAdapterUpdated(
-            contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"], address(42), abi.encode("ethereum")
-        );
+        emit SenderAdapterUpdated(contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"], address(42));
 
-        adapter.updateSenderAdapter(abi.encode("ethereum"), address(42));
+        adapter.updateSenderAdapter(address(42));
 
         assertEq(adapter.senderAdapter(), address(42));
-        assertEq(adapter.senderChain(), "ethereum");
     }
 
-    /// @dev only privileged caller can update sender adapter
-    function test_update_sender_adapter_only_privileged_caller() public {
+    /// @dev only global owner can update sender adapter
+    function test_update_sender_adapter_only_global_owner() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
-        adapter.updateSenderAdapter(abi.encode("ethereum"), address(42));
-    }
-
-    /// @dev cannot update sender adapter with zero chain ID
-    function test_update_sender_adapter_zero_chain_id() public {
-        vm.startPrank(owner);
-
-        vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        adapter.updateSenderAdapter(abi.encode(""), address(42));
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
+        adapter.updateSenderAdapter(address(42));
     }
 
     /// @dev cannot update sender adapter with zero address
@@ -82,28 +69,12 @@ contract AxelarReceiverAdapterTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        adapter.updateSenderAdapter(abi.encode("ethereum"), address(0));
+        adapter.updateSenderAdapter(address(0));
     }
 
     /// @dev executes message
     function test_execute() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-        new AxelarReceiverAdapter(address(new MockAxelarGateway(true /* validate */)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        // change receiver adapter on dst chain to the dummy one
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr) = _prepareDummyAdapter(true);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -119,7 +90,7 @@ contract AxelarReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(dummyAdapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -135,22 +106,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
     /// @dev cannot execute message with invalid sender chain ID
     function test_execute_invalid_sender_chain_id() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-            new AxelarReceiverAdapter(address(new MockAxelarGateway(true)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr) = _prepareDummyAdapter(true);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -166,7 +122,7 @@ contract AxelarReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(dummyAdapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -177,22 +133,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
     /// @dev cannot execute message that is not approved by the Axelar gateway
     function test_execute_not_approved_by_gateway() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-            new AxelarReceiverAdapter(address(new MockAxelarGateway(false)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr) = _prepareDummyAdapter(false);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -208,7 +149,7 @@ contract AxelarReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(dummyAdapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -219,22 +160,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
     /// @dev cannot execute message with invalid sender adapter
     function test_execute_invalid_sender_adapter() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-            new AxelarReceiverAdapter(address(new MockAxelarGateway(true)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+        (AxelarReceiverAdapter dummyAdapter,, address receiverAddr) = _prepareDummyAdapter(true);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -250,33 +176,18 @@ contract AxelarReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(dummyAdapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
 
         vm.expectRevert(Error.INVALID_SENDER_ADAPTER.selector);
-        dummyAdapter.execute(bytes32("commandId"), "ethereum", address(44).toString(), abi.encode(payload));
+        dummyAdapter.execute(bytes32("commandId"), "ethereum", address(43).toString(), abi.encode(payload));
     }
 
     /// @dev cannot execute message that is already executed
     function test_execute_message_id_already_executed() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-            new AxelarReceiverAdapter(address(new MockAxelarGateway(true)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr) = _prepareDummyAdapter(true);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -292,7 +203,7 @@ contract AxelarReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(dummyAdapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
@@ -303,24 +214,9 @@ contract AxelarReceiverAdapterTest is Setup {
         dummyAdapter.execute(bytes32("commandId"), "ethereum", senderAdapter.toString(), abi.encode(payload));
     }
 
-    /// @dev cannot execute message with invalid final destination
-    function test_execute_invalid_final_destination() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-            new AxelarReceiverAdapter(address(new MockAxelarGateway(true)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+    /// @dev cannot execute message with invalid receiver adapter
+    function test_execute_invalid_receiver_adapter() public {
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter,) = _prepareDummyAdapter(true);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -341,28 +237,40 @@ contract AxelarReceiverAdapterTest is Setup {
             data: abi.encode(message)
         });
 
+        vm.expectRevert(Error.INVALID_RECEIVER_ADAPTER.selector);
+        dummyAdapter.execute(bytes32("commandId"), "ethereum", senderAdapter.toString(), abi.encode(payload));
+    }
+
+    /// @dev cannot execute message with invalid final destination
+    function test_execute_invalid_final_destination() public {
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter,) = _prepareDummyAdapter(true);
+
+        MessageLibrary.Message memory message = MessageLibrary.Message({
+            srcChainId: SRC_CHAIN_ID,
+            dstChainId: DST_CHAIN_ID,
+            target: address(42),
+            nonce: 0,
+            callData: bytes("42"),
+            nativeValue: 0,
+            expiration: type(uint256).max
+        });
+        bytes32 msgId = MessageLibrary.computeMsgId(message);
+
+        AdapterPayload memory payload = AdapterPayload({
+            msgId: msgId,
+            senderAdapterCaller: address(42),
+            receiverAdapter: address(dummyAdapter),
+            finalDestination: address(43),
+            data: abi.encode(message)
+        });
+
         vm.expectRevert(Error.INVALID_FINAL_DESTINATION.selector);
         dummyAdapter.execute(bytes32("commandId"), "ethereum", senderAdapter.toString(), abi.encode(payload));
     }
 
     /// @dev reverts if message fails to be received
     function test_execute_message_failure() public {
-        vm.startPrank(owner);
-
-        address senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        AxelarReceiverAdapter dummyAdapter =
-            new AxelarReceiverAdapter(address(new MockAxelarGateway(true)), contractAddress[DST_CHAIN_ID]["GAC"]);
-        dummyAdapter.updateSenderAdapter(abi.encode("ethereum"), senderAdapter);
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        address receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        address[] memory receiverAdapters = new address[](1);
-        receiverAdapters[0] = address(dummyAdapter);
-        bool[] memory operations = new bool[](1);
-        operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapter(receiverAdapters, operations);
-
-        vm.startPrank(caller);
+        (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr) = _prepareDummyAdapter(true);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -378,13 +286,38 @@ contract AxelarReceiverAdapterTest is Setup {
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
             senderAdapterCaller: address(42),
-            receiverAdapter: address(43),
+            receiverAdapter: address(dummyAdapter),
             finalDestination: receiverAddr,
             data: abi.encode(message)
         });
 
-        // NOTE: Forge mangles low level error and doesn't allow checking for partial signature match
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MessageExecutor.MessageFailure.selector, msgId, abi.encodePacked(Error.INVALID_TARGET.selector)
+            )
+        );
         dummyAdapter.execute(bytes32("commandId"), "ethereum", senderAdapter.toString(), abi.encode(payload));
+    }
+
+    function _prepareDummyAdapter(bool _validateCall)
+        internal
+        returns (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr)
+    {
+        vm.startPrank(owner);
+
+        senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
+        dummyAdapter =
+        new AxelarReceiverAdapter(address(new MockAxelarGateway(_validateCall)), contractAddress[DST_CHAIN_ID]["GAC"]);
+        dummyAdapter.updateSenderAdapter(senderAdapter);
+
+        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
+        receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
+        address[] memory receiverAdapters = new address[](1);
+        receiverAdapters[0] = address(dummyAdapter);
+        bool[] memory operations = new bool[](1);
+        operations[0] = true;
+        MultiMessageReceiver(receiverAddr).updateReceiverAdapters(receiverAdapters, operations);
+
+        vm.startPrank(caller);
     }
 }
