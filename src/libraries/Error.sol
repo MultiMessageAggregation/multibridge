@@ -98,9 +98,6 @@ library Error {
 
     /// @dev is thrown if caller is not router protocol's gateway
     error CALLER_NOT_ROUTER_GATEWAY();
-    /// @dev is thrown if caller is not celer's message bus
-    error CALLER_NOT_CELER_BUS();
-
 
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
