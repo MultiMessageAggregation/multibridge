@@ -20,6 +20,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     using StringAddressConversion for string;
 
     string public constant name = "axelar";
+    string public constant senderChain = "ethereum";
 
     IAxelarGateway public immutable gateway;
     IGAC public immutable gac;
@@ -28,7 +29,6 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
                         STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     address public senderAdapter;
-    string public senderChain;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public commandIdStatus;
@@ -56,22 +56,15 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyGlobalOwner {
-        string memory _senderChainDecoded = abi.decode(_senderChain, (string));
-
-        if (keccak256(abi.encode(_senderChainDecoded)) == keccak256(abi.encode(""))) {
-            revert Error.ZERO_CHAIN_ID();
-        }
-
+    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
-        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
     }
 
     /// @dev accepts new cross-chain messages from axelar gateway
@@ -87,7 +80,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
-        /// @dev step-2: validate the caller
+        /// @dev step-2: validate the contract call
         if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload))) {
             revert Error.NOT_APPROVED_BY_GATEWAY();
         }
@@ -106,7 +99,12 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IBridgeReceiverAdapter {
             revert MessageIdAlreadyExecuted(msgId);
         }
 
-        /// @dev step-5: validate the destination
+        /// @dev step-5: validate the receive adapter
+        if (decodedPayload.receiverAdapter != address(this)) {
+            revert Error.INVALID_RECEIVER_ADAPTER();
+        }
+
+        /// @dev step-6: validate the destination
         if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }

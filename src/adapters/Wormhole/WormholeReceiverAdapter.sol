@@ -21,12 +21,12 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     string public constant name = "wormhole";
     address public immutable relayer;
     IGAC public immutable gac;
+    uint16 public immutable senderChain = uint16(2); // Wormhole chain ID for Ethereum
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     address public senderAdapter;
-    uint16 public senderChain;
 
     mapping(uint256 => uint16) public chainIdMap;
 
@@ -67,22 +67,15 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyGlobalOwner {
-        uint16 _senderChainDecoded = abi.decode(_senderChain, (uint16));
-
-        if (_senderChainDecoded == 0) {
-            revert Error.ZERO_CHAIN_ID();
-        }
-
+    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
         if (_senderAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         address oldAdapter = senderAdapter;
         senderAdapter = _senderAdapter;
-        senderChain = _senderChainDecoded;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter, _senderChain);
+        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
     }
 
     /// @dev maps the MMA chain id to bridge specific chain id
@@ -137,7 +130,12 @@ contract WormholeReceiverAdapter is IBridgeReceiverAdapter, IWormholeReceiver {
         isMessageExecuted[decodedPayload.msgId] = true;
         deliveryHashStatus[deliveryHash] = true;
 
-        /// @dev step-4: validate the destination
+        /// @dev step-4: validate the receive adapter
+        if (decodedPayload.receiverAdapter != address(this)) {
+            revert Error.INVALID_RECEIVER_ADAPTER();
+        }
+
+        /// @dev step-5: validate the destination
         if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
             revert Error.INVALID_FINAL_DESTINATION();
         }

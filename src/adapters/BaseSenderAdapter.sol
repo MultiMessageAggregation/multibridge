@@ -27,7 +27,7 @@ abstract contract BaseSenderAdapter is IBridgeSenderAdapter {
 
     modifier onlyGlobalOwner() {
         if (!gac.isGlobalOwner(msg.sender)) {
-            revert Error.INVALID_PRIVILEGED_CALLER();
+            revert Error.CALLER_NOT_OWNER();
         }
         _;
     }
