@@ -46,9 +46,9 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyCaller() {
-        if (!gac.isPrivilegedCaller(msg.sender)) {
-            revert Error.INVALID_PRIVILEGED_CALLER();
+    modifier onlyGlobalOwner() {
+        if (!gac.isGlobalOwner(msg.sender)) {
+            revert Error.CALLER_NOT_OWNER();
         }
         _;
     }
@@ -73,7 +73,7 @@ contract CelerReceiverAdapter is IBridgeReceiverAdapter, IMessageReceiverApp {
     ////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IBridgeReceiverAdapter
-    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyCaller {
+    function updateSenderAdapter(bytes memory _senderChain, address _senderAdapter) external override onlyGlobalOwner {
         uint64 _senderChainDecoded = abi.decode(_senderChain, (uint64));
 
         if (_senderChainDecoded == 0) {

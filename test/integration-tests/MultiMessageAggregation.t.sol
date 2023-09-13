@@ -5,34 +5,38 @@ pragma solidity >=0.8.9;
 import {Vm} from "forge-std/Test.sol";
 
 /// local imports
-import "../Setup.t.sol";
-import "../contracts-mock/MockUniswapReceiver.sol";
+import "test/Setup.t.sol";
+import "test/contracts-mock/MockUniswapReceiver.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-contract GracePeriodExpiry is Setup {
+contract MultiMessageAggregationTest is Setup {
     MockUniswapReceiver target;
 
-    /// @dev intializes the setup
+    /// @dev initializes the setup
     function setUp() public override {
         super.setUp();
 
-        vm.selectFork(fork[137]);
+        vm.selectFork(fork[DST_CHAIN_ID]);
         target = new MockUniswapReceiver();
     }
 
     /// @dev just sends a message
-    function test_timelockCheck() public {
-        vm.selectFork(fork[1]);
+    function test_mmaSendMessage() public {
+        vm.selectFork(fork[SRC_CHAIN_ID]);
         vm.startPrank(caller);
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
-            137, address(target), abi.encode(MockUniswapReceiver.setValue.selector, ""), 0
+        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+            DST_CHAIN_ID,
+            address(target),
+            abi.encode(MockUniswapReceiver.setValue.selector, ""),
+            0,
+            block.timestamp + EXPIRATION_CONSTANT
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
@@ -40,22 +44,21 @@ contract GracePeriodExpiry is Setup {
 
         vm.recordLogs();
         /// simulate off-chain actors
-        _simulatePayloadDelivery(1, 137, logs);
+        _simulatePayloadDelivery(SRC_CHAIN_ID, DST_CHAIN_ID, logs);
         bytes32 msgId = _getMsgId(vm.getRecordedLogs());
 
-        vm.selectFork(fork[137]);
+        vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// execute the message and move it to governance timelock contract
-        MultiMessageReceiver(contractAddress[137][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
-        /// increment the time by 20 day (beyond expiry, delay)
-        /// @notice should revert here with TX_EXPIRED error
-        vm.warp(block.timestamp + 20 days);
-        vm.expectRevert(Error.TX_EXPIRED.selector);
-        GovernanceTimelock(contractAddress[137][bytes("TIMELOCK")]).executeTransaction(
+        /// increment the time by 7 days (delay time)
+        vm.warp(block.timestamp + 7 days);
+        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
+        assertEq(target.i(), type(uint256).max);
     }
 }

@@ -16,11 +16,11 @@ import {WormholeReceiverAdapter} from "src/adapters/Wormhole/WormholeReceiverAda
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
-import {GAC} from "../src/controllers/GAC.sol";
-import {GovernanceTimelock} from "../src/controllers/GovernanceTimelock.sol";
+import {GAC} from "src/controllers/GAC.sol";
+import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-import {MultiMessageSender} from "../src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "../src/MultiMessageReceiver.sol";
+import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
 
 /// @dev can inherit the setup in tests
 abstract contract Setup is Test {
@@ -29,9 +29,20 @@ abstract contract Setup is Test {
     /*///////////////////////////////////////////////////////////////
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
+    /// @dev chain IDs
+    uint256 constant ETHEREUM_CHAIN_ID = 1;
+    uint256 constant BSC_CHAIN_ID = 56;
+    uint256 constant POLYGON_CHAIN_ID = 137;
+
+    /// @dev common src and dst chain IDs
+    uint256 constant SRC_CHAIN_ID = ETHEREUM_CHAIN_ID;
+    uint256 constant DST_CHAIN_ID = POLYGON_CHAIN_ID;
+
     /// @dev simulated caller
     address constant caller = address(10);
     address constant owner = address(420);
+    address constant refundAddress = address(420420);
+    uint256 constant EXPIRATION_CONSTANT = 5 days;
 
     /// @dev constants for axelar
     address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;
@@ -52,10 +63,10 @@ abstract contract Setup is Test {
     //////////////////////////////////////////////////////////////*/
     /// @notice configure all the chain ids we use for the tests (including src chain)
     /// id 0 represents src chain
-    uint256[] public ALL_CHAINS = [1, 56, 137];
+    uint256[] public ALL_CHAINS = [ETHEREUM_CHAIN_ID, BSC_CHAIN_ID, POLYGON_CHAIN_ID];
 
     /// @notice configure any new dst chains here
-    uint256[] public DST_CHAINS = [56, 137];
+    uint256[] public DST_CHAINS = [BSC_CHAIN_ID, POLYGON_CHAIN_ID];
 
     /// @notice configure all wormhole parameters in order of DST_CHAINS
     address[] public WORMHOLE_RELAYERS = [BSC_RELAYER, POLYGON_RELAYER];
@@ -123,7 +134,6 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             GAC gac = new GAC{salt: _salt}();
-            gac.setMsgExpiryTime(2 days);
             gac.setMultiMessageCaller(caller);
             contractAddress[chainId][bytes("GAC")] = address(gac);
 
@@ -254,7 +264,7 @@ abstract contract Setup is Test {
             address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}());
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
-                address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver)));
+                address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver, 3 days)));
         }
     }
 
@@ -280,8 +290,12 @@ abstract contract Setup is Test {
             _recieverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
             _recieverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
+            bool[] memory _operations = new bool[](2);
+            _operations[0] = true;
+            _operations[1] = true;
+
             MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                _recieverAdapters, 2, contractAddress[chainId]["TIMELOCK"]
+                _recieverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
             unchecked {
@@ -308,7 +322,7 @@ abstract contract Setup is Test {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
                     );
-                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(caller);
+                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(refundAddress);
                 }
 
                 unchecked {

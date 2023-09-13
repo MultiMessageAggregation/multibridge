@@ -12,10 +12,14 @@ import {Error} from "../libraries/Error.sol";
 /// @dev is the global access control contract for bridge adapters
 contract GAC is IGAC, Ownable {
     /*///////////////////////////////////////////////////////////////
+                             CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+    uint256 public constant MINIMUM_DST_GAS_LIMIT = 50000;
+
+    /*///////////////////////////////////////////////////////////////
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
-    uint256 public msgExpiration;
 
     /// @dev is the address to receive value refunds from remoteCall
     address public refundAddress;
@@ -77,19 +81,14 @@ contract GAC is IGAC, Ownable {
 
     /// @inheritdoc IGAC
     function setGlobalMsgDeliveryGasLimit(uint256 _gasLimit) external override onlyOwner {
+        if (_gasLimit < MINIMUM_DST_GAS_LIMIT) {
+            revert Error.INVALID_DST_GAS_LIMIT_MIN();
+        }
+
         uint256 oldLimit = dstGasLimit;
         dstGasLimit = _gasLimit;
 
         emit DstGasLimitUpdated(oldLimit, _gasLimit);
-    }
-
-    /// @inheritdoc IGAC
-    function setMsgExpiryTime(uint256 _timeInSeconds) external override onlyOwner {
-        if (_timeInSeconds == 0) {
-            revert Error.ZERO_EXPIRATION_TIME();
-        }
-
-        msgExpiration = _timeInSeconds;
     }
 
     /// @inheritdoc IGAC
@@ -106,7 +105,7 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IGAC
-    function isPrivilegedCaller(address _caller) external view override returns (bool) {
+    function isGlobalOwner(address _caller) external view override returns (bool) {
         if (_caller == owner()) {
             return true;
         }
@@ -122,11 +121,6 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getGlobalMsgDeliveryGasLimit() external view override returns (uint256 _gasLimit) {
         _gasLimit = dstGasLimit;
-    }
-
-    /// @inheritdoc IGAC
-    function getMsgExpiryTime() external view override returns (uint256 _expiration) {
-        _expiration = msgExpiration;
     }
 
     /// @inheritdoc IGAC
