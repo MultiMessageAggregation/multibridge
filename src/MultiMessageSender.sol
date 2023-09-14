@@ -123,7 +123,7 @@ contract MultiMessageSender {
         bytes calldata _callData,
         uint256 _nativeValue,
         uint256 _expiration
-    ) external payable onlyCaller {
+    ) external payable onlyCaller validateExpiration(_expiration) {
         address[] memory excludedAdapters;
         _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, excludedAdapters);
     }
@@ -141,7 +141,7 @@ contract MultiMessageSender {
         uint256 _nativeValue,
         uint256 _expiration,
         address[] calldata _excludedAdapters
-    ) external payable onlyCaller {
+    ) external payable onlyCaller validateExpiration(_expiration) {
         _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _excludedAdapters);
     }
 
@@ -270,8 +270,9 @@ contract MultiMessageSender {
         /// @dev increments nonce
         ++nonce;
 
-        MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, _expiration);
+        MessageLibrary.Message memory message = MessageLibrary.Message(
+            block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, block.timestamp + _expiration
+        );
 
         v.adapterSuccess = new bool[](v.adapterLength);
 
