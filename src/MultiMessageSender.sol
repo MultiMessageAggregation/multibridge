@@ -51,16 +51,16 @@ contract MultiMessageSender {
 
     /// @dev is emitted when owner updates the sender adapter
     /// @notice add being false indicates removal of the adapter
-    event SenderAdapterUpdated(address senderAdapter, bool add);
+    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
 
     /// @dev is emitted if cross-chain message fails
-    event ErrorSendMessage(address senderAdapter, MessageLibrary.Message message);
+    event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @dev checks if msg.sender is only the owner (global controller)
+    /// @dev checks if msg.sender is the owner configured in GAC
     modifier onlyOwner() {
         if (msg.sender != gac.getGlobalOwner()) {
             revert Error.CALLER_NOT_OWNER();
@@ -68,7 +68,7 @@ contract MultiMessageSender {
         _;
     }
 
-    /// @dev checks if msg.sender is caller configured in the constructor
+    /// @dev checks if msg.sender is the authorised caller configured in GAC
     modifier onlyCaller() {
         if (msg.sender != gac.getMultiMessageCaller()) {
             revert Error.INVALID_PRIVILEGED_CALLER();
@@ -92,7 +92,7 @@ contract MultiMessageSender {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _gac is the controller/registry of uniswap mma
+    /// @param _gac is the controller/registry of MMA
     constructor(address _gac) {
         if (_gac == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
@@ -106,14 +106,14 @@ contract MultiMessageSender {
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice Call a remote function on a destination chain by sending multiple copies of a cross-chain message
-    /// via all available bridges.
+    /// via all available bridges. This function can only be called by the authorised called configured in the GAC.
 
     /// @dev a fee in native token may be required by each message bridge to send messages. Any native token fee remained
-    /// will be refunded back to msg.sender, which requires caller being able to receive native token.
+    /// will be refunded back to a refund address defined in the GAC.
     /// Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
 
     /// @param _dstChainId is the destination chainId
-    /// @param _target is the target execution point on dst chain
+    /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
@@ -129,11 +129,11 @@ contract MultiMessageSender {
     }
 
     /// @param _dstChainId is the destination chainId
-    /// @param _target is the target execution point on dst chain
+    /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
     /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
     function remoteCall(
         uint256 _dstChainId,
         address _target,
@@ -288,7 +288,7 @@ contract MultiMessageSender {
                 v.adapterSuccess[i] = true;
             } catch {
                 v.adapterSuccess[i] = false;
-                emit ErrorSendMessage(v.adapters[i], message);
+                emit MessageSendFailed(v.adapters[i], message);
             }
 
             unchecked {
