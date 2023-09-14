@@ -27,8 +27,8 @@ contract MultiMessageSenderTest is Setup {
         address[] senderAdapters,
         bool[] adapterSuccess
     );
-    event SenderAdapterUpdated(address senderAdapter, bool add);
-    event ErrorSendMessage(address senderAdapter, MessageLibrary.Message message);
+    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
+    event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
     MultiMessageSender sender;
     address receiver;
@@ -262,7 +262,7 @@ contract MultiMessageSenderTest is Setup {
         uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit ErrorSendMessage(failingAdapterAddr, message);
+        emit MessageSendFailed(failingAdapterAddr, message);
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiMessageMsgSent(
