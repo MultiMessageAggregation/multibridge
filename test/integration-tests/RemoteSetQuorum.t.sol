@@ -33,7 +33,7 @@ contract RemoteQuorumUpdate is Setup {
             address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateQuorum.selector, newQuorum),
             0,
-            block.timestamp + EXPIRATION_CONSTANT
+            EXPIRATION_CONSTANT
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

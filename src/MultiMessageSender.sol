@@ -123,7 +123,7 @@ contract MultiMessageSender {
         bytes calldata _callData,
         uint256 _nativeValue,
         uint256 _expiration
-    ) external payable onlyCaller {
+    ) external payable onlyCaller validateExpiration(_expiration) {
         address[] memory excludedAdapters;
         _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, excludedAdapters);
     }
@@ -132,8 +132,8 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on dst chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
     /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
     function remoteCall(
         uint256 _dstChainId,
         address _target,
@@ -141,7 +141,7 @@ contract MultiMessageSender {
         uint256 _nativeValue,
         uint256 _expiration,
         address[] calldata _excludedAdapters
-    ) external payable onlyCaller {
+    ) external payable onlyCaller validateExpiration(_expiration) {
         _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _excludedAdapters);
     }
 
@@ -270,8 +270,9 @@ contract MultiMessageSender {
         /// @dev increments nonce
         ++nonce;
 
-        MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, _expiration);
+        MessageLibrary.Message memory message = MessageLibrary.Message(
+            block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, block.timestamp + _expiration
+        );
 
         v.adapterSuccess = new bool[](v.adapterLength);
 
