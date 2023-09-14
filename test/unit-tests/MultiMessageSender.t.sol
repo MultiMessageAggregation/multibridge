@@ -163,12 +163,22 @@ contract MultiMessageSenderTest is Setup {
         uint256 invalidExpMin = sender.MINIMUM_EXPIRATION() - 1 days;
         uint256 invalidExpMax = sender.MAXIMUM_EXPIRATION() + 1 days;
 
+        // test expiration validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_MIN.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin);
 
         vm.expectRevert(Error.INVALID_EXPIRATION_MAX.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax);
+
+        // test expiration validation in remoteCall() which accepts excluded adapters
+        address[] memory excludedAdapters = new address[](0);
+        vm.startPrank(caller);
+        vm.expectRevert(Error.INVALID_EXPIRATION_MIN.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, excludedAdapters);
+
+        vm.expectRevert(Error.INVALID_EXPIRATION_MAX.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, excludedAdapters);
     }
 
     /// @dev cannot call with dst chain ID of 0
