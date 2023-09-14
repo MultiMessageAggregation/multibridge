@@ -148,8 +148,9 @@ abstract contract Setup is Test {
         /// @notice deploy source adapter to SRC_CHAIN (ETH)
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
 
-        contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")] =
-            address(new WormholeSenderAdapter{salt: _salt}(ETH_RELAYER, contractAddress[1][bytes("GAC")]));
+        contractAddress[ETHEREUM_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")] = address(
+            new WormholeSenderAdapter{salt: _salt}(ETH_RELAYER, contractAddress[ETHEREUM_CHAIN_ID][bytes("GAC")])
+        );
 
         uint256 len = DST_CHAINS.length;
 
@@ -174,11 +175,10 @@ abstract contract Setup is Test {
         /// @dev sets some configs to sender adapter (ETH_CHAIN_ADAPTER)
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
 
-        WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).updateReceiverAdapter(
-            DST_CHAINS, _receiverAdapters
-        );
+        WormholeSenderAdapter(contractAddress[ETHEREUM_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")])
+            .updateReceiverAdapter(DST_CHAINS, _receiverAdapters);
 
-        WormholeSenderAdapter(contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")]).setChainIdMap(
+        WormholeSenderAdapter(contractAddress[ETHEREUM_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")]).setChainIdMap(
             DST_CHAINS, WORMHOLE_CHAIN_IDS
         );
     }
@@ -226,8 +226,8 @@ abstract contract Setup is Test {
     function _deployHelpers() internal {
         /// @notice deploy amb helpers to Ethereum
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
-        contractAddress[1][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper());
-        contractAddress[1][bytes("AXELAR_HELPER")] = address(new AxelarHelper());
+        contractAddress[ETHEREUM_CHAIN_ID][bytes("WORMHOLE_HELPER")] = address(new WormholeHelper());
+        contractAddress[ETHEREUM_CHAIN_ID][bytes("AXELAR_HELPER")] = address(new AxelarHelper());
 
         vm.allowCheatcodes(contractAddress[1][bytes("WORMHOLE_HELPER")]);
         vm.allowCheatcodes(contractAddress[1][bytes("AXELAR_HELPER")]);
@@ -253,8 +253,8 @@ abstract contract Setup is Test {
     function _deployCoreContracts() internal {
         /// @notice deploy mma sender to ETHEREUM
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
-        contractAddress[1][bytes("MMA_SENDER")] =
-            address(new MultiMessageSender{salt: _salt}(contractAddress[1][bytes("GAC")]));
+        contractAddress[ETHEREUM_CHAIN_ID][bytes("MMA_SENDER")] =
+            address(new MultiMessageSender{salt: _salt}(contractAddress[ETHEREUM_CHAIN_ID][bytes("GAC")]));
 
         /// @notice deploy amb helpers to BSC & POLYGON
         for (uint256 i; i < DST_CHAINS.length; i++) {
