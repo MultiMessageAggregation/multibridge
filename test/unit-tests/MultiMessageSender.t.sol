@@ -72,7 +72,7 @@ contract MultiMessageSenderTest is Setup {
         adapterSuccess[0] = true;
         adapterSuccess[1] = true;
 
-        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        uint256 expiration = EXPIRATION_CONSTANT;
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -81,7 +81,7 @@ contract MultiMessageSenderTest is Setup {
             nonce: 1,
             callData: bytes("42"),
             nativeValue: 0,
-            expiration: expiration
+            expiration: block.timestamp + expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
@@ -102,7 +102,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         // NOTE: caller is also configured as the refund address in this test setup
-        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        uint256 expiration = EXPIRATION_CONSTANT;
         uint256 nativeValue = 2 ether;
 
         uint256 balanceBefore = gac.getRefundAddress().balance;
@@ -126,7 +126,7 @@ contract MultiMessageSenderTest is Setup {
         address[] memory excludedAdapters = new address[](1);
         excludedAdapters[0] = axelarAdapterAddr;
 
-        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        uint256 expiration = EXPIRATION_CONSTANT;
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -135,7 +135,7 @@ contract MultiMessageSenderTest is Setup {
             nonce: 1,
             callData: bytes("42"),
             nativeValue: 0,
-            expiration: expiration
+            expiration: block.timestamp + expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
@@ -155,7 +155,30 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, block.timestamp + EXPIRATION_CONSTANT);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+    }
+
+    /// @dev message expiration has to be within allowed range
+    function test_remote_call_invalid_expiration() public {
+        uint256 invalidExpMin = sender.MINIMUM_EXPIRATION() - 1 days;
+        uint256 invalidExpMax = sender.MAXIMUM_EXPIRATION() + 1 days;
+
+        // test expiration validation in remoteCall() which does not accept excluded adapters
+        vm.startPrank(caller);
+        vm.expectRevert(Error.INVALID_EXPIRATION_MIN.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin);
+
+        vm.expectRevert(Error.INVALID_EXPIRATION_MAX.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax);
+
+        // test expiration validation in remoteCall() which accepts excluded adapters
+        address[] memory excludedAdapters = new address[](0);
+        vm.startPrank(caller);
+        vm.expectRevert(Error.INVALID_EXPIRATION_MIN.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, excludedAdapters);
+
+        vm.expectRevert(Error.INVALID_EXPIRATION_MAX.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, excludedAdapters);
     }
 
     /// @dev cannot call with dst chain ID of 0
@@ -163,7 +186,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        sender.remoteCall(0, address(42), bytes("42"), 0, block.timestamp + EXPIRATION_CONSTANT);
+        sender.remoteCall(0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
     }
 
     /// @dev cannot call with target address of 0
@@ -171,7 +194,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.INVALID_TARGET.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"), 0, block.timestamp + EXPIRATION_CONSTANT);
+        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"), 0, EXPIRATION_CONSTANT);
     }
 
     /// @dev cannot call with receiver address of 0
@@ -181,7 +204,7 @@ contract MultiMessageSenderTest is Setup {
         MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGac(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, block.timestamp + EXPIRATION_CONSTANT);
+        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
     }
 
     /// @dev cannot call with no sender adapter
@@ -198,7 +221,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.NO_SENDER_ADAPTER_FOUND.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, block.timestamp + EXPIRATION_CONSTANT);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
     }
 
     /// @dev should proceed with the call despite one failing adapter, emitting an error message
@@ -223,7 +246,7 @@ contract MultiMessageSenderTest is Setup {
         adapterSuccess[1] = true;
         adapterSuccess[2] = false;
 
-        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        uint256 expiration = EXPIRATION_CONSTANT;
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
@@ -232,7 +255,7 @@ contract MultiMessageSenderTest is Setup {
             nonce: 1,
             callData: bytes("42"),
             nativeValue: 0,
-            expiration: expiration
+            expiration: block.timestamp + expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
