@@ -3,19 +3,17 @@ src = "src"
 out = "out"
 libs = ["lib"]
 solc = "0.8.19"
-
-optimizer = true
+optimizer = false
 runs = 100
-viaIR = true
+viaIR = false
 
-[profile.local]
+[profile.prod]
 src = "src"
 out = "out"
 libs = ["lib"]
 solc = "0.8.19"
-
-optimizer = false
+optimizer = true
 runs = 100
-viaIR = false
+viaIR = true
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
