@@ -14,7 +14,7 @@ Instead of relying on a single AMB, MMA allows the message sender to relay the m
 
 ## Features
 ### Core MMA architecture
-- **Minimized feature sets**: barebore implementation, low level of complexity.
+- **Minimized feature sets**: barebone implementation, low level of complexity.
 - **Configurable**: during deployment, individual project can configure their own parameters to fit their specific use case and risk tolerance.
 ### Adapter
 - **Standardization**: Implements EIP-5164 for all APIs on the sending and receiving end.
@@ -30,7 +30,7 @@ On the destination chain, if 2 of the 3 AMB agree with each other, we would cons
 The flow of the message and how it is transformed and relayed is detailed below:
 
 1. Uniswap Ethereum governance structure, `src`, approves to execute a message `msg` on destination chain `dst`.
-2. Uniswap governance sends `msg` to `MultiMessageSender`. 
+2. Uniswap governance sends `msg` to `MultiMessageSender`.
 3. `MultiMessageSender` relays `msg` to different adapters `adapter`.
 4. `adapter` encodes `msg` into the corresponding formatted message, `formatted_msg`, and sends it to the hardcoded AMB contracts `AMB`.
 5. Each `AMB` independently carries `formatted_msg` to `dst`.
@@ -50,7 +50,7 @@ $   git clone https://github.com/MultiMessageAggregation/multibridge
 
 **note:** Please make sure [foundry](https://github.com/foundry-rs/foundry) is installed to proceed further.
 
-**Step 2:** Install required forge submodules 
+**Step 2:** Install required forge submodules
 
 ```sh
 $  forge install
@@ -97,27 +97,41 @@ All code changes must be thoroughly tested. Please ensure that your tests cover 
 ## Contracts
 ```
 contracts
-├── MessageStruct.sol
 ├── MultiMessageReceiver.sol
 ├── MultiMessageSender.sol
-├── interfaces
-│   ├── EIP5164
-│   │   ├── ExecutorAware.sol
-│   │   ├── MessageDispatcher.sol
-│   │   ├── MessageExecutor.sol
-│   │   └── SingleMessageDispatcher.sol
-│   ├── IBridgeReceiverAdapter.sol
-│   ├── IBridgeSenderAdapter.sol
-│   └── IMultiMessageReceiver.sol
 ├── adapters
-│   ├── Celer
-│   ├── Hyperlane
-│   ├── Telepathy
-│   ├── Wormhole
-│   ├── base
-│   ├── debridge
-│   └── router
-└── mock
+│   ├── BaseSenderAdapter.sol
+│   ├── axelar
+│   │   ├── AxelarReceiverAdapter.sol
+│   │   ├── AxelarSenderAdapter.sol
+│   │   ├── interfaces
+│   │   │   ├── IAxelarExecutable.sol
+│   │   │   ├── IAxelarGasService.sol
+│   │   │   └── IAxelarGateway.sol
+│   │   └── libraries
+│   │       └── StringAddressConversion.sol
+│   └── wormhole
+│       ├── WormholeReceiverAdapter.sol
+│       └── WormholeSenderAdapter.sol
+├── controllers
+│   ├── GAC.sol
+│   └── GovernanceTimelock.sol
+├── interfaces
+│   ├── EIP5164
+│   │   ├── ExecutorAware.sol
+│   │   ├── MessageDispatcher.sol
+│   │   ├── MessageExecutor.sol
+│   │   └── SingleMessageDispatcher.sol
+│   ├── IGAC.sol
+│   ├── IGovernanceTimelock.sol
+│   ├── IMessageReceiverAdapter.sol
+│   ├── IMessageSenderAdapter.sol
+│   └── IMultiMessageReceiver.sol
+└── libraries
+    ├── Error.sol
+    ├── Message.sol
+    ├── TypeCasts.sol
+    └── Types.sol
 ```
 
 ## License
