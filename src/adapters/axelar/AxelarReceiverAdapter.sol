@@ -80,14 +80,14 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
-        /// @dev step-2: validate the contract call
-        if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload))) {
-            revert Error.NOT_APPROVED_BY_GATEWAY();
-        }
-
-        /// @dev step-3: validate the source address
+        /// @dev step-2: validate the source address
         if (sourceAddress.toAddress() != senderAdapter) {
             revert Error.INVALID_SENDER_ADAPTER();
+        }
+
+        /// @dev step-3: validate the contract call
+        if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload))) {
+            revert Error.NOT_APPROVED_BY_GATEWAY();
         }
 
         /// decode the cross-chain payload
