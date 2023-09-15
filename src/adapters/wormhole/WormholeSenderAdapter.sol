@@ -48,7 +48,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
         uint16 wormChainId = chainIdMap[_toChainId];
 
         if (wormChainId == 0) {
-            revert Error.ZERO_CHAIN_ID();
+            revert Error.INVALID_DST_CHAIN();
         }
 
         msgId = _getNewMessageId(_toChainId, _to);

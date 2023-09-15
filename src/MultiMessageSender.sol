@@ -224,6 +224,10 @@ contract MultiMessageSender {
             revert Error.ZERO_CHAIN_ID();
         }
 
+        if (_dstChainId == block.chainid) {
+            revert Error.INVALID_DST_CHAIN();
+        }
+
         if (_target == address(0)) {
             revert Error.INVALID_TARGET();
         }

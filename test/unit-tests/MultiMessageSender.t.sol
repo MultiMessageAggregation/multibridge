@@ -181,6 +181,14 @@ contract MultiMessageSenderTest is Setup {
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, excludedAdapters);
     }
 
+    /// @dev dst chain cannot be the the sender chain
+    function test_remote_call_chain_id_is_sender_chain() public {
+        vm.startPrank(caller);
+
+        vm.expectRevert(Error.INVALID_DST_CHAIN.selector);
+        sender.remoteCall(block.chainid, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+    }
+
     /// @dev cannot call with dst chain ID of 0
     function test_remote_call_zero_chain_id() public {
         vm.startPrank(caller);

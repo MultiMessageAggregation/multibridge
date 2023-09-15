@@ -67,7 +67,7 @@ contract WormholeSenderAdapterTest is Setup {
     }
 
     /// @dev cannot dispatch message to invalid dst chain
-    function test_dispatch_message_zero_chain_id() public {
+    function test_dispatch_message_unknown_chain_id() public {
         // clear chain ID map entry first
         vm.startPrank(owner);
         uint256[] memory origIds = new uint256[](1);
@@ -79,7 +79,7 @@ contract WormholeSenderAdapterTest is Setup {
         vm.startPrank(senderAddr);
         vm.deal(senderAddr, 1 ether);
 
-        vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
+        vm.expectRevert(Error.INVALID_DST_CHAIN.selector);
         adapter.dispatchMessage{value: 1 ether}(DST_CHAIN_ID, address(42), bytes("42"));
     }
 
