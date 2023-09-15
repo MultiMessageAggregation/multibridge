@@ -84,9 +84,6 @@ library Error {
     /// @dev is thrown when caller is not wormhole relayer
     error CALLER_NOT_WORMHOLE_RELAYER();
 
-    /// @dev is thrown when hyperlane mailbox address is zero
-    error ZERO_MAILBOX_ADDRESS();
-
     /// @dev is thrown when the destination chain id is invalid
     error INVALID_DST_CHAIN();
 
@@ -95,9 +92,6 @@ library Error {
 
     /// @dev is thrown if caller is not the global owner
     error CALLER_NOT_OWNER();
-
-    /// @dev is thrown if caller is not router protocol's gateway
-    error CALLER_NOT_ROUTER_GATEWAY();
 
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
