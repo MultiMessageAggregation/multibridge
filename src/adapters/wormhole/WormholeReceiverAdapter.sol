@@ -57,6 +57,9 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     /// @param _gac is global access controller.
     /// note: https://docs.wormhole.com/wormhole/quick-start/cross-chain-dev/automatic-relayer
     constructor(address _relayer, address _gac) {
+        if (_relayer == address(0) || _gac == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
         relayer = _relayer;
         gac = IGAC(_gac);
     }
