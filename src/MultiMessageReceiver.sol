@@ -21,6 +21,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
 
+    /// @notice the id of the only source chain that this contract can receive messages from
+    uint256 public srcChainId;
+
     /// @notice minimum number of AMBs required for delivery before execution
     uint64 public quorum;
 
@@ -59,23 +62,25 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice sets the initial parameters
     function initialize(
+        uint256 _srcChainId,
         address[] calldata _receiverAdapters,
         bool[] calldata _operations,
         uint64 _quorum,
         address _governanceTimelock
     ) external initializer {
+        srcChainId = _srcChainId;
+
         /// @dev adds the new receiver adapters  before setting quorum and validations
         _updateReceiverAdapters(_receiverAdapters, _operations);
 
         if (_quorum > trustedExecutor.length || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
+        quorum = _quorum;
 
         if (_governanceTimelock == address(0)) {
             revert Error.ZERO_GOVERNANCE_TIMELOCK();
         }
-
-        quorum = _quorum;
         governanceTimelock = _governanceTimelock;
     }
 
@@ -99,8 +104,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.INVALID_TARGET();
         }
 
-        /// FIXME: could make this configurable through GAC, instead of hardcoding 1
-        if (_message.srcChainId != 1) {
+        if (_message.srcChainId != srcChainId) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
