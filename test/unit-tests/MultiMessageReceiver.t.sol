@@ -51,8 +51,8 @@ contract MultiMessageReceiverTest is Setup {
         dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
 
         assertEq(dummyReceiver.quorum(), 2);
-        assertEq(dummyReceiver.trustedExecutor(0), wormholeAdapterAddr);
-        assertEq(dummyReceiver.trustedExecutor(1), axelarAdapterAddr);
+        assertTrue(dummyReceiver.isTrustedExecutor(wormholeAdapterAddr));
+        assertTrue(dummyReceiver.isTrustedExecutor(axelarAdapterAddr));
     }
 
     /// @dev initializer cannot be called twice
@@ -436,14 +436,15 @@ contract MultiMessageReceiverTest is Setup {
         bool[] memory operations = new bool[](1);
         operations[0] = true;
 
+        assertFalse(receiver.isTrustedExecutor(address(42)));
+
         vm.expectEmit(true, true, true, true, address(receiver));
         emit ReceiverAdapterUpdated(address(42), true);
-
         receiver.updateReceiverAdapters(updatedAdapters, operations);
 
-        assertEq(receiver.trustedExecutor(0), wormholeAdapterAddr);
-        assertEq(receiver.trustedExecutor(1), axelarAdapterAddr);
-        assertEq(receiver.trustedExecutor(2), address(42));
+        assertTrue(receiver.isTrustedExecutor(wormholeAdapterAddr));
+        assertTrue(receiver.isTrustedExecutor(axelarAdapterAddr));
+        assertTrue(receiver.isTrustedExecutor(address(42)));
     }
 
     /// @dev removes one receiver adapter
@@ -462,7 +463,8 @@ contract MultiMessageReceiverTest is Setup {
         emit ReceiverAdapterUpdated(wormholeAdapterAddr, false);
 
         receiver.updateReceiverAdapters(updatedAdapters, operations);
-        assertEq(receiver.trustedExecutor(0), axelarAdapterAddr);
+        assertFalse(receiver.isTrustedExecutor(wormholeAdapterAddr));
+        assertTrue(receiver.isTrustedExecutor(axelarAdapterAddr));
     }
 
     /// @dev only governance timelock can call
