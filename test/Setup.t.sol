@@ -295,7 +295,7 @@ abstract contract Setup is Test {
             _operations[1] = true;
 
             MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
+                ETHEREUM_CHAIN_ID, _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
             unchecked {

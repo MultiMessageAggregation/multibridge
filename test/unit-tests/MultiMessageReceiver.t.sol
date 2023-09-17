@@ -48,7 +48,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[1] = true;
 
         MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
 
         assertEq(dummyReceiver.quorum(), 2);
         assertTrue(dummyReceiver.isTrustedExecutor(wormholeAdapterAddr));
@@ -60,7 +60,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        receiver.initialize(new address[](0), new bool[](0), 0, address(0));
+        receiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(0));
     }
 
     /// @dev cannot be called with zero adapter
@@ -70,7 +70,7 @@ contract MultiMessageReceiverTest is Setup {
         MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummyReceiver.initialize(new address[](0), new bool[](0), 0, address(0));
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(0));
     }
 
     /// @dev cannot be called with zero address adapter
@@ -85,7 +85,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[0] = true;
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        dummyReceiver.initialize(adapters, operation, 1, timelockAddr);
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 1, timelockAddr);
     }
 
     /// @dev quorum cannot be larger than the number of receiver adapters
@@ -100,7 +100,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[0] = true;
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
     }
 
     /// @dev quorum cannot be larger than the number of unique receiver adapters
@@ -117,7 +117,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[1] = true;
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(adapters, operation, 2, timelockAddr);
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
     }
 
     /// @dev initializer quorum cannot be zero
@@ -132,7 +132,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[0] = true;
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(adapters, operation, 0, timelockAddr);
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 0, timelockAddr);
     }
 
     /// @dev governance timelock cannot be zero address
@@ -147,7 +147,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[0] = true;
 
         vm.expectRevert(Error.ZERO_GOVERNANCE_TIMELOCK.selector);
-        dummyReceiver.initialize(adapters, operation, 1, address(0));
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 1, address(0));
     }
 
     /// @dev receives message from one adapter
