@@ -233,9 +233,9 @@ contract MultiMessageSender {
         );
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        (address[] memory adapters, uint256 adaptersCount) = _getSenderAdapters(_excludedAdapters);
+        address[] memory adapters = _getSenderAdapters(_excludedAdapters);
 
-        if (adaptersCount == 0) {
+        if (adapters.length == 0) {
             revert Error.NO_SENDER_ADAPTER_FOUND();
         }
 
@@ -289,7 +289,6 @@ contract MultiMessageSender {
         bool[] memory successes = new bool[](len);
         for (uint256 i; i < len;) {
             IMessageSenderAdapter bridgeAdapter = IMessageSenderAdapter(_adapters[i]);
-
             /// @dev assumes CREATE2 deployment for mma sender & receiver
             uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, _mmaReceiver, abi.encode(_message));
 
@@ -310,12 +309,12 @@ contract MultiMessageSender {
         return successes;
     }
 
-    function _getSenderAdapters(address[] memory _exclusions) private view returns (address[] memory, uint256) {
+    function _getSenderAdapters(address[] memory _exclusions) private view returns (address[] memory) {
         uint256 allLen = senderAdapters.length;
         uint256 exclLen = _exclusions.length;
 
         address[] memory inclAdapters = new address[](allLen - exclLen);
-        uint256 inclAdaptersLen;
+        uint256 inclCount;
         for (uint256 i; i < allLen;) {
             bool excluded = false;
             for (uint256 j; j < exclLen;) {
@@ -328,13 +327,13 @@ contract MultiMessageSender {
                 }
             }
             if (!excluded) {
-                inclAdapters[inclAdaptersLen++] = senderAdapters[i];
+                inclAdapters[inclCount++] = senderAdapters[i];
             }
             unchecked {
                 ++i;
             }
         }
-        return (inclAdapters, inclAdaptersLen);
+        return inclAdapters;
     }
 
     /// @dev validates if the sender adapter already exists

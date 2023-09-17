@@ -150,6 +150,27 @@ contract MultiMessageSenderTest is Setup {
         sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, excludedAdapters);
     }
 
+    /// @dev perform remote call with an invalid excluded adapter list
+    function test_remote_call_invalid_excluded_adapter_list() public {
+        vm.startPrank(caller);
+
+        address[] memory duplicateExclusions = new address[](2);
+        duplicateExclusions[0] = axelarAdapterAddr;
+        duplicateExclusions[1] = axelarAdapterAddr;
+
+        vm.expectRevert();
+        sender.remoteCall{value: 1 ether}(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, duplicateExclusions
+        );
+
+        address[] memory nonExistentAdapter = new address[](1);
+        nonExistentAdapter[0] = address(42);
+        vm.expectRevert();
+        sender.remoteCall{value: 1 ether}(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, duplicateExclusions
+        );
+    }
+
     /// @dev only caller can perform remote call
     function test_remote_call_only_caller() public {
         vm.startPrank(owner);
