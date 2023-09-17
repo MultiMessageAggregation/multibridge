@@ -10,7 +10,6 @@ import "./interfaces/IGAC.sol";
 /// libraries
 import "./libraries/Message.sol";
 import "./libraries/Error.sol";
-import "forge-std/console.sol";
 
 /// @title MultiMessageSender
 /// @dev handles the routing of message from external sender to bridge adapters
@@ -285,13 +284,11 @@ contract MultiMessageSender {
         address _mmaReceiver,
         uint256 _dstChainId,
         MessageLibrary.Message memory _message
-    ) internal returns (bool[] memory) {
+    ) private returns (bool[] memory) {
         uint256 len = _adapters.length;
         bool[] memory successes = new bool[](len);
-        console.log("Dispatching Messages");
         for (uint256 i; i < len;) {
             IMessageSenderAdapter bridgeAdapter = IMessageSenderAdapter(_adapters[i]);
-            console.log("Dispatching Message: ", _adapters[i]);
 
             /// @dev assumes CREATE2 deployment for mma sender & receiver
             uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, _mmaReceiver, abi.encode(_message));
@@ -313,7 +310,7 @@ contract MultiMessageSender {
         return successes;
     }
 
-    function _getSenderAdapters(address[] memory _exclusions) internal view returns (address[] memory, uint256) {
+    function _getSenderAdapters(address[] memory _exclusions) private view returns (address[] memory, uint256) {
         uint256 allLen = senderAdapters.length;
         uint256 exclLen = _exclusions.length;
 
