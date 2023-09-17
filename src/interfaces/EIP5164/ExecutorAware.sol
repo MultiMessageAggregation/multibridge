@@ -36,17 +36,17 @@ abstract contract ExecutorAware {
     }
 
     /**
-      * @notice Get the list of trusted executors
-      * @return Returns an array of trusted executors
-      */
+     * @notice Get the list of trusted executors
+     * @return Returns an array of trusted executors
+     */
     function getTrustedExecutors() public view returns (address[] memory) {
         return EnumerableSet.values(trustedExecutors);
     }
 
     /**
-      * @notice Get the total number of trusted executors
-      * @return Returns the total number of trusted executors
-      */
+     * @notice Get the total number of trusted executors
+     * @return Returns the total number of trusted executors
+     */
     function trustedExecutorsCount() public view returns (uint256) {
         return EnumerableSet.length(trustedExecutors);
     }
