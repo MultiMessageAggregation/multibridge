@@ -70,46 +70,4 @@ abstract contract ExecutorAware {
     function _removeTrustedExecutor(address _executor) internal returns (bool) {
         return EnumerableSet.remove(trustedExecutors, _executor);
     }
-
-    /**
-     * @notice Retrieve messageId from message data.
-     * @return _msgDataMessageId ID uniquely identifying the message that was executed
-     */
-    function _messageId() internal pure returns (bytes32 _msgDataMessageId) {
-        _msgDataMessageId;
-
-        if (msg.data.length >= 84) {
-            assembly {
-                _msgDataMessageId := calldataload(sub(calldatasize(), 84))
-            }
-        }
-    }
-
-    /**
-     * @notice Retrieve fromChainId from message data.
-     * @return _msgDataFromChainId ID of the chain that dispatched the messages
-     */
-    function _fromChainId() internal pure returns (uint256 _msgDataFromChainId) {
-        _msgDataFromChainId;
-
-        if (msg.data.length >= 52) {
-            assembly {
-                _msgDataFromChainId := calldataload(sub(calldatasize(), 52))
-            }
-        }
-    }
-
-    /**
-     * @notice Retrieve signer address from message data.
-     * @return _signer Address of the signer
-     */
-    function _msgSender() internal view returns (address payable _signer) {
-        _signer = payable(msg.sender);
-
-        if (msg.data.length >= 20 && isTrustedExecutor(_signer)) {
-            assembly {
-                _signer := shr(96, calldataload(sub(calldatasize(), 20)))
-            }
-        }
-    }
 }
