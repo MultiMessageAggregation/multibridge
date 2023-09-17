@@ -29,9 +29,9 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice stores each msg id related info
     mapping(bytes32 => bool) public isExecuted;
-    mapping(bytes32 => ExecutionData) public msgReceived;
-    mapping(bytes32 => mapping(address => bool)) public isDuplicateAdapter;
-    mapping(bytes32 => uint256) public messageVotes;
+    mapping(bytes32 => ExecutionData) public msgExecData;
+    mapping(bytes32 => mapping(address => bool)) public msgDeliveries;
+    mapping(bytes32 => uint256) public msgDeliveryCount;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -108,7 +108,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
         bytes32 msgId = MessageLibrary.computeMsgId(_message);
 
-        if (isDuplicateAdapter[msgId][msg.sender]) {
+        if (msgDeliveries[msgId][msg.sender]) {
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
         }
 
@@ -116,17 +116,17 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             revert Error.MSG_ID_ALREADY_EXECUTED();
         }
 
-        isDuplicateAdapter[msgId][msg.sender] = true;
+        msgDeliveries[msgId][msg.sender] = true;
 
         /// increment quorum
-        ++messageVotes[msgId];
+        ++msgDeliveryCount[msgId];
 
         /// stores the execution data required
-        ExecutionData memory prevStored = msgReceived[msgId];
+        ExecutionData memory prevStored = msgExecData[msgId];
 
         /// stores the message if the amb is the first one delivering the message
         if (prevStored.target == address(0)) {
-            msgReceived[msgId] = ExecutionData(
+            msgExecData[msgId] = ExecutionData(
                 _message.target, _message.callData, _message.nativeValue, _message.nonce, _message.expiration
             );
         }
@@ -138,7 +138,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     /// @dev has reached the power threshold (the same message has been delivered by enough multiple bridges).
     /// Param values can be found in the MultiMessageMsgSent event from the source chain MultiMessageSender contract.
     function executeMessage(bytes32 msgId) external {
-        ExecutionData memory _execData = msgReceived[msgId];
+        ExecutionData memory _execData = msgExecData[msgId];
 
         /// @dev validates if msg execution is not beyond expiration
         if (block.timestamp > _execData.expiration) {
@@ -153,8 +153,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         isExecuted[msgId] = true;
 
         /// @dev validates message quorum
-        if (messageVotes[msgId] < quorum) {
-            revert Error.INVALID_QUORUM_FOR_EXECUTION();
+        if (msgDeliveryCount[msgId] < quorum) {
+            revert Error.QUORUM_NOT_ACHIEVED();
         }
 
         /// @dev queues the action on timelock for execution
@@ -199,13 +199,13 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
     function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
-        uint256 msgCurrentVotes = messageVotes[msgId];
+        uint256 msgCurrentVotes = msgDeliveryCount[msgId];
         string[] memory successfulBridge = new string[](msgCurrentVotes);
 
         if (msgCurrentVotes != 0) {
             uint256 currIndex;
             for (uint256 i; i < trustedExecutor.length;) {
-                if (isDuplicateAdapter[msgId][trustedExecutor[i]]) {
+                if (msgDeliveries[msgId][trustedExecutor[i]]) {
                     successfulBridge[currIndex] = IMessageReceiverAdapter(trustedExecutor[i]).name();
                     ++currIndex;
                 }

@@ -172,12 +172,12 @@ contract MultiMessageReceiverTest is Setup {
 
         assertFalse(receiver.isExecuted(msgId));
 
-        assertTrue(receiver.isDuplicateAdapter(msgId, wormholeAdapterAddr));
+        assertTrue(receiver.msgDeliveries(msgId, wormholeAdapterAddr));
 
-        assertEq(receiver.messageVotes(msgId), 1);
+        assertEq(receiver.msgDeliveryCount(msgId), 1);
 
         (address target, bytes memory callData, uint256 nativeValue, uint256 nonce, uint256 expiration) =
-            receiver.msgReceived(msgId);
+            receiver.msgExecData(msgId);
         assertEq(target, message.target);
         assertEq(callData, message.callData);
         assertEq(nativeValue, message.nativeValue);
@@ -205,7 +205,7 @@ contract MultiMessageReceiverTest is Setup {
         vm.startPrank(axelarAdapterAddr);
         receiver.receiveMessage(message, "AXELAR");
 
-        assertEq(receiver.messageVotes(msgId), 2);
+        assertEq(receiver.msgDeliveryCount(msgId), 2);
     }
 
     /// @dev only adapters can call
@@ -407,7 +407,7 @@ contract MultiMessageReceiverTest is Setup {
     }
 
     /// @dev cannot execute message without quorum
-    function test_execute_message_invalid_quorum_for_execution() public {
+    function test_execute_message_quorum_not_met_for_exec() public {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
@@ -423,7 +423,7 @@ contract MultiMessageReceiverTest is Setup {
 
         receiver.receiveMessage(message, "WORMHOLE");
 
-        vm.expectRevert(Error.INVALID_QUORUM_FOR_EXECUTION.selector);
+        vm.expectRevert(Error.QUORUM_NOT_ACHIEVED.selector);
         receiver.executeMessage(msgId);
     }
 

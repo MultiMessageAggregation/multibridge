@@ -10,6 +10,7 @@ import "./interfaces/IGAC.sol";
 /// libraries
 import "./libraries/Message.sol";
 import "./libraries/Error.sol";
+import "forge-std/console.sol";
 
 /// @title MultiMessageSender
 /// @dev handles the routing of message from external sender to bridge adapters
@@ -19,8 +20,8 @@ contract MultiMessageSender {
     //////////////////////////////////////////////////////////////*/
     IGAC public immutable gac;
 
-    uint256 public constant MINIMUM_EXPIRATION = 2 days;
-    uint256 public constant MAXIMUM_EXPIRATION = 30 days;
+    uint256 public constant MIN_EXPIRATION = 2 days;
+    uint256 public constant MAX_EXPIRATION = 30 days;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -78,13 +79,10 @@ contract MultiMessageSender {
 
     /// @dev validates the expiration provided by the user
     modifier validateExpiration(uint256 _expiration) {
-        if (_expiration < MINIMUM_EXPIRATION) {
-            revert Error.INVALID_EXPIRATION_MIN();
+        if (_expiration < MIN_EXPIRATION || _expiration > MAX_EXPIRATION) {
+            revert Error.INVALID_EXPIRATION_DURATION();
         }
 
-        if (_expiration > MAXIMUM_EXPIRATION) {
-            revert Error.INVALID_EXPIRATION_MAX();
-        }
         _;
     }
 
@@ -146,10 +144,10 @@ contract MultiMessageSender {
     }
 
     /// @notice Add bridge sender adapters
-    /// @param _senderAdapters is the adapter address to add
-    function addSenderAdapters(address[] calldata _senderAdapters) external onlyOwner {
-        for (uint256 i; i < _senderAdapters.length;) {
-            _addSenderAdapter(_senderAdapters[i]);
+    /// @param _adapters is the adapter address to add
+    function addSenderAdapters(address[] calldata _adapters) external onlyOwner {
+        for (uint256 i; i < _adapters.length;) {
+            _addSenderAdapter(_adapters[i]);
 
             unchecked {
                 ++i;
@@ -158,10 +156,10 @@ contract MultiMessageSender {
     }
 
     /// @notice Remove bridge sender adapters
-    /// @param _senderAdapters is the adapter address to remove
-    function removeSenderAdapters(address[] calldata _senderAdapters) external onlyOwner {
-        for (uint256 i; i < _senderAdapters.length;) {
-            _removeSenderAdapter(_senderAdapters[i]);
+    /// @param _adapters is the adapter address to remove
+    function removeSenderAdapters(address[] calldata _adapters) external onlyOwner {
+        for (uint256 i; i < _adapters.length;) {
+            _removeSenderAdapter(_adapters[i]);
 
             unchecked {
                 ++i;
@@ -236,10 +234,9 @@ contract MultiMessageSender {
         );
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        address[] memory adapters = _getSenderAdapters(_excludedAdapters);
-        uint256 adapterLength = adapters.length;
+        (address[] memory adapters, uint256 adaptersCount) = _getSenderAdapters(_excludedAdapters);
 
-        if (adapterLength == 0) {
+        if (adaptersCount == 0) {
             revert Error.NO_SENDER_ADAPTER_FOUND();
         }
 
@@ -249,36 +246,35 @@ contract MultiMessageSender {
         );
 
         /// refund remaining fee
-        /// FIXME: add an explicit refund address config
         if (address(this).balance > 0) {
             _safeTransferETH(gac.getRefundAddress(), address(this).balance);
         }
     }
 
-    function _addSenderAdapter(address _senderAdapter) private {
-        if (_senderAdapter == address(0)) {
+    function _addSenderAdapter(address _adapter) private {
+        if (_adapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
         /// @dev reverts if it finds a duplicate
-        _checkDuplicates(_senderAdapter);
+        _checkDuplicates(_adapter);
 
-        senderAdapters.push(_senderAdapter);
-        emit SenderAdapterUpdated(_senderAdapter, true);
+        senderAdapters.push(_adapter);
+        emit SenderAdapterUpdated(_adapter, true);
     }
 
-    function _removeSenderAdapter(address _senderAdapter) private {
+    function _removeSenderAdapter(address _adapter) private {
         uint256 lastIndex = senderAdapters.length - 1;
 
         for (uint256 i; i < senderAdapters.length; ++i) {
-            if (senderAdapters[i] == _senderAdapter) {
+            if (senderAdapters[i] == _adapter) {
                 if (i < lastIndex) {
                     senderAdapters[i] = senderAdapters[lastIndex];
                 }
 
                 senderAdapters.pop();
 
-                emit SenderAdapterUpdated(_senderAdapter, false);
+                emit SenderAdapterUpdated(_adapter, false);
                 return;
             }
         }
@@ -292,8 +288,10 @@ contract MultiMessageSender {
     ) internal returns (bool[] memory) {
         uint256 len = _adapters.length;
         bool[] memory successes = new bool[](len);
+        console.log("Dispatching Messages");
         for (uint256 i; i < len;) {
             IMessageSenderAdapter bridgeAdapter = IMessageSenderAdapter(_adapters[i]);
+            console.log("Dispatching Message: ", _adapters[i]);
 
             /// @dev assumes CREATE2 deployment for mma sender & receiver
             uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, _mmaReceiver, abi.encode(_message));
@@ -315,12 +313,15 @@ contract MultiMessageSender {
         return successes;
     }
 
-    function _getSenderAdapters(address[] memory _exclusions) internal view returns (address[] memory) {
-        address[] memory targetAdapters = new address[](senderAdapters.length - _exclusions.length);
-        uint256 len;
-        for (uint256 i; i < senderAdapters.length;) {
+    function _getSenderAdapters(address[] memory _exclusions) internal view returns (address[] memory, uint256) {
+        uint256 allLen = senderAdapters.length;
+        uint256 exclLen = _exclusions.length;
+
+        address[] memory inclAdapters = new address[](allLen - exclLen);
+        uint256 inclAdaptersLen;
+        for (uint256 i; i < allLen;) {
             bool excluded = false;
-            for (uint256 j; j < _exclusions.length;) {
+            for (uint256 j; j < exclLen;) {
                 if (senderAdapters[i] == _exclusions[j]) {
                     excluded = true;
                     break;
@@ -330,23 +331,22 @@ contract MultiMessageSender {
                 }
             }
             if (!excluded) {
-                targetAdapters[len] = senderAdapters[i];
-                ++len;
+                inclAdapters[inclAdaptersLen++] = senderAdapters[i];
             }
             unchecked {
                 ++i;
             }
         }
-        return targetAdapters;
+        return (inclAdapters, inclAdaptersLen);
     }
 
     /// @dev validates if the sender adapter already exists
-    /// @param _senderAdapter is the address of the sender to check
-    function _checkDuplicates(address _senderAdapter) internal view {
+    /// @param _adapter is the address of the sender to check
+    function _checkDuplicates(address _adapter) internal view {
         uint256 len = senderAdapters.length;
 
         for (uint256 i; i < len;) {
-            if (senderAdapters[i] == _senderAdapter) {
+            if (senderAdapters[i] == _adapter) {
                 revert Error.DUPLICATE_SENDER_ADAPTER();
             }
 

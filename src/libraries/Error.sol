@@ -42,7 +42,7 @@ library Error {
     error MSG_EXECUTION_PASSED_DEADLINE();
 
     /// @dev is thrown if quorum is not reached
-    error INVALID_QUORUM_FOR_EXECUTION();
+    error QUORUM_NOT_ACHIEVED();
 
     /// @dev is thrown if message execution fails on the destination chain
     error EXECUTION_FAILS_ON_DST();
@@ -53,11 +53,8 @@ library Error {
     /// @dev is thrown if caller is not admin of timelock
     error CALLER_NOT_ADMIN();
 
-    /// @dev is thrown if the expiration is less than minimum expiration
-    error INVALID_EXPIRATION_MIN();
-
-    /// @dev is thrown if the delay is more than maximum delay
-    error INVALID_EXPIRATION_MAX();
+    /// @dev is thrown if the expiration is outside a defined range
+    error INVALID_EXPIRATION_DURATION();
 
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
