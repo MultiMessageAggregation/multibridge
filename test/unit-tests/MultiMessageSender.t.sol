@@ -150,6 +150,27 @@ contract MultiMessageSenderTest is Setup {
         sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, excludedAdapters);
     }
 
+    /// @dev perform remote call with an invalid excluded adapter list
+    function test_remote_call_invalid_excluded_adapter_list() public {
+        vm.startPrank(caller);
+
+        address[] memory duplicateExclusions = new address[](2);
+        duplicateExclusions[0] = axelarAdapterAddr;
+        duplicateExclusions[1] = axelarAdapterAddr;
+
+        vm.expectRevert();
+        sender.remoteCall{value: 1 ether}(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, duplicateExclusions
+        );
+
+        address[] memory nonExistentAdapter = new address[](1);
+        nonExistentAdapter[0] = address(42);
+        vm.expectRevert();
+        sender.remoteCall{value: 1 ether}(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, duplicateExclusions
+        );
+    }
+
     /// @dev only caller can perform remote call
     function test_remote_call_only_caller() public {
         vm.startPrank(owner);
@@ -160,24 +181,24 @@ contract MultiMessageSenderTest is Setup {
 
     /// @dev message expiration has to be within allowed range
     function test_remote_call_invalid_expiration() public {
-        uint256 invalidExpMin = sender.MINIMUM_EXPIRATION() - 1 days;
-        uint256 invalidExpMax = sender.MAXIMUM_EXPIRATION() + 1 days;
+        uint256 invalidExpMin = sender.MIN_EXPIRATION() - 1 days;
+        uint256 invalidExpMax = sender.MAX_EXPIRATION() + 1 days;
 
         // test expiration validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
-        vm.expectRevert(Error.INVALID_EXPIRATION_MIN.selector);
+        vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin);
 
-        vm.expectRevert(Error.INVALID_EXPIRATION_MAX.selector);
+        vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax);
 
         // test expiration validation in remoteCall() which accepts excluded adapters
         address[] memory excludedAdapters = new address[](0);
         vm.startPrank(caller);
-        vm.expectRevert(Error.INVALID_EXPIRATION_MIN.selector);
+        vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, excludedAdapters);
 
-        vm.expectRevert(Error.INVALID_EXPIRATION_MAX.selector);
+        vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, excludedAdapters);
     }
 
