@@ -67,7 +67,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         /// @dev adds the new receiver adapters  before setting quorum and validations
         _updateReceiverAdapters(_receiverAdapters, _operations);
 
-        if (_quorum > trustedExecutor.length || _quorum == 0) {
+        if (_quorum > trustedExecutorsCount() || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
 
@@ -85,7 +85,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice receive messages from allowed bridge receiver adapters
     /// @param _message is the crosschain message sent by the mma sender
-    /// @param _bridgeName is the name of the bridge the relays the message
+    /// @param _bridgeName is the name of the bridge that relays the message
     function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName)
         external
         override
@@ -204,9 +204,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
         if (msgCurrentVotes != 0) {
             uint256 currIndex;
-            for (uint256 i; i < trustedExecutor.length;) {
-                if (isDuplicateAdapter[msgId][trustedExecutor[i]]) {
-                    successfulBridge[currIndex] = IMessageReceiverAdapter(trustedExecutor[i]).name();
+            address[] memory executors = getTrustedExecutors();
+            for (uint256 i; i < executors.length;) {
+                if (isDuplicateAdapter[msgId][executors[i]]) {
+                    successfulBridge[currIndex] = IMessageReceiverAdapter(executors[i]).name();
                     ++currIndex;
                 }
 
@@ -224,9 +225,10 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     ////////////////////////////////////////////////////////////////*/
 
     function _updateQuorum(uint64 _quorum) internal {
-        if (_quorum > trustedExecutor.length || _quorum == 0) {
+        if (_quorum > trustedExecutorsCount() || _quorum == 0) {
             revert Error.INVALID_QUORUM_THRESHOLD();
         }
+
         uint64 oldValue = quorum;
 
         quorum = _quorum;
@@ -263,7 +265,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         } else {
             _removeTrustedExecutor(_receiverAdapter);
 
-            if (quorum > trustedExecutor.length) {
+            if (quorum > trustedExecutorsCount()) {
                 revert Error.INVALID_QUORUM_THRESHOLD();
             }
         }
