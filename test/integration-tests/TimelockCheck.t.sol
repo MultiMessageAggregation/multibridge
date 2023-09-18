@@ -38,8 +38,8 @@ contract TimelockCheckTest is Setup {
             address(target),
             abi.encode(MockUniswapReceiver.setValue.selector, ""),
             0,
-            refundAddress,
-            EXPIRATION_CONSTANT
+            EXPIRATION_CONSTANT,
+            refundAddress
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

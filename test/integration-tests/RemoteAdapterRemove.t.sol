@@ -68,8 +68,8 @@ contract RemoteAdapterRemove is Setup {
                 MultiMessageReceiver.updateQuorumAndReceiverAdapter.selector, newQuorum, adaptersToRemove, operation
             ),
             0,
-            refundAddress,
-            EXPIRATION_CONSTANT
+            EXPIRATION_CONSTANT,
+            refundAddress
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

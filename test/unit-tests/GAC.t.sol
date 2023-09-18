@@ -164,31 +164,6 @@ contract GACTest is Setup {
         gac.setGlobalMsgDeliveryGasLimit(30000);
     }
 
-    /// @dev sets refund address
-    function test_set_refund_address() public {
-        vm.startPrank(owner);
-
-        gac.setRefundAddress(address(42));
-
-        assertEq(gac.getRefundAddress(), address(42));
-    }
-
-    /// @dev only owner can set refund address
-    function test_set_refund_address_only_owner() public {
-        vm.startPrank(caller);
-
-        vm.expectRevert("Ownable: caller is not the owner");
-        gac.setRefundAddress(address(42));
-    }
-
-    /// @dev cannot set refund address to zero
-    function test_set_refund_address_zero() public {
-        vm.startPrank(owner);
-
-        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        gac.setRefundAddress(address(0));
-    }
-
     /// @dev checks if address is the global owner
     function test_is_global_owner() public {
         assertTrue(gac.isGlobalOwner(owner));
