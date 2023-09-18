@@ -21,9 +21,6 @@ contract GAC is IGAC, Ownable {
     //////////////////////////////////////////////////////////////*/
     uint256 public dstGasLimit;
 
-    /// @dev is the address to receive value refunds from remoteCall
-    address public refundAddress;
-
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
     address public multiMessageSender;
@@ -91,15 +88,6 @@ contract GAC is IGAC, Ownable {
         emit DstGasLimitUpdated(oldLimit, _gasLimit);
     }
 
-    /// @inheritdoc IGAC
-    function setRefundAddress(address _refundAddress) external override onlyOwner {
-        if (_refundAddress == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        refundAddress = _refundAddress;
-    }
-
     /*///////////////////////////////////////////////////////////////
                         EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -121,11 +109,6 @@ contract GAC is IGAC, Ownable {
     /// @inheritdoc IGAC
     function getGlobalMsgDeliveryGasLimit() external view override returns (uint256 _gasLimit) {
         _gasLimit = dstGasLimit;
-    }
-
-    /// @inheritdoc IGAC
-    function getRefundAddress() external view override returns (address _refundAddress) {
-        _refundAddress = refundAddress;
     }
 
     /// @inheritdoc IGAC

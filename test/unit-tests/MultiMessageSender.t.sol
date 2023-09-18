@@ -92,7 +92,7 @@ contract MultiMessageSenderTest is Setup {
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration);
+        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress);
 
         assertEq(sender.nonce(), 1);
     }
@@ -105,10 +105,10 @@ contract MultiMessageSenderTest is Setup {
         uint256 expiration = EXPIRATION_CONSTANT;
         uint256 nativeValue = 2 ether;
 
-        uint256 balanceBefore = gac.getRefundAddress().balance;
-        sender.remoteCall{value: nativeValue}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration);
+        uint256 balanceBefore = refundAddress.balance;
+        sender.remoteCall{value: nativeValue}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress);
 
-        uint256 balanceAfter = gac.getRefundAddress().balance;
+        uint256 balanceAfter = refundAddress.balance;
         uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
         assertEq(balanceAfter - balanceBefore, nativeValue - fee);
     }
@@ -147,7 +147,9 @@ contract MultiMessageSenderTest is Setup {
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, excludedAdapters);
+        sender.remoteCall{value: fee}(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, excludedAdapters
+        );
     }
 
     /// @dev perform remote call with an invalid excluded adapter list
@@ -160,14 +162,14 @@ contract MultiMessageSenderTest is Setup {
 
         vm.expectRevert();
         sender.remoteCall{value: 1 ether}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, duplicateExclusions
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, duplicateExclusions
         );
 
         address[] memory nonExistentAdapter = new address[](1);
         nonExistentAdapter[0] = address(42);
         vm.expectRevert();
         sender.remoteCall{value: 1 ether}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, duplicateExclusions
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, duplicateExclusions
         );
     }
 
@@ -176,7 +178,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
     }
 
     /// @dev message expiration has to be within allowed range
@@ -187,19 +189,49 @@ contract MultiMessageSenderTest is Setup {
         // test expiration validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, refundAddress);
 
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, refundAddress);
 
         // test expiration validation in remoteCall() which accepts excluded adapters
         address[] memory excludedAdapters = new address[](0);
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, excludedAdapters);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, refundAddress, excludedAdapters);
 
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, excludedAdapters);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, refundAddress, excludedAdapters);
+    }
+
+    /// @dev refund address is the multi message sender (or) zero address
+    function test_remote_call_invalid_refundAddress() public {
+        // test refund address validation in remoteCall() which does not accept excluded adapters
+        vm.startPrank(caller);
+        vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, address(0));
+
+        vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]
+        );
+
+        // test refund address validation in remoteCall() which accepts excluded adapters
+        address[] memory excludedAdapters = new address[](0);
+        vm.startPrank(caller);
+        vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, address(0), excludedAdapters);
+
+        vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
+        sender.remoteCall(
+            DST_CHAIN_ID,
+            address(42),
+            bytes("42"),
+            0,
+            EXPIRATION_CONSTANT,
+            contractAddress[SRC_CHAIN_ID]["MMA_SENDER"],
+            excludedAdapters
+        );
     }
 
     /// @dev dst chain cannot be the the sender chain
@@ -207,7 +239,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.INVALID_DST_CHAIN.selector);
-        sender.remoteCall(block.chainid, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+        sender.remoteCall(block.chainid, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
     }
 
     /// @dev cannot call with dst chain ID of 0
@@ -215,7 +247,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        sender.remoteCall(0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+        sender.remoteCall(0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
     }
 
     /// @dev cannot call with target address of 0
@@ -223,7 +255,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.INVALID_TARGET.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"), 0, EXPIRATION_CONSTANT);
+        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
     }
 
     /// @dev cannot call with receiver address of 0
@@ -233,7 +265,7 @@ contract MultiMessageSenderTest is Setup {
         MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGac(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
     }
 
     /// @dev cannot call with no sender adapter
@@ -250,7 +282,7 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.NO_SENDER_ADAPTER_FOUND.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
     }
 
     /// @dev should proceed with the call despite one failing adapter, emitting an error message
@@ -298,7 +330,7 @@ contract MultiMessageSenderTest is Setup {
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration);
+        sender.remoteCall{value: fee}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress);
     }
 
     /// @dev adds two sender adapters

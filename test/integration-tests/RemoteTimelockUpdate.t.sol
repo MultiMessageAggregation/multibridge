@@ -33,7 +33,8 @@ contract RemoteTimelockUpdate is Setup {
             address(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]),
             abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, newDelay),
             0,
-            EXPIRATION_CONSTANT
+            EXPIRATION_CONSTANT,
+            refundAddress
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
