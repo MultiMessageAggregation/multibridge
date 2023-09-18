@@ -125,22 +125,24 @@ contract MultiMessageSender {
     /// @notice Call a remote function on a destination chain by sending multiple copies of a cross-chain message
     /// via all available bridges. This function can only be called by the authorised called configured in the GAC.
     /// @dev a fee in native token may be required by each message bridge to send messages. Any native token fee remained
-    /// will be refunded back to a refund address defined in the GAC.
+    /// will be refunded back to a refund address defined in the _refund address parameter.
     /// Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
     /// @param _dstChainId is the destination chainId
     /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param _refundAddress refers to the refund address for any extra native tokens paid
     function remoteCall(
         uint256 _dstChainId,
         address _target,
         bytes calldata _callData,
         uint256 _nativeValue,
-        uint256 _expiration
+        uint256 _expiration,
+        address _refundAddress
     ) external payable onlyCaller validateExpiration(_expiration) {
         address[] memory excludedAdapters;
-        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, excludedAdapters);
+        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, excludedAdapters);
     }
 
     /// @param _dstChainId is the destination chainId
@@ -149,15 +151,17 @@ contract MultiMessageSender {
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
+    /// @param _refundAddress refers to the refund address for any extra native tokens paid
     function remoteCall(
         uint256 _dstChainId,
         address _target,
         bytes calldata _callData,
         uint256 _nativeValue,
         uint256 _expiration,
+        address _refundAddress,
         address[] calldata _excludedAdapters
     ) external payable onlyCaller validateExpiration(_expiration) {
-        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _excludedAdapters);
+        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, _excludedAdapters);
     }
 
     /// @notice Add bridge sender adapters
@@ -224,6 +228,7 @@ contract MultiMessageSender {
         bytes calldata _callData,
         uint256 _nativeValue,
         uint256 _expiration,
+        address _refundAddress,
         address[] memory _excludedAdapters
     ) private {
         if (_dstChainId == 0) {
@@ -236,6 +241,10 @@ contract MultiMessageSender {
 
         if (_target == address(0)) {
             revert Error.INVALID_TARGET();
+        }
+
+        if (_refundAddress == address(0) || _refundAddress == address(this)) {
+            revert Error.INVALID_REFUND_ADDRESS();
         }
 
         address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
@@ -264,7 +273,7 @@ contract MultiMessageSender {
 
         /// refund remaining fee
         if (address(this).balance > 0) {
-            _safeTransferETH(gac.getRefundAddress(), address(this).balance);
+            _safeTransferETH(_refundAddress, address(this).balance);
         }
     }
 

@@ -61,6 +61,7 @@ contract RemoteAdapterAdd is Setup {
             address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation),
             0,
+            refundAddress,
             EXPIRATION_CONSTANT
         );
 

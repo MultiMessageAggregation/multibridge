@@ -33,6 +33,7 @@ contract RemoteTimelockUpdate is Setup {
             address(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]),
             abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, newDelay),
             0,
+            refundAddress,
             EXPIRATION_CONSTANT
         );
 

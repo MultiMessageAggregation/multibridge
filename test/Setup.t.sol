@@ -322,7 +322,6 @@ abstract contract Setup is Test {
                     GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
                         ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
                     );
-                    GAC(contractAddress[chainId][bytes("GAC")]).setRefundAddress(refundAddress);
                 }
 
                 unchecked {

@@ -68,6 +68,7 @@ contract RemoteAdapterRemove is Setup {
                 MultiMessageReceiver.updateQuorumAndReceiverAdapter.selector, newQuorum, adaptersToRemove, operation
             ),
             0,
+            refundAddress,
             EXPIRATION_CONSTANT
         );
 

@@ -56,6 +56,9 @@ library Error {
     /// @dev is thrown if the expiration is outside a defined range
     error INVALID_EXPIRATION_DURATION();
 
+    /// @dev is thrown if refund address is zero (or) invalid
+    error INVALID_REFUND_ADDRESS();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/
