@@ -37,16 +37,16 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
     address public governanceTimelock;
 
     /// @notice maintains which bridge adapters have delivered each message
-    mapping(bytes32 => mapping(address => bool)) public msgDeliveries;
+    mapping(bytes32 msgId => mapping(address receiverAdapter => bool delivered)) public msgDeliveries;
 
     /// @notice count of bridge adapters that have delivered each message
-    mapping(bytes32 => uint256) public msgDeliveryCount;
+    mapping(bytes32 msgId => uint256 deliveryCount) public msgDeliveryCount;
 
     /// @notice the data required for executing a message
-    mapping(bytes32 => ExecutionData) public msgExecData;
+    mapping(bytes32 msgId => ExecutionData execData) public msgExecData;
 
     /// @notice whether a message has been validated and sent to the governance timelock for execution
-    mapping(bytes32 => bool) public isExecuted;
+    mapping(bytes32 msgId => bool executed) public isExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
