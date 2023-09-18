@@ -14,33 +14,45 @@ import "./interfaces/IGovernanceTimelock.sol";
 import "./libraries/Error.sol";
 import "./libraries/Message.sol";
 
-/// @title MultiMessageReceiver
-/// @dev receives message from bridge adapters
+/// @title Multi-bridge message receiver.
+/// @notice This contract is deployed on each destination chain, and receives messages sent by the MultiMessageSender
+/// contract on the source chain, through multiple bridge adapters. A message is considered valid and can be executed
+/// if it has been delivered by enough trusted bridge receiver adapters (i.e. has achieved a quorum threshold),
+/// before the message's expiration. If a message is successfully validated in time, it is queued for execution on the
+/// governance timelock contract.
+/// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
+/// IMessageReceiverAdapter interface.
 contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializable {
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice the id of the only source chain that this contract can receive messages from
+    /// @notice the id of the source chain that this contract can receive messages from
     uint256 public srcChainId;
 
-    /// @notice minimum number of AMBs required for delivery before execution
+    /// @notice minimum number of bridges that must deliver a message for it to be considered valid
     uint64 public quorum;
 
-    /// @dev is the address of governance timelock
+    /// @notice the address of governance timelock contract on the same chain, that a message will be forwarded to for execution
     address public governanceTimelock;
 
-    /// @notice stores each msg id related info
-    mapping(bytes32 => bool) public isExecuted;
-    mapping(bytes32 => ExecutionData) public msgExecData;
+    /// @notice maintains which bridge adapters have delivered each message
     mapping(bytes32 => mapping(address => bool)) public msgDeliveries;
+
+    /// @notice count of bridge adapters that have delivered each message
     mapping(bytes32 => uint256) public msgDeliveryCount;
+
+    /// @notice the data required for executing a message
+    mapping(bytes32 => ExecutionData) public msgExecData;
+
+    /// @notice whether a message has been validated and sent to the governance timelock for execution
+    mapping(bytes32 => bool) public isExecuted;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice A modifier used for restricting the caller of some functions to be configured receiver adapters.
+    /// @notice Checks whether the caller is a trusted bridge receiver adapter
     modifier onlyReceiverAdapter() {
         if (!isTrustedExecutor(msg.sender)) {
             revert Error.INVALID_RECEIVER_ADAPTER();
@@ -68,9 +80,12 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         uint64 _quorum,
         address _governanceTimelock
     ) external initializer {
-        srcChainId = _srcChainId;
+        if (_governanceTimelock == address(0)) {
+            revert Error.ZERO_GOVERNANCE_TIMELOCK();
+        }
+        governanceTimelock = _governanceTimelock;
 
-        /// @dev adds the new receiver adapters  before setting quorum and validations
+        /// @dev adds the new receiver adapters  before setting quorum and validations to account for duplicates
         _updateReceiverAdapters(_receiverAdapters, _operations);
 
         if (_quorum > trustedExecutorsCount() || _quorum == 0) {
@@ -78,10 +93,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
         }
         quorum = _quorum;
 
-        if (_governanceTimelock == address(0)) {
-            revert Error.ZERO_GOVERNANCE_TIMELOCK();
-        }
-        governanceTimelock = _governanceTimelock;
+        srcChainId = _srcChainId;
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -140,7 +152,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice Execute the message (invoke external call according to the message content) if the message
     /// @dev has reached the power threshold (the same message has been delivered by enough multiple bridges).
-    /// Param values can be found in the MultiMessageMsgSent event from the source chain MultiMessageSender contract.
+    /// Param values can be found in the MultiMessageSent event from the source chain MultiMessageSender contract.
     function executeMessage(bytes32 msgId) external {
         ExecutionData memory _execData = msgExecData[msgId];
 

@@ -16,7 +16,7 @@ import "src/libraries/Message.sol";
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 
 contract MultiMessageSenderTest is Setup {
-    event MultiMessageMsgSent(
+    event MultiMessageSent(
         bytes32 indexed msgId,
         uint256 nonce,
         uint256 indexed dstChainId,
@@ -88,7 +88,7 @@ contract MultiMessageSenderTest is Setup {
         uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageMsgSent(
+        emit MultiMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -143,7 +143,7 @@ contract MultiMessageSenderTest is Setup {
             IMessageSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, abi.encode(message));
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageMsgSent(
+        emit MultiMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -294,7 +294,7 @@ contract MultiMessageSenderTest is Setup {
         emit MessageSendFailed(failingAdapterAddr, message);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageMsgSent(
+        emit MultiMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
