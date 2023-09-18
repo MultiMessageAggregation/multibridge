@@ -125,7 +125,7 @@ contract MultiMessageSender {
     /// @notice Call a remote function on a destination chain by sending multiple copies of a cross-chain message
     /// via all available bridges. This function can only be called by the authorised called configured in the GAC.
     /// @dev a fee in native token may be required by each message bridge to send messages. Any native token fee remained
-    /// will be refunded back to a refund address defined in the _refund address parameter.
+    /// will be refunded back to a refund address defined in the _refundAddress parameter.
     /// Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
     /// @param _dstChainId is the destination chainId
     /// @param _target is the target execution point on the destination chain
