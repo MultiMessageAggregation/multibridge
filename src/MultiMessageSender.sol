@@ -11,14 +11,20 @@ import "./interfaces/IGAC.sol";
 import "./libraries/Message.sol";
 import "./libraries/Error.sol";
 
-/// @title MultiMessageSender
-/// @dev handles the routing of message from external sender to bridge adapters
+/// @title Multi-bridge Message Sender
+/// @notice Sends cross-chain messages through multiple bridge sender adapters.
+/// The contract has only a single authorised caller that can send messages, and an owner that can change key parameters.
+/// Both of these are configured in the Global Access Control contract. In the case of Uniswap, both the authorised caller
+/// and owner should be set to the Uniswap V2 Timelock contract on Ethereum.
 contract MultiMessageSender {
     /*///////////////////////////////////////////////////////////////
                              CONSTANTS
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev Global Access Controller (GAC) contract
     IGAC public immutable gac;
 
+    /// @dev the minimum and maximum duration that a message's expiration parameter can be set to
     uint256 public constant MIN_EXPIRATION = 2 days;
     uint256 public constant MAX_EXPIRATION = 30 days;
 
@@ -26,7 +32,7 @@ contract MultiMessageSender {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
 
-    /// @dev bridge sender adapters available
+    /// @dev the list of message sender adapters for different bridges, each of which implements the IMessageSenderAdapter interface.
     address[] public senderAdapters;
 
     /// @dev nonce for msgId uniqueness
@@ -36,8 +42,19 @@ contract MultiMessageSender {
                                 EVENTS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @dev is emitted when a cross-chain message is sent
-    event MultiMessageMsgSent(
+    /// @notice is emitted after a cross-chain message is sent through multiple bridge sender adapters
+    /// This event is emitted even if the message fails to be sent through one or more of the adapters,
+    /// so the success status for each bridge adapter should be checked.
+    /// @param msgId is the unique identifier of the message
+    /// @param nonce is the nonce of the message
+    /// @param dstChainId is the destination chain id of the message
+    /// @param target is the target execution address on the destination chain
+    /// @param callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
+    /// @param nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
+    /// @param expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param senderAdapters are the sender adapters that were used to send the message
+    /// @param adapterSuccess are the message sending success status for each of the corresponding adapters listed in senderAdapters
+    event MultiMessageSent(
         bytes32 indexed msgId,
         uint256 nonce,
         uint256 indexed dstChainId,
@@ -49,12 +66,15 @@ contract MultiMessageSender {
         bool[] adapterSuccess
     );
 
-    /// @dev is emitted when owner updates the sender adapter
-    /// @notice add being false indicates removal of the adapter
-    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
-
-    /// @dev is emitted if cross-chain message fails
+    /// @notice is emitted if sending a cross-chain message through a bridge sender adapter fails
+    /// @param senderAdapter is the address of the sender adapter that failed to send the message
+    /// @param message is the message that failed to be sent
     event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
+
+    /// @notice is emitted when owner updates the sender adapter
+    /// @param senderAdapter the address of the sender adapter that was updated
+    /// @param add true if the sender adapter was added, false if it was removed
+    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -238,7 +258,7 @@ contract MultiMessageSender {
         }
 
         bool[] memory adapterSuccesses = _dispatchMessages(adapters, mmaReceiver, _dstChainId, message);
-        emit MultiMessageMsgSent(
+        emit MultiMessageSent(
             msgId, nonce, _dstChainId, _target, _callData, _nativeValue, _expiration, adapters, adapterSuccesses
         );
 

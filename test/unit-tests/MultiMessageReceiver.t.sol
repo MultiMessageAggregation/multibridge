@@ -70,7 +70,7 @@ contract MultiMessageReceiverTest is Setup {
         MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(0));
+        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(42));
     }
 
     /// @dev cannot be called with zero address adapter
