@@ -33,6 +33,5 @@ interface IMultiMessageReceiver {
 
     /// @notice Receive messages from allowed bridge receiver adapters.
     /// @dev Every receiver adapter should call this function with decoded MessageLibrary.Message
-    /// when receiver adapter receives a message produced by a corresponding sender adapter on the source chain.
-    function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName) external;
+    function receiveMessage(MessageLibrary.Message calldata _message) external;
 }

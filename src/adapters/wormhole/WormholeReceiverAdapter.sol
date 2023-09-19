@@ -17,7 +17,7 @@ import "../../libraries/Message.sol";
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
 /// the MMA receiver.
 contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
-    string public constant name = "wormhole";
+    string public constant name = "WORMHOLE";
     address public immutable relayer;
     IGAC public immutable gac;
     uint16 public immutable senderChain;
@@ -149,7 +149,7 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);

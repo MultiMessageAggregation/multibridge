@@ -126,7 +126,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
