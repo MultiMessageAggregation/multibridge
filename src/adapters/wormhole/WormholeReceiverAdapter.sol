@@ -20,7 +20,7 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     string public constant name = "WORMHOLE";
     address public immutable relayer;
     IGAC public immutable gac;
-    uint16 public immutable senderChain = uint16(2); // Wormhole chain ID for Ethereum
+    uint16 public immutable senderChain;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -55,13 +55,20 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
 
     /// @param _relayer is wormhole relayer.
     /// @param _gac is global access controller.
+    /// @param _senderChain is the chain id of the sender chain.
     /// note: https://docs.wormhole.com/wormhole/quick-start/cross-chain-dev/automatic-relayer
-    constructor(address _relayer, address _gac) {
+    constructor(address _relayer, address _gac, uint16 _senderChain) {
         if (_relayer == address(0) || _gac == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
+
+        if (_senderChain == uint16(0)) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
         relayer = _relayer;
         gac = IGAC(_gac);
+        senderChain = _senderChain;
     }
 
     /*/////////////////////////////////////////////////////////////////
