@@ -19,7 +19,7 @@ import "./libraries/StringAddressConversion.sol";
 contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     using StringAddressConversion for string;
 
-    string public constant name = "axelar";
+    string public constant name = "AXELAR";
     string public constant senderChain = "ethereum";
 
     IAxelarGateway public immutable gateway;
@@ -114,7 +114,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
