@@ -102,12 +102,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
 
     /// @notice receive messages from allowed bridge receiver adapters
     /// @param _message is the crosschain message sent by the mma sender
-    /// @param _bridgeName is the name of the bridge that relays the message
-    function receiveMessage(MessageLibrary.Message calldata _message, string memory _bridgeName)
-        external
-        override
-        onlyReceiverAdapter
-    {
+    function receiveMessage(MessageLibrary.Message calldata _message) external override onlyReceiverAdapter {
         if (_message.dstChainId != block.chainid) {
             revert Error.INVALID_DST_CHAIN();
         }
@@ -147,7 +142,8 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware, Initializ
             );
         }
 
-        emit SingleBridgeMsgReceived(msgId, _bridgeName, _message.nonce, msg.sender);
+        string memory bridgeName = IMessageReceiverAdapter(msg.sender).name();
+        emit SingleBridgeMsgReceived(msgId, bridgeName, _message.nonce, msg.sender);
     }
 
     /// @notice Execute the message (invoke external call according to the message content) if the message
