@@ -41,11 +41,10 @@ contract AxelarSenderAdapterTest is Setup {
 
         bytes32 msgId =
             keccak256(abi.encodePacked(SRC_CHAIN_ID, DST_CHAIN_ID, uint256(0), address(adapter), address(42)));
-        uint256 fee = adapter.getMessageFee(DST_CHAIN_ID, address(42), bytes("42"));
         vm.expectEmit(true, true, true, true, address(adapter));
         emit MessageDispatched(msgId, senderAddr, DST_CHAIN_ID, address(42), bytes("42"));
 
-        adapter.dispatchMessage{value: fee}(DST_CHAIN_ID, address(42), bytes("42"));
+        adapter.dispatchMessage{value: 0.01 ether}(DST_CHAIN_ID, address(42), bytes("42"));
 
         assertEq(adapter.nonce(), 1);
     }
@@ -110,10 +109,5 @@ contract AxelarSenderAdapterTest is Setup {
 
         vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
         adapter.setChainIdMap(new uint256[](0), new string[](1));
-    }
-
-    /// @dev gets message fee
-    function test_get_message_fee() public {
-        assertEq(adapter.getMessageFee(DST_CHAIN_ID, address(42), bytes("42")), 1 ether);
     }
 }

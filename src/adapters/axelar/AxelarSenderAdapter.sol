@@ -85,17 +85,6 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     }
 
     /*/////////////////////////////////////////////////////////////////
-                            EXTERNAL VIEW FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IMessageSenderAdapter
-    function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
-        /// FIXME: axelar has no on-chain message fee estimate. should have to overpay and get refund
-        return 1 ether;
-        // return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
-    }
-
-    /*/////////////////////////////////////////////////////////////////
                             HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 

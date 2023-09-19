@@ -22,8 +22,8 @@ contract MultiMessageReceiverTest is Setup {
     );
 
     MultiMessageReceiver receiver;
-    address wormholeAdapterAddr;
     address axelarAdapterAddr;
+    address wormholeAdapterAddr;
     address timelockAddr;
 
     /// @dev initializes the setup
@@ -32,16 +32,16 @@ contract MultiMessageReceiverTest is Setup {
 
         vm.selectFork(fork[DST_CHAIN_ID]);
         receiver = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]);
-        wormholeAdapterAddr = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
         axelarAdapterAddr = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
+        wormholeAdapterAddr = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
     /// @dev initializer
     function test_initialize() public {
         address[] memory adapters = new address[](2);
-        adapters[0] = wormholeAdapterAddr;
-        adapters[1] = axelarAdapterAddr;
+        adapters[0] = axelarAdapterAddr;
+        adapters[1] = wormholeAdapterAddr;
 
         bool[] memory operation = new bool[](2);
         operation[0] = true;
@@ -51,8 +51,8 @@ contract MultiMessageReceiverTest is Setup {
         dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
 
         assertEq(dummyReceiver.quorum(), 2);
-        assertTrue(dummyReceiver.isTrustedExecutor(wormholeAdapterAddr));
         assertTrue(dummyReceiver.isTrustedExecutor(axelarAdapterAddr));
+        assertTrue(dummyReceiver.isTrustedExecutor(wormholeAdapterAddr));
     }
 
     /// @dev initializer cannot be called twice

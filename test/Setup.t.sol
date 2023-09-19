@@ -275,8 +275,8 @@ abstract contract Setup is Test {
         vm.startPrank(owner);
 
         address[] memory _senderAdapters = new address[](2);
-        _senderAdapters[0] = contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")];
-        _senderAdapters[1] = contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")];
+        _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
+        _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
 
         MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
 
@@ -287,8 +287,8 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             address[] memory _receiverAdapters = new address[](2);
-            _receiverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
-            _receiverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
+            _receiverAdapters[0] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
+            _receiverAdapters[1] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
 
             bool[] memory _operations = new bool[](2);
             _operations[0] = true;

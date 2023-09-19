@@ -26,7 +26,4 @@ interface IMessageSenderAdapter is SingleMessageDispatcher {
 
     /// @dev returns name of the message bridge wrapped by the adapter
     function name() external view returns (string memory);
-
-    /// @dev return native token amount in wei required by this message bridge for sending a message
-    function getMessageFee(uint256 toChainId, address to, bytes calldata data) external view returns (uint256);
 }
