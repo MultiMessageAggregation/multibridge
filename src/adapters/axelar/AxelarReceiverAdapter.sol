@@ -20,7 +20,6 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     using StringAddressConversion for string;
 
     string public constant name = "axelar";
-    string public constant senderChain = "ethereum";
 
     IAxelarGateway public immutable gateway;
     IGAC public immutable gac;
@@ -28,6 +27,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     /*/////////////////////////////////////////////////////////////////
                         STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
+    string public senderChain;
     address public senderAdapter;
 
     mapping(bytes32 => bool) public isMessageExecuted;
@@ -46,9 +46,21 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     /*/////////////////////////////////////////////////////////////////
                          CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _gateway, address _gac) {
+    /// @param _gateway is axelar gateway contract address.
+    /// @param _gac is global access controller.
+    /// @param _senderChain is the chain id of the sender chain.
+    constructor(address _gateway, address _gac, string memory _senderChain) {
+        if (_gateway == address(0) || _gac == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        if (bytes(_senderChain).length == 0) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
         gateway = IAxelarGateway(_gateway);
         gac = IGAC(_gac);
+        senderChain = _senderChain;
     }
 
     /*/////////////////////////////////////////////////////////////////

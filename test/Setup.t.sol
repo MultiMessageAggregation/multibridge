@@ -157,12 +157,13 @@ abstract contract Setup is Test {
         /// @notice deploy receiver adapters to all DST_CHAINS
         address[] memory _receiverAdapters = new address[](len);
 
+        uint16 wEthereumID = _wormholeChainId(ETHEREUM_CHAIN_ID);
         for (uint256 i; i < len;) {
             uint256 chainId = DST_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
             address receiverAdapter = address(
-                new WormholeReceiverAdapter{salt: _salt}(WORMHOLE_RELAYERS[i], contractAddress[chainId][bytes("GAC")])
+                new WormholeReceiverAdapter{salt: _salt}(WORMHOLE_RELAYERS[i], contractAddress[chainId][bytes("GAC")], wEthereumID)
             );
             contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
@@ -201,7 +202,7 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             address receiverAdapter = address(
-                new AxelarReceiverAdapter{salt: _salt}(AXELAR_GATEWAYS[i], contractAddress[chainId][bytes("GAC")])
+                new AxelarReceiverAdapter{salt: _salt}(AXELAR_GATEWAYS[i], contractAddress[chainId][bytes("GAC")], "ethereum")
             );
             contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
