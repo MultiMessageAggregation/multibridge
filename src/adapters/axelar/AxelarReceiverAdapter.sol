@@ -19,7 +19,7 @@ import "./libraries/StringAddressConversion.sol";
 contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     using StringAddressConversion for string;
 
-    string public constant name = "axelar";
+    string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
     IGAC public immutable gac;
