@@ -59,7 +59,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
     /// @dev gets the name
     function test_name() public {
-        assertEq(adapter.name(), "AXELAR");
+        assertEq(adapter.name(), "axelar");
     }
 
     /// @dev updates sender adapter

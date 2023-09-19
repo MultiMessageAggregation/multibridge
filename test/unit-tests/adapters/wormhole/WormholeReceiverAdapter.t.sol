@@ -55,7 +55,7 @@ contract WormholeReceiverAdapterTest is Setup {
 
     /// @dev gets the name
     function test_name() public {
-        assertEq(adapter.name(), "WORMHOLE");
+        assertEq(adapter.name(), "wormhole");
     }
 
     /// @dev updates sender adapter
