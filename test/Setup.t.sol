@@ -120,6 +120,9 @@ abstract contract Setup is Test {
 
         /// @dev setup adapter contracts
         _setupAdapters();
+
+        /// @dev gives up owner to timelock
+        _setupTimelockAsOwner();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -262,7 +265,9 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}());
+            address mmaReceiver = address(
+                new MultiMessageReceiver{salt: _salt}(SRC_CHAIN_ID, contractAddress[ETHEREUM_CHAIN_ID][bytes("GAC")])
+            );
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
                 address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver, 3 days)));
@@ -295,9 +300,15 @@ abstract contract Setup is Test {
             _operations[0] = true;
             _operations[1] = true;
 
-            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
-                ETHEREUM_CHAIN_ID, _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).updateReceiverAdapters(
+                _receiverAdapters, _operations
             );
+
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).updateGovernanceTimelock(
+                contractAddress[chainId]["TIMELOCK"]
+            );
+
+            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).updateQuorum(2);
 
             unchecked {
                 ++i;
@@ -351,6 +362,26 @@ abstract contract Setup is Test {
             AxelarReceiverAdapter(contractAddress[chainId]["AXELAR_RECEIVER_ADAPTER"]).updateSenderAdapter(
                 contractAddress[ETHEREUM_CHAIN_ID]["AXELAR_SENDER_ADAPTER"]
             );
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @dev admin gives up ownership to
+    function _setupTimelockAsOwner() internal {
+        /// transfer ownership to timelock finally
+        for (uint256 i; i < ALL_CHAINS.length;) {
+            uint256 chainId = ALL_CHAINS[i];
+
+            vm.selectFork(fork[chainId]);
+
+            if (chainId != SRC_CHAIN_ID) {
+                GAC(contractAddress[chainId][bytes("GAC")]).transferOwnership(
+                    contractAddress[chainId][bytes("TIMELOCK")]
+                );
+            }
 
             unchecked {
                 ++i;

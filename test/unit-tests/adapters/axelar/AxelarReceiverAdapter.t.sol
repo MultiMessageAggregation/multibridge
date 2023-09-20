@@ -22,6 +22,7 @@ contract AxelarReceiverAdapterTest is Setup {
     event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter);
 
     AxelarReceiverAdapter adapter;
+    address currOwner;
 
     /// @dev initializes the setup
     function setUp() public override {
@@ -29,6 +30,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
         vm.selectFork(fork[DST_CHAIN_ID]);
         adapter = AxelarReceiverAdapter(contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"]);
+        currOwner = GAC(contractAddress[DST_CHAIN_ID]["GAC"]).owner();
     }
 
     /// @dev constructor
@@ -64,7 +66,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
     /// @dev updates sender adapter
     function test_update_sender_adapter() public {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         vm.expectEmit(true, true, true, true, address(adapter));
         emit SenderAdapterUpdated(contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"], address(42));
@@ -84,7 +86,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
     /// @dev cannot update sender adapter with zero address
     function test_update_sender_adapter_zero_address_input() public {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
         adapter.updateSenderAdapter(address(0));
@@ -321,7 +323,7 @@ contract AxelarReceiverAdapterTest is Setup {
         internal
         returns (AxelarReceiverAdapter dummyAdapter, address senderAdapter, address receiverAddr)
     {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
         dummyAdapter =

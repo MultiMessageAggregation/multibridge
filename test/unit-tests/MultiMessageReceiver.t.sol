@@ -37,119 +37,6 @@ contract MultiMessageReceiverTest is Setup {
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
-    /// @dev initializer
-    function test_initialize() public {
-        address[] memory adapters = new address[](2);
-        adapters[0] = wormholeAdapterAddr;
-        adapters[1] = axelarAdapterAddr;
-
-        bool[] memory operation = new bool[](2);
-        operation[0] = true;
-        operation[1] = true;
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
-
-        assertEq(dummyReceiver.quorum(), 2);
-        assertTrue(dummyReceiver.isTrustedExecutor(wormholeAdapterAddr));
-        assertTrue(dummyReceiver.isTrustedExecutor(axelarAdapterAddr));
-    }
-
-    /// @dev initializer cannot be called twice
-    function test_initialize_initialized() public {
-        vm.startPrank(caller);
-
-        vm.expectRevert("Initializable: contract is already initialized");
-        receiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(0));
-    }
-
-    /// @dev cannot be called with zero adapter
-    function test_initialize_zero_receiver_adapter() public {
-        vm.startPrank(caller);
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-
-        vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(42));
-    }
-
-    /// @dev cannot be called with zero address adapter
-    function test_initialize_zero_address_input() public {
-        vm.startPrank(caller);
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        address[] memory adapters = new address[](1);
-        adapters[0] = address(0);
-
-        bool[] memory operation = new bool[](1);
-        operation[0] = true;
-
-        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 1, timelockAddr);
-    }
-
-    /// @dev quorum cannot be larger than the number of receiver adapters
-    function test_initialize_quorum_too_large() public {
-        vm.startPrank(caller);
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        address[] memory adapters = new address[](1);
-        adapters[0] = address(42);
-
-        bool[] memory operation = new bool[](1);
-        operation[0] = true;
-
-        vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
-    }
-
-    /// @dev quorum cannot be larger than the number of unique receiver adapters
-    function test_initialize_quorum_larger_than_num_trusted_executors() public {
-        vm.startPrank(caller);
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        address[] memory adapters = new address[](2);
-        adapters[0] = address(42);
-        adapters[1] = address(42);
-
-        bool[] memory operation = new bool[](2);
-        operation[0] = true;
-        operation[1] = true;
-
-        vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
-    }
-
-    /// @dev initializer quorum cannot be zero
-    function test_initialize_zero_quorum() public {
-        vm.startPrank(caller);
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        address[] memory adapters = new address[](1);
-        adapters[0] = address(42);
-
-        bool[] memory operation = new bool[](1);
-        operation[0] = true;
-
-        vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 0, timelockAddr);
-    }
-
-    /// @dev governance timelock cannot be zero address
-    function test_initialize_zero_governance_timelock() public {
-        vm.startPrank(caller);
-
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
-        address[] memory adapters = new address[](1);
-        adapters[0] = address(42);
-
-        bool[] memory operation = new bool[](1);
-        operation[0] = true;
-
-        vm.expectRevert(Error.ZERO_GOVERNANCE_TIMELOCK.selector);
-        dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 1, address(0));
-    }
-
     /// @dev receives message from one adapter
     function test_receive_message() public {
         vm.startPrank(wormholeAdapterAddr);
@@ -467,7 +354,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_update_receiver_adapter_only_governance_timelock() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.CALLER_NOT_GOVERNANCE_TIMELOCK.selector);
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
         receiver.updateReceiverAdapters(new address[](0), new bool[](0));
     }
 
@@ -518,7 +405,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_update_quorum_only_governance_timelock() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.CALLER_NOT_GOVERNANCE_TIMELOCK.selector);
+        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
         receiver.updateQuorum(0);
     }
 

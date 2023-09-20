@@ -47,9 +47,6 @@ library Error {
     /// @dev is thrown if message execution fails on the destination chain
     error EXECUTION_FAILS_ON_DST();
 
-    /// @dev is thrown if caller is not governance timelock contract
-    error CALLER_NOT_GOVERNANCE_TIMELOCK();
-
     /// @dev is thrown if caller is not admin of timelock
     error CALLER_NOT_ADMIN();
 

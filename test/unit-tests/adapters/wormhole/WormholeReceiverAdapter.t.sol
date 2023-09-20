@@ -19,6 +19,7 @@ contract WormholeReceiverAdapterTest is Setup {
     event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter);
 
     WormholeReceiverAdapter adapter;
+    address currOwner;
 
     /// @dev initializes the setup
     function setUp() public override {
@@ -26,6 +27,7 @@ contract WormholeReceiverAdapterTest is Setup {
 
         vm.selectFork(fork[DST_CHAIN_ID]);
         adapter = WormholeReceiverAdapter(contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"]);
+        currOwner = GAC(contractAddress[DST_CHAIN_ID]["GAC"]).owner();
     }
 
     /// @dev constructor
@@ -60,7 +62,7 @@ contract WormholeReceiverAdapterTest is Setup {
 
     /// @dev updates sender adapter
     function test_update_sender_adapter() public {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         vm.expectEmit(true, true, true, true, address(adapter));
         emit SenderAdapterUpdated(contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"], address(42));
@@ -81,7 +83,7 @@ contract WormholeReceiverAdapterTest is Setup {
     /// @dev cannot update sender adapter with zero address
 
     function test_update_sender_adapter_zero_address_input() public {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
         adapter.updateSenderAdapter(address(0));
@@ -89,7 +91,7 @@ contract WormholeReceiverAdapterTest is Setup {
 
     /// @dev sets chain ID map
     function test_set_chain_id_map() public {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         uint256[] memory origIds = new uint256[](1);
         origIds[0] = 1234;
@@ -110,7 +112,7 @@ contract WormholeReceiverAdapterTest is Setup {
 
     /// @dev cannot set chain ID map with mismatched array lengths
     function test_set_chain_id_map_array_length_mismatched() public {
-        vm.startPrank(owner);
+        vm.startPrank(currOwner);
 
         vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
         adapter.setChainIdMap(new uint256[](0), new uint16[](1));
