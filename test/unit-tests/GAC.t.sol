@@ -12,7 +12,7 @@ import "../contracts-mock/FailingSenderAdapter.sol";
 import "../contracts-mock/ZeroAddressReceiverGac.sol";
 import "src/interfaces/IMessageSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
-import "src/interfaces/IGAC.sol";
+import "src/interfaces/ISenderGAC.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
@@ -25,7 +25,7 @@ contract GACTest is Setup {
 
     address senderAddr;
     address receiverAddr;
-    IGAC gac;
+    ISenderGAC gac;
 
     /// @dev initializes the setup
     function setUp() public override {
@@ -34,7 +34,7 @@ contract GACTest is Setup {
         vm.selectFork(fork[SRC_CHAIN_ID]);
         senderAddr = contractAddress[SRC_CHAIN_ID]["MMA_SENDER"];
         receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        gac = IGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
+        gac = ISenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev constructor

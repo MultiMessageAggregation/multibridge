@@ -17,6 +17,7 @@ import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
 import {GAC} from "src/controllers/GAC.sol";
+import {SenderGAC} from "src/controllers/SenderGAC.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
@@ -133,10 +134,14 @@ abstract contract Setup is Test {
             uint256 chainId = ALL_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
-            GAC gac = new GAC{salt: _salt}();
-            gac.setMultiMessageCaller(caller);
-            contractAddress[chainId][bytes("GAC")] = address(gac);
-
+            if (chainId == SRC_CHAIN_ID) {
+                SenderGAC gac = new SenderGAC{salt: _salt}();
+                gac.setMultiMessageCaller(caller);
+                contractAddress[chainId][bytes("GAC")] = address(gac);
+            } else {
+                GAC gac = new GAC{salt: _salt}();
+                contractAddress[chainId][bytes("GAC")] = address(gac);
+            }
             unchecked {
                 ++i;
             }
@@ -313,7 +318,7 @@ abstract contract Setup is Test {
 
             /// @dev mma sender is only available on chain id 1
             if (chainId == 1) {
-                GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageSender(
+                SenderGAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageSender(
                     contractAddress[chainId][bytes("MMA_SENDER")]
                 );
             }

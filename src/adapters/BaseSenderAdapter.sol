@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-import "../interfaces/IGAC.sol";
 import "../libraries/Error.sol";
 import "../interfaces/IMessageSenderAdapter.sol";
+import "../interfaces/ISenderGAC.sol";
 
 abstract contract BaseSenderAdapter is IMessageSenderAdapter {
-    IGAC public immutable gac;
+    ISenderGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -42,7 +42,7 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        gac = IGAC(_gac);
+        gac = ISenderGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////

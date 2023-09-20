@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 /// interfaces
 import "./interfaces/IMessageSenderAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
-import "./interfaces/IGAC.sol";
+import "./interfaces/ISenderGAC.sol";
 
 /// libraries
 import "./libraries/Message.sol";
@@ -22,7 +22,7 @@ contract MultiMessageSender {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Global Access Controller (GAC) contract
-    IGAC public immutable gac;
+    ISenderGAC public immutable gac;
 
     /// @dev the minimum and maximum duration that a message's expiration parameter can be set to
     uint256 public constant MIN_EXPIRATION = 2 days;
@@ -115,7 +115,7 @@ contract MultiMessageSender {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        gac = IGAC(_gac);
+        gac = ISenderGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////
