@@ -25,8 +25,8 @@ contract MultiBridgeMessageSender {
     MessageSenderGAC public immutable senderGAC;
 
     /// @dev the minimum and maximum duration that a message's expiration parameter can be set to
-    uint256 public constant MIN_EXPIRATION = 2 days;
-    uint256 public constant MAX_EXPIRATION = 30 days;
+    uint256 public constant MIN_MESSAGE_EXPIRATION = 2 days;
+    uint256 public constant MAX_MESSAGE_EXPIRATION = 30 days;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -98,7 +98,7 @@ contract MultiBridgeMessageSender {
 
     /// @dev validates the expiration provided by the user
     modifier validateExpiration(uint256 _expiration) {
-        if (_expiration < MIN_EXPIRATION || _expiration > MAX_EXPIRATION) {
+        if (_expiration < MIN_MESSAGE_EXPIRATION || _expiration > MAX_MESSAGE_EXPIRATION) {
             revert Error.INVALID_EXPIRATION_DURATION();
         }
 

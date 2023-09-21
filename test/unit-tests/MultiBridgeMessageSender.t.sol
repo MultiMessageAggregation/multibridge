@@ -183,8 +183,8 @@ contract MultiBridgeMessageSenderTest is Setup {
 
     /// @dev message expiration has to be within allowed range
     function test_remote_call_invalid_expiration() public {
-        uint256 invalidExpMin = sender.MIN_EXPIRATION() - 1 days;
-        uint256 invalidExpMax = sender.MAX_EXPIRATION() + 1 days;
+        uint256 invalidExpMin = sender.MIN_MESSAGE_EXPIRATION() - 1 days;
+        uint256 invalidExpMax = sender.MAX_MESSAGE_EXPIRATION() + 1 days;
 
         // test expiration validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
