@@ -13,20 +13,19 @@ import "../../libraries/TypeCasts.sol";
 import "../../libraries/Message.sol";
 
 import "../../controllers/MessageReceiverGAC.sol";
+import "../BaseReceiverAdapter.sol";
 
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
 /// the MMA receiver.
-contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
+contract WormholeReceiverAdapter is BaseReceiverAdapter, IWormholeReceiver {
     string public constant name = "WORMHOLE";
     address public immutable relayer;
-    MessageReceiverGAC public immutable receiverGAC;
     uint16 public immutable senderChain;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    address public senderAdapter;
 
     mapping(uint256 => uint16) public chainIdMap;
 
@@ -36,12 +35,6 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyGlobalOwner() {
-        if (!receiverGAC.isGlobalOwner(msg.sender)) {
-            revert Error.CALLER_NOT_OWNER();
-        }
-        _;
-    }
 
     modifier onlyRelayerContract() {
         if (msg.sender != relayer) {
@@ -55,11 +48,11 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     ////////////////////////////////////////////////////////////////*/
 
     /// @param _relayer is wormhole relayer.
-    /// @param _receiverGAC is global access controller.
     /// @param _senderChain is the chain id of the sender chain.
+    /// @param _receiverGAC is global access controller.
     /// note: https://docs.wormhole.com/wormhole/quick-start/cross-chain-dev/automatic-relayer
-    constructor(address _relayer, address _receiverGAC, uint16 _senderChain) {
-        if (_relayer == address(0) || _receiverGAC == address(0)) {
+    constructor(address _relayer, uint16 _senderChain, address _receiverGAC) BaseReceiverAdapter(_receiverGAC) {
+        if (_relayer == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -68,25 +61,12 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
         }
 
         relayer = _relayer;
-        receiverGAC = MessageReceiverGAC(_receiverGAC);
         senderChain = _senderChain;
     }
 
     /*/////////////////////////////////////////////////////////////////
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IMessageReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
-        if (_senderAdapter == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        address oldAdapter = senderAdapter;
-        senderAdapter = _senderAdapter;
-
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
-    }
 
     /// @dev maps the MMA chain id to bridge specific chain id
     /// @dev _origIds is the chain's native chain id

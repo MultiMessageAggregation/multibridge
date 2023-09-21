@@ -38,19 +38,19 @@ contract WormholeReceiverAdapterTest is Setup {
     /// @dev constructor cannot be called with zero address relayer
     function test_constructor_zero_address_relayer() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new WormholeReceiverAdapter(address(0), address(42), _wormholeChainId(ETHEREUM_CHAIN_ID));
+        new WormholeReceiverAdapter(address(0), _wormholeChainId(ETHEREUM_CHAIN_ID), address(42));
     }
 
     /// @dev constructor cannot be called with zero address GAC
     function test_constructor_zero_address_gac() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new WormholeReceiverAdapter(address(42), address(0), _wormholeChainId(ETHEREUM_CHAIN_ID));
+        new WormholeReceiverAdapter(address(42), _wormholeChainId(ETHEREUM_CHAIN_ID), address(0));
     }
 
     /// @dev constructor cannot be called with zero sender chain id
     function test_constructor_zero_chain_id() public {
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
-        new WormholeReceiverAdapter(address(42), address(42), uint16(0));
+        new WormholeReceiverAdapter(address(42), uint16(0), address(42));
     }
 
     /// @dev gets the name

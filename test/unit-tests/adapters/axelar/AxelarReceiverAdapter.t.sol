@@ -42,19 +42,19 @@ contract AxelarReceiverAdapterTest is Setup {
     /// @dev constructor with invalid parameters should fail
     function test_constructor_zero_gateway_address() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new AxelarReceiverAdapter(address(0), address(42), "");
+        new AxelarReceiverAdapter(address(0), "", address(42));
     }
 
     /// @dev constructor with invalid parameters should fail
     function test_constructor_zero_gac_address() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new AxelarReceiverAdapter(address(32), address(0), "");
+        new AxelarReceiverAdapter(address(32), "", address(0));
     }
 
     /// @dev constructor cannot be called with zero chain id
     function test_constructor_zero_chain_id() public {
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
-        new AxelarReceiverAdapter(address(42), address(42), "");
+        new AxelarReceiverAdapter(address(42), "", address(42));
     }
 
     /// @dev gets the name
@@ -325,7 +325,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
         senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
         dummyAdapter =
-        new AxelarReceiverAdapter(address(new MockAxelarGateway(_validateCall)), contractAddress[DST_CHAIN_ID]["GAC"], "ethereum");
+        new AxelarReceiverAdapter(address(new MockAxelarGateway(_validateCall)), "ethereum", contractAddress[DST_CHAIN_ID]["GAC"]);
         dummyAdapter.updateSenderAdapter(senderAdapter);
 
         vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);

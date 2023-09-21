@@ -63,8 +63,8 @@ contract MessageSenderGAC is GAC {
         emit MultiMessageCallerUpdated(newMMSCaller);
     }
 
-    function setRemoteMultiMessageReceiver(uint256 _chainId, address _newMMR) external onlyOwner {
-        if (_newMMR == address(0)) {
+    function setRemoteMultiMessageReceiver(uint256 _chainId, address _remoteMMR) external onlyOwner {
+        if (_remoteMMR == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -72,10 +72,10 @@ contract MessageSenderGAC is GAC {
             revert Error.ZERO_CHAIN_ID();
         }
 
-        address oldMMR = remoteMultiMessageReceiver[_chainId];
-        remoteMultiMessageReceiver[_chainId] = _newMMR;
+        address oldRemoteMMR = remoteMultiMessageReceiver[_chainId];
+        remoteMultiMessageReceiver[_chainId] = _remoteMMR;
 
-        emit MultiMessageReceiverUpdated(_chainId, oldMMR, _newMMR);
+        emit MultiMessageReceiverUpdated(_chainId, oldRemoteMMR, _remoteMMR);
     }
 
     function setGlobalMsgDeliveryGasLimit(uint256 _gasLimit) external onlyOwner {

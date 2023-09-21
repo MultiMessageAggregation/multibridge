@@ -41,11 +41,11 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     /// @param _to The address of the contract on the destination chain that will receive the message.
     /// @param _data The data to be included in the message.
     function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
-    external
-    payable
-    override
-    onlyMultiMessageSender
-    returns (bytes32 msgId)
+        external
+        payable
+        override
+        onlyMultiMessageSender
+        returns (bytes32 msgId)
     {
         address receiverAdapter = receiverAdapters[_toChainId];
 
@@ -114,7 +114,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     ) internal {
         string memory receiverAdapterInString = StringAddressConversion.toString(receiverAdapter);
         bytes memory payload =
-                            abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter, multibridgeReceiver, data));
+            abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter, multibridgeReceiver, data));
 
         gasService.payNativeGasForContractCall{value: msg.value}(
             msg.sender, destinationChain, receiverAdapterInString, payload, msg.sender

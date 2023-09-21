@@ -171,7 +171,7 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             address receiverAdapter = address(
-                new WormholeReceiverAdapter{salt: _salt}(WORMHOLE_RELAYERS[i], contractAddress[chainId][bytes("GAC")], wEthereumID)
+                new WormholeReceiverAdapter{salt: _salt}(WORMHOLE_RELAYERS[i], wEthereumID, contractAddress[chainId][bytes("GAC")])
             );
             contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
@@ -210,7 +210,7 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             address receiverAdapter = address(
-                new AxelarReceiverAdapter{salt: _salt}(AXELAR_GATEWAYS[i], contractAddress[chainId][bytes("GAC")], "ethereum")
+                new AxelarReceiverAdapter{salt: _salt}(AXELAR_GATEWAYS[i], "ethereum", contractAddress[chainId][bytes("GAC")])
             );
             contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;

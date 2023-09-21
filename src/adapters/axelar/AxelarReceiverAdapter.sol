@@ -15,43 +15,33 @@ import "./interfaces/IAxelarExecutable.sol";
 import "./libraries/StringAddressConversion.sol";
 
 import "../../controllers/MessageReceiverGAC.sol";
+import "../BaseSenderAdapter.sol";
+import "../BaseReceiverAdapter.sol";
 
 /// @notice receiver adapter for axelar bridge
-contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
+contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
     using StringAddressConversion for string;
 
     string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
-    MessageReceiverGAC public immutable receiverGAC;
 
     /*/////////////////////////////////////////////////////////////////
                         STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     string public senderChain;
-    address public senderAdapter;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public commandIdStatus;
 
     /*/////////////////////////////////////////////////////////////////
-                                 MODIFIER
-    ////////////////////////////////////////////////////////////////*/
-    modifier onlyGlobalOwner() {
-        if (!receiverGAC.isGlobalOwner(msg.sender)) {
-            revert Error.CALLER_NOT_OWNER();
-        }
-        _;
-    }
-
-    /*/////////////////////////////////////////////////////////////////
                          CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
     /// @param _gateway is axelar gateway contract address.
-    /// @param _receiverGAC is global access controller.
     /// @param _senderChain is the chain id of the sender chain.
-    constructor(address _gateway, address _receiverGAC, string memory _senderChain) {
-        if (_gateway == address(0) || _receiverGAC == address(0)) {
+    /// @param _receiverGAC is global access controller.
+    constructor(address _gateway, string memory _senderChain, address _receiverGAC) BaseReceiverAdapter(_receiverGAC) {
+        if (_gateway == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -60,25 +50,12 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
         }
 
         gateway = IAxelarGateway(_gateway);
-        receiverGAC = MessageReceiverGAC(_receiverGAC);
         senderChain = _senderChain;
     }
 
     /*/////////////////////////////////////////////////////////////////
                          EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IMessageReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
-        if (_senderAdapter == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        address oldAdapter = senderAdapter;
-        senderAdapter = _senderAdapter;
-
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
-    }
 
     /// @dev accepts new cross-chain messages from axelar gateway
     /// @inheritdoc IAxelarExecutable
