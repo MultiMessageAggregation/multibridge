@@ -32,7 +32,7 @@ contract WormholeReceiverAdapterTest is Setup {
     function test_constructor() public {
         // checks existing setup
         assertEq(address(adapter.relayer()), POLYGON_RELAYER);
-        assertEq(address(adapter.gac()), contractAddress[DST_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.receiverGAC()), contractAddress[DST_CHAIN_ID]["GAC"]);
     }
 
     /// @dev constructor cannot be called with zero address relayer

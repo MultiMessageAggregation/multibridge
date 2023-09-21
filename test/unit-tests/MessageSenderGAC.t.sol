@@ -9,7 +9,7 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 /// local imports
 import "../Setup.t.sol";
 import "../contracts-mock/FailingSenderAdapter.sol";
-import "../contracts-mock/ZeroAddressReceiverGac.sol";
+import "../contracts-mock/ZeroAddressReceiverGAC.sol";
 import "src/interfaces/IMessageSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
 import "src/interfaces/IGAC.sol";
@@ -17,15 +17,15 @@ import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
 
-contract GACTest is Setup {
+contract MessageSenderGACTest is Setup {
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
     event MultiMessageCallerUpdated(address indexed mmaCaller);
     event MultiMessageSenderUpdated(address indexed mmaSender);
-    event MultiMessageReceiverUpdated(uint256 chainId, address indexed mmaReceiver);
+    event MultiMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
-    address senderAddr;
-    address receiverAddr;
-    IGAC gac;
+    address private senderAddr;
+    address private receiverAddr;
+    MessageSenderGAC private senderGAC;
 
     /// @dev initializes the setup
     function setUp() public override {
@@ -34,25 +34,25 @@ contract GACTest is Setup {
         vm.selectFork(fork[SRC_CHAIN_ID]);
         senderAddr = contractAddress[SRC_CHAIN_ID]["MMA_SENDER"];
         receiverAddr = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        gac = IGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
+        senderGAC = MessageSenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev constructor
     function test_constructor() public {
         // checks existing setup
-        assertEq(address(Ownable(address(gac)).owner()), owner);
+        assertEq(address(Ownable(address(senderGAC)).owner()), owner);
     }
 
     /// @dev sets multi message sender
     function test_set_multi_message_sender() public {
         vm.startPrank(owner);
 
-        vm.expectEmit(true, true, true, true, address(gac));
+        vm.expectEmit(true, true, true, true, address(senderGAC));
         emit MultiMessageSenderUpdated(address(42));
 
-        gac.setMultiMessageSender(address(42));
+        senderGAC.setMultiMessageSender(address(42));
 
-        assertEq(gac.getMultiMessageSender(), address(42));
+        assertEq(senderGAC.getMultiMessageSender(), address(42));
     }
 
     /// @dev only owner can set multi message sender
@@ -60,7 +60,7 @@ contract GACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        gac.setMultiMessageSender(address(42));
+        senderGAC.setMultiMessageSender(address(42));
     }
 
     /// @dev cannot set multi message sender to zero address
@@ -68,19 +68,19 @@ contract GACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        gac.setMultiMessageSender(address(0));
+        senderGAC.setMultiMessageSender(address(0));
     }
 
     /// @dev sets multi message caller
     function test_set_multi_message_caller() public {
         vm.startPrank(owner);
 
-        vm.expectEmit(true, true, true, true, address(gac));
+        vm.expectEmit(true, true, true, true, address(senderGAC));
         emit MultiMessageCallerUpdated(address(42));
 
-        gac.setMultiMessageCaller(address(42));
+        senderGAC.setAuthorisedCaller(address(42));
 
-        assertEq(gac.getMultiMessageCaller(), address(42));
+        assertEq(senderGAC.getAuthorisedCaller(), address(42));
     }
 
     /// @dev only owner can set multi message caller
@@ -88,7 +88,7 @@ contract GACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        gac.setMultiMessageCaller(address(42));
+        senderGAC.setAuthorisedCaller(address(42));
     }
 
     /// @dev cannot set multi message caller to zero address
@@ -96,19 +96,21 @@ contract GACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        gac.setMultiMessageCaller(address(0));
+        senderGAC.setAuthorisedCaller(address(0));
     }
 
     /// @dev sets multi message receiver
     function test_set_multi_message_receiver() public {
         vm.startPrank(owner);
 
-        vm.expectEmit(true, true, true, true, address(gac));
-        emit MultiMessageReceiverUpdated(DST_CHAIN_ID, address(42));
+        vm.expectEmit(true, true, true, true, address(senderGAC));
+        emit MultiMessageReceiverUpdated(
+            DST_CHAIN_ID, senderGAC.getRemoteMultiMessageReceiver(DST_CHAIN_ID), address(42)
+        );
 
-        gac.setMultiMessageReceiver(DST_CHAIN_ID, address(42));
+        senderGAC.setRemoteMultiMessageReceiver(DST_CHAIN_ID, address(42));
 
-        assertEq(gac.getMultiMessageReceiver(DST_CHAIN_ID), address(42));
+        assertEq(senderGAC.getRemoteMultiMessageReceiver(DST_CHAIN_ID), address(42));
     }
 
     /// @dev only owner can set multi message receiver
@@ -116,7 +118,7 @@ contract GACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        gac.setMultiMessageReceiver(DST_CHAIN_ID, address(42));
+        senderGAC.setRemoteMultiMessageReceiver(DST_CHAIN_ID, address(42));
     }
 
     /// @dev cannot set multi message receiver to zero address
@@ -124,7 +126,7 @@ contract GACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        gac.setMultiMessageReceiver(DST_CHAIN_ID, address(0));
+        senderGAC.setRemoteMultiMessageReceiver(DST_CHAIN_ID, address(0));
     }
 
     /// @dev cannot set multi message receiver on zero chain ID
@@ -132,20 +134,20 @@ contract GACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        gac.setMultiMessageReceiver(0, address(42));
+        senderGAC.setRemoteMultiMessageReceiver(0, address(42));
     }
 
     /// @dev sets global message delivery gas limit
     function test_set_global_msg_delivery_gas_limit() public {
         vm.startPrank(owner);
 
-        uint256 oldLimit = gac.getGlobalMsgDeliveryGasLimit();
-        vm.expectEmit(true, true, true, true, address(gac));
+        uint256 oldLimit = senderGAC.getGlobalMsgDeliveryGasLimit();
+        vm.expectEmit(true, true, true, true, address(senderGAC));
         emit DstGasLimitUpdated(oldLimit, 420000);
 
-        gac.setGlobalMsgDeliveryGasLimit(420000);
+        senderGAC.setGlobalMsgDeliveryGasLimit(420000);
 
-        assertEq(gac.getGlobalMsgDeliveryGasLimit(), 420000);
+        assertEq(senderGAC.getGlobalMsgDeliveryGasLimit(), 420000);
     }
 
     /// @dev only owner can set global message delivery gas limit
@@ -153,7 +155,7 @@ contract GACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        gac.setGlobalMsgDeliveryGasLimit(420000);
+        senderGAC.setGlobalMsgDeliveryGasLimit(420000);
     }
 
     /// @dev cannot set a gas limit lower than the minimum
@@ -161,17 +163,17 @@ contract GACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.INVALID_DST_GAS_LIMIT_MIN.selector);
-        gac.setGlobalMsgDeliveryGasLimit(30000);
+        senderGAC.setGlobalMsgDeliveryGasLimit(30000);
     }
 
     /// @dev checks if address is the global owner
     function test_is_global_owner() public {
-        assertTrue(gac.isGlobalOwner(owner));
-        assertFalse(gac.isGlobalOwner(caller));
+        assertTrue(senderGAC.isGlobalOwner(owner));
+        assertFalse(senderGAC.isGlobalOwner(caller));
     }
 
     /// @dev gets the global owner
     function test_get_global_owner() public {
-        assertEq(gac.getGlobalOwner(), owner);
+        assertEq(senderGAC.getGlobalOwner(), owner);
     }
 }

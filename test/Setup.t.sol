@@ -17,6 +17,8 @@ import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
 import {GAC} from "src/controllers/GAC.sol";
+import {MessageSenderGAC} from "src/controllers/MessageSenderGAC.sol";
+import {MessageReceiverGAC} from "src/controllers/MessageReceiverGAC.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
 import {MultiMessageSender} from "src/MultiMessageSender.sol";
@@ -133,9 +135,15 @@ abstract contract Setup is Test {
             uint256 chainId = ALL_CHAINS[i];
             vm.selectFork(fork[chainId]);
 
-            GAC gac = new GAC{salt: _salt}();
-            gac.setMultiMessageCaller(caller);
-            contractAddress[chainId][bytes("GAC")] = address(gac);
+            address gac;
+            if (chainId == SRC_CHAIN_ID) {
+                MessageSenderGAC senderGAC = new MessageSenderGAC{salt: _salt}();
+                senderGAC.setAuthorisedCaller(caller);
+                gac = address(senderGAC);
+            } else {
+                gac = address(new MessageReceiverGAC{salt: _salt}());
+            }
+            contractAddress[chainId][bytes("GAC")] = gac;
 
             unchecked {
                 ++i;
@@ -272,20 +280,21 @@ abstract contract Setup is Test {
     /// @dev setup core contracts
     function _setupCoreContracts() internal {
         /// setup mma sender adapters
-        vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
+        vm.selectFork(fork[SRC_CHAIN_ID]);
         vm.startPrank(owner);
 
         address[] memory _senderAdapters = new address[](2);
-        _senderAdapters[0] = contractAddress[1][bytes("WORMHOLE_SENDER_ADAPTER")];
-        _senderAdapters[1] = contractAddress[1][bytes("AXELAR_SENDER_ADAPTER")];
+        _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
+        _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
 
-        MultiMessageSender(contractAddress[1][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
+        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
+
+        MessageSenderGAC senderGAC = MessageSenderGAC(contractAddress[SRC_CHAIN_ID][bytes("GAC")]);
+        senderGAC.setMultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
 
         /// setup mma receiver adapters
         for (uint256 i; i < DST_CHAINS.length;) {
             uint256 chainId = DST_CHAINS[i];
-            /// setup receiver adapters
-            vm.selectFork(fork[chainId]);
 
             address[] memory _receiverAdapters = new address[](2);
             _receiverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
@@ -295,40 +304,18 @@ abstract contract Setup is Test {
             _operations[0] = true;
             _operations[1] = true;
 
-            MultiMessageReceiver(contractAddress[DST_CHAINS[i]][bytes("MMA_RECEIVER")]).initialize(
+            /// setup receiver adapters
+            vm.selectFork(fork[chainId]);
+            address dstMMReceiver = contractAddress[chainId][bytes("MMA_RECEIVER")];
+            MultiMessageReceiver(dstMMReceiver).initialize(
                 ETHEREUM_CHAIN_ID, _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
-            unchecked {
-                ++i;
-            }
-        }
+            MessageReceiverGAC receiverGAC = MessageReceiverGAC(contractAddress[chainId][bytes("GAC")]);
+            receiverGAC.setMultiMessageReceiver(dstMMReceiver);
 
-        /// setup the core contracts to GAC
-        for (uint256 i; i < ALL_CHAINS.length;) {
-            uint256 chainId = ALL_CHAINS[i];
-
-            vm.selectFork(fork[chainId]);
-            vm.startPrank(owner);
-
-            /// @dev mma sender is only available on chain id 1
-            if (chainId == 1) {
-                GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageSender(
-                    contractAddress[chainId][bytes("MMA_SENDER")]
-                );
-            }
-            for (uint256 j; j < ALL_CHAINS.length;) {
-                /// @dev mma receiver is not available on chain id 1
-                if (ALL_CHAINS[j] != 1) {
-                    GAC(contractAddress[chainId][bytes("GAC")]).setMultiMessageReceiver(
-                        ALL_CHAINS[j], contractAddress[ALL_CHAINS[j]][bytes("MMA_RECEIVER")]
-                    );
-                }
-
-                unchecked {
-                    ++j;
-                }
-            }
+            vm.selectFork(fork[SRC_CHAIN_ID]);
+            senderGAC.setRemoteMultiMessageReceiver(chainId, dstMMReceiver);
 
             unchecked {
                 ++i;

@@ -30,7 +30,7 @@ contract WormholeSenderAdapterTest is Setup {
     /// @dev constructor
     function test_constructor() public {
         // checks existing setup
-        assertEq(address(adapter.gac()), contractAddress[SRC_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev dispatches message
@@ -114,7 +114,7 @@ contract WormholeSenderAdapterTest is Setup {
     /// @dev gets message fee
     function test_get_message_fee() public {
         (uint256 fee,) = IWormholeRelayer(ETH_RELAYER).quoteEVMDeliveryPrice(
-            adapter.chainIdMap(DST_CHAIN_ID), 0, adapter.gac().getGlobalMsgDeliveryGasLimit()
+            adapter.chainIdMap(DST_CHAIN_ID), 0, adapter.senderGAC().getGlobalMsgDeliveryGasLimit()
         );
         assertEq(adapter.getMessageFee(DST_CHAIN_ID, address(42), bytes("42")), fee);
     }

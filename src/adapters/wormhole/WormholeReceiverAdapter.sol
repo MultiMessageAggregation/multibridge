@@ -7,11 +7,12 @@ import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
 /// local imports
 import "../../interfaces/IMessageReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
-import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/TypeCasts.sol";
 import "../../libraries/Message.sol";
+
+import "../../controllers/MessageReceiverGAC.sol";
 
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
@@ -19,7 +20,7 @@ import "../../libraries/Message.sol";
 contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     string public constant name = "WORMHOLE";
     address public immutable relayer;
-    IGAC public immutable gac;
+    MessageReceiverGAC public immutable receiverGAC;
     uint16 public immutable senderChain;
 
     /*/////////////////////////////////////////////////////////////////
@@ -36,7 +37,7 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyGlobalOwner() {
-        if (!gac.isGlobalOwner(msg.sender)) {
+        if (!receiverGAC.isGlobalOwner(msg.sender)) {
             revert Error.CALLER_NOT_OWNER();
         }
         _;
@@ -54,11 +55,11 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     ////////////////////////////////////////////////////////////////*/
 
     /// @param _relayer is wormhole relayer.
-    /// @param _gac is global access controller.
+    /// @param _receiverGAC is global access controller.
     /// @param _senderChain is the chain id of the sender chain.
     /// note: https://docs.wormhole.com/wormhole/quick-start/cross-chain-dev/automatic-relayer
-    constructor(address _relayer, address _gac, uint16 _senderChain) {
-        if (_relayer == address(0) || _gac == address(0)) {
+    constructor(address _relayer, address _receiverGAC, uint16 _senderChain) {
+        if (_relayer == address(0) || _receiverGAC == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -67,7 +68,7 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
         }
 
         relayer = _relayer;
-        gac = IGAC(_gac);
+        receiverGAC = MessageReceiverGAC(_receiverGAC);
         senderChain = _senderChain;
     }
 
@@ -143,7 +144,7 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
         }
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
+        if (decodedPayload.finalDestination != receiverGAC.getMultiMessageReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 

@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 /// interfaces
 import "./interfaces/IMessageSenderAdapter.sol";
 import "./interfaces/IMultiMessageReceiver.sol";
-import "./interfaces/IGAC.sol";
+import "./controllers/MessageSenderGAC.sol";
 
 /// libraries
 import "./libraries/Message.sol";
@@ -22,7 +22,7 @@ contract MultiMessageSender {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Global Access Controller (GAC) contract
-    IGAC public immutable gac;
+    MessageSenderGAC public immutable senderGAC;
 
     /// @dev the minimum and maximum duration that a message's expiration parameter can be set to
     uint256 public constant MIN_EXPIRATION = 2 days;
@@ -82,7 +82,7 @@ contract MultiMessageSender {
 
     /// @dev checks if msg.sender is the owner configured in GAC
     modifier onlyOwner() {
-        if (msg.sender != gac.getGlobalOwner()) {
+        if (msg.sender != senderGAC.getGlobalOwner()) {
             revert Error.CALLER_NOT_OWNER();
         }
         _;
@@ -90,7 +90,7 @@ contract MultiMessageSender {
 
     /// @dev checks if msg.sender is the authorised caller configured in GAC
     modifier onlyCaller() {
-        if (msg.sender != gac.getMultiMessageCaller()) {
+        if (msg.sender != senderGAC.getAuthorisedCaller()) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -109,13 +109,13 @@ contract MultiMessageSender {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _gac is the controller/registry of MMA
-    constructor(address _gac) {
-        if (_gac == address(0)) {
+    /// @param _senderGAC is the controller/registry of MMA
+    constructor(address _senderGAC) {
+        if (_senderGAC == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        gac = IGAC(_gac);
+        senderGAC = MessageSenderGAC(_senderGAC);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -247,7 +247,7 @@ contract MultiMessageSender {
             revert Error.INVALID_REFUND_ADDRESS();
         }
 
-        address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
+        address mmaReceiver = senderGAC.getRemoteMultiMessageReceiver(_dstChainId);
 
         if (mmaReceiver == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();

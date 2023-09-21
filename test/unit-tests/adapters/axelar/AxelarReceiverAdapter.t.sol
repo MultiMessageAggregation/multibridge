@@ -35,7 +35,7 @@ contract AxelarReceiverAdapterTest is Setup {
     function test_constructor() public {
         // checks existing setup
         assertEq(address(adapter.gateway()), POLYGON_GATEWAY);
-        assertEq(address(adapter.gac()), contractAddress[DST_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.receiverGAC()), contractAddress[DST_CHAIN_ID]["GAC"]);
         assertEq(adapter.senderChain(), "ethereum");
     }
 

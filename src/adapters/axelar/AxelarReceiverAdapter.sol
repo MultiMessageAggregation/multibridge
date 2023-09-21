@@ -6,7 +6,6 @@ import "forge-std/console.sol";
 /// local imports
 import "../../interfaces/IMessageReceiverAdapter.sol";
 import "../../interfaces/IMultiMessageReceiver.sol";
-import "../../interfaces/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/Message.sol";
@@ -15,6 +14,8 @@ import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarExecutable.sol";
 import "./libraries/StringAddressConversion.sol";
 
+import "../../controllers/MessageReceiverGAC.sol";
+
 /// @notice receiver adapter for axelar bridge
 contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     using StringAddressConversion for string;
@@ -22,7 +23,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
     string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
-    IGAC public immutable gac;
+    MessageReceiverGAC public immutable receiverGAC;
 
     /*/////////////////////////////////////////////////////////////////
                         STATE VARIABLES
@@ -37,7 +38,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyGlobalOwner() {
-        if (!gac.isGlobalOwner(msg.sender)) {
+        if (!receiverGAC.isGlobalOwner(msg.sender)) {
             revert Error.CALLER_NOT_OWNER();
         }
         _;
@@ -47,10 +48,10 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
                          CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
     /// @param _gateway is axelar gateway contract address.
-    /// @param _gac is global access controller.
+    /// @param _receiverGAC is global access controller.
     /// @param _senderChain is the chain id of the sender chain.
-    constructor(address _gateway, address _gac, string memory _senderChain) {
-        if (_gateway == address(0) || _gac == address(0)) {
+    constructor(address _gateway, address _receiverGAC, string memory _senderChain) {
+        if (_gateway == address(0) || _receiverGAC == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
@@ -59,7 +60,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
         }
 
         gateway = IAxelarGateway(_gateway);
-        gac = IGAC(_gac);
+        receiverGAC = MessageReceiverGAC(_receiverGAC);
         senderChain = _senderChain;
     }
 
@@ -117,7 +118,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
         }
 
         /// @dev step-6: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
+        if (decodedPayload.finalDestination != receiverGAC.getMultiMessageReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 

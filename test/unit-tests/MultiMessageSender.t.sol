@@ -7,7 +7,7 @@ import {Vm} from "forge-std/Test.sol";
 /// local imports
 import "test/Setup.t.sol";
 import "test/contracts-mock/FailingSenderAdapter.sol";
-import "test/contracts-mock/ZeroAddressReceiverGac.sol";
+import "test/contracts-mock/ZeroAddressReceiverGAC.sol";
 import "src/interfaces/IMessageSenderAdapter.sol";
 import "src/interfaces/IMultiMessageReceiver.sol";
 import "src/interfaces/IGAC.sol";
@@ -51,7 +51,7 @@ contract MultiMessageSenderTest is Setup {
     /// @dev constructor
     function test_constructor() public {
         // checks existing setup
-        assertEq(address(sender.gac()), contractAddress[SRC_CHAIN_ID]["GAC"]);
+        assertEq(address(sender.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev cannot be called with zero address GAC
@@ -262,7 +262,7 @@ contract MultiMessageSenderTest is Setup {
     function test_remote_call_zero_receiver_address() public {
         vm.startPrank(caller);
 
-        MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGac(caller)));
+        MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGAC(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
         dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
