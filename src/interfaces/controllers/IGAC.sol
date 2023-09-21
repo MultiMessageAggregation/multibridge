@@ -4,12 +4,12 @@ pragma solidity >=0.8.9;
 
 /// @notice interface for GAC (Global Access Controller)
 interface IGAC {
-    /// @dev returns `true` if the caller is global access controller
-    /// @param _caller is the msg.sender to validate
-    /// @return boolean indicating the validity of the caller
-    function isGlobalOwner(address _caller) external view returns (bool);
+    /// @notice Checks whether a given address is the global owner
+    /// @param _addr is the address to compare with the global owner
+    /// @return boolean true if _caller is the global owner, false otherwise
+    function isGlobalOwner(address _addr) external view returns (bool);
 
-    /// @dev returns the global owner address
+    /// @notice returns the global owner address.
     /// @return _owner is the global owner address
     function getGlobalOwner() external view returns (address _owner);
 }

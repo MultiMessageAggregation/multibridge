@@ -21,7 +21,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     uint256 public txCounter;
-    uint256 public delay = MINIMUM_DELAY;
+    uint256 public delay;
 
     /// @notice the admin is the one allowed to schedule events
     address public admin;

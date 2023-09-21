@@ -15,9 +15,9 @@ import "./libraries/Error.sol";
 import "./libraries/Message.sol";
 
 /// @title Multi-bridge message receiver.
-/// @notice This contract is deployed on each destination chain, and receives messages sent by the MultiBridgeMessageSender.sol
+/// @notice This contract is deployed on each destination chain, and receives messages sent by the MultiBridgeMessageSender
 /// contract on the source chain, through multiple bridge adapters. A message is considered valid and can be executed
-/// if it has been delivered by enough trusted bridge receiver adapters (i.e. has achieved a quorum threshold),
+/// if it has been delivered by enough trusted bridge receiver adapters (i.e. has achieved a configured quorum threshold),
 /// before the message's expiration. If a message is successfully validated in time, it is queued for execution on the
 /// governance timelock contract.
 /// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
