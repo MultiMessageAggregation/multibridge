@@ -56,7 +56,7 @@ contract GovernanceTimelockTest is Setup {
 
         assertEq(timelock.txCounter(), 1);
         assertEq(
-            timelock.scheduledTransaction(1), keccak256(abi.encodePacked(address(42), uint256(1), bytes("42"), eta))
+            timelock.scheduledTransaction(1), keccak256(abi.encodePacked(address(42), uint256(1), eta, bytes("42")))
         );
     }
 

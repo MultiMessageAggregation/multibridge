@@ -81,7 +81,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
         ++txCounter;
         uint256 eta = block.timestamp + delay;
 
-        scheduledTransaction[txCounter] = keccak256(abi.encodePacked(_target, _value, _data, eta));
+        scheduledTransaction[txCounter] = keccak256(abi.encodePacked(_target, _value, eta, _data));
         emit TransactionScheduled(txCounter, _target, _value, _data, eta);
     }
 
@@ -102,7 +102,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
         }
 
         /// @dev check the input params against hash
-        if (scheduledTransaction[_txId] != keccak256(abi.encodePacked(_target, _value, _data, _eta))) {
+        if (scheduledTransaction[_txId] != keccak256(abi.encodePacked(_target, _value, _eta, _data))) {
             revert Error.INVALID_TX_INPUT();
         }
 
