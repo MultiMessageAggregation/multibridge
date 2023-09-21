@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// local imports
-import {IGAC} from "../interfaces/IGAC.sol";
+import {IGAC} from "../interfaces/controllers/IGAC.sol";
 import {Error} from "../libraries/Error.sol";
 
 /// @dev is the global access control contract for bridge adapters

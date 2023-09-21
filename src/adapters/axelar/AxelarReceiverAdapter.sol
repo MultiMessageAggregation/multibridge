@@ -4,8 +4,8 @@ pragma solidity >=0.8.9;
 import "forge-std/console.sol";
 
 /// local imports
-import "../../interfaces/IMessageReceiverAdapter.sol";
-import "../../interfaces/IMultiMessageReceiver.sol";
+import "../../interfaces/adapters/IMessageReceiverAdapter.sol";
+import "../../interfaces/IMultiBridgeMessageReceiver.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/Message.sol";
@@ -95,7 +95,7 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
         }
 
         /// @dev step-6: validate the destination
-        if (decodedPayload.finalDestination != receiverGAC.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != receiverGAC.getMultiBridgeMessageReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
@@ -104,7 +104,7 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+        try IMultiBridgeMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);

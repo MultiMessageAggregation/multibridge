@@ -6,7 +6,7 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "../../../Setup.t.sol";
-import "src/MultiMessageReceiver.sol";
+import "src/MultiBridgeMessageReceiver.sol";
 import "src/interfaces/EIP5164/MessageExecutor.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";

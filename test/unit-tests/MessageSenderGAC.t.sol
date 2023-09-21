@@ -10,18 +10,18 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../Setup.t.sol";
 import "../contracts-mock/FailingSenderAdapter.sol";
 import "../contracts-mock/ZeroAddressReceiverGAC.sol";
-import "src/interfaces/IMessageSenderAdapter.sol";
-import "src/interfaces/IMultiMessageReceiver.sol";
-import "src/interfaces/IGAC.sol";
+import "../../src/interfaces/adapters/IMessageSenderAdapter.sol";
+import "src/interfaces/IMultiBridgeMessageReceiver.sol";
+import "../../src/interfaces/controllers/IGAC.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
 contract MessageSenderGACTest is Setup {
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
-    event MultiMessageCallerUpdated(address indexed mmaCaller);
-    event MultiMessageSenderUpdated(address indexed mmaSender);
-    event MultiMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
+    event MultiBridgeMessageCallerUpdated(address indexed mmaCaller);
+    event MultiBridgeMessageSenderUpdated(address indexed mmaSender);
+    event MultiBridgeMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
     address senderAddr;
     address receiverAddr;
@@ -48,11 +48,11 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiMessageSenderUpdated(address(42));
+        emit MultiBridgeMessageSenderUpdated(address(42));
 
-        senderGAC.setMultiMessageSender(address(42));
+        senderGAC.setMultiBridgeMessageSender(address(42));
 
-        assertEq(senderGAC.getMultiMessageSender(), address(42));
+        assertEq(senderGAC.getMultiBridgeMessageSender(), address(42));
     }
 
     /// @dev only owner can set multi message sender
@@ -60,7 +60,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        senderGAC.setMultiMessageSender(address(42));
+        senderGAC.setMultiBridgeMessageSender(address(42));
     }
 
     /// @dev cannot set multi message sender to zero address
@@ -68,7 +68,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        senderGAC.setMultiMessageSender(address(0));
+        senderGAC.setMultiBridgeMessageSender(address(0));
     }
 
     /// @dev sets multi message caller
@@ -76,7 +76,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiMessageCallerUpdated(address(42));
+        emit MultiBridgeMessageCallerUpdated(address(42));
 
         senderGAC.setAuthorisedCaller(address(42));
 
@@ -104,13 +104,13 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiMessageReceiverUpdated(
-            DST_CHAIN_ID, senderGAC.getRemoteMultiMessageReceiver(DST_CHAIN_ID), address(42)
+        emit MultiBridgeMessageReceiverUpdated(
+            DST_CHAIN_ID, senderGAC.getRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID), address(42)
         );
 
-        senderGAC.setRemoteMultiMessageReceiver(DST_CHAIN_ID, address(42));
+        senderGAC.setRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID, address(42));
 
-        assertEq(senderGAC.getRemoteMultiMessageReceiver(DST_CHAIN_ID), address(42));
+        assertEq(senderGAC.getRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID), address(42));
     }
 
     /// @dev only owner can set multi message receiver
@@ -118,7 +118,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        senderGAC.setRemoteMultiMessageReceiver(DST_CHAIN_ID, address(42));
+        senderGAC.setRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID, address(42));
     }
 
     /// @dev cannot set multi message receiver to zero address
@@ -126,7 +126,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        senderGAC.setRemoteMultiMessageReceiver(DST_CHAIN_ID, address(0));
+        senderGAC.setRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID, address(0));
     }
 
     /// @dev cannot set multi message receiver on zero chain ID
@@ -134,7 +134,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        senderGAC.setRemoteMultiMessageReceiver(0, address(42));
+        senderGAC.setRemoteMultiBridgeMessageReceiver(0, address(42));
     }
 
     /// @dev sets global message delivery gas limit

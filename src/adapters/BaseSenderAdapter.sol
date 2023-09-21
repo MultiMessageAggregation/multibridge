@@ -2,7 +2,7 @@
 pragma solidity >=0.8.9;
 
 import "../libraries/Error.sol";
-import "../interfaces/IMessageSenderAdapter.sol";
+import "../interfaces/adapters/IMessageSenderAdapter.sol";
 import "../controllers/MessageSenderGAC.sol";
 
 abstract contract BaseSenderAdapter is IMessageSenderAdapter {
@@ -18,8 +18,8 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyMultiMessageSender() {
-        if (msg.sender != senderGAC.getMultiMessageSender()) {
+    modifier onlyMultiBridgeMessageSender() {
+        if (msg.sender != senderGAC.getMultiBridgeMessageSender()) {
             revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
         }
         _;

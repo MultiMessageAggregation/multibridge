@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-import "../interfaces/IMessageReceiverAdapter.sol";
+import "../interfaces/adapters/IMessageReceiverAdapter.sol";
 import "../controllers/MessageReceiverGAC.sol";
 
 abstract contract BaseReceiverAdapter is IMessageReceiverAdapter {

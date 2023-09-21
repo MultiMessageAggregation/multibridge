@@ -8,7 +8,7 @@ import {Vm} from "forge-std/Test.sol";
 import "../../../Setup.t.sol";
 import "../../../contracts-mock/adapters/axelar/MockAxelarGateway.sol";
 import "src/adapters/axelar/libraries/StringAddressConversion.sol";
-import "src/MultiMessageReceiver.sol";
+import "src/MultiBridgeMessageReceiver.sol";
 import "src/interfaces/EIP5164/MessageExecutor.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
@@ -334,7 +334,7 @@ contract AxelarReceiverAdapterTest is Setup {
         receiverAdapters[0] = address(dummyAdapter);
         bool[] memory operations = new bool[](1);
         operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapters(receiverAdapters, operations);
+        MultiBridgeMessageReceiver(receiverAddr).updateReceiverAdapters(receiverAdapters, operations);
 
         vm.startPrank(caller);
     }

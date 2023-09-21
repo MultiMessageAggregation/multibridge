@@ -30,12 +30,12 @@ On the destination chain, if 2 of the 3 AMB agree with each other, we would cons
 The flow of the message and how it is transformed and relayed is detailed below:
 
 1. Uniswap Ethereum governance structure, `src`, approves to execute a message `msg` on destination chain `dst`.
-2. Uniswap governance sends `msg` to `MultiMessageSender`.
-3. `MultiMessageSender` relays `msg` to different adapters `adapter`.
+2. Uniswap governance sends `msg` to `MultiBridgeMessageSender`.
+3. `MultiBridgeMessageSender` relays `msg` to different adapters `adapter`.
 4. `adapter` encodes `msg` into the corresponding formatted message, `formatted_msg`, and sends it to the hardcoded AMB contracts `AMB`.
 5. Each `AMB` independently carries `formatted_msg` to `dst`.
 6. On the destination chain, another set of `adapters` decodes `formatted_msgs` into the original `msg`.
-7. `msg` is collected inside the `MultiMessageReceiver` contract.
+7. `msg` is collected inside the `MultiBridgeMessageReceiver` contract.
 8. If 2 out of 3 `msg` is the same, the `msg` will be executed on `dst`.
 
 ![Illustration of ](https://files.gitbook.com/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FyWOfgotvwuIBhzylK0ud%2Fuploads%2Fco073eKSrR7xUmhObi7v%2FMMA_Highlevel.png?alt=media&token=bff8ec55-c04f-4ab9-b362-caae601154db)
@@ -97,8 +97,8 @@ All code changes must be thoroughly tested. Please ensure that your tests cover 
 ## Contracts
 ```
 contracts
-├── MultiMessageReceiver.sol
-├── MultiMessageSender.sol
+├── MultiBridgeMessageReceiver.sol
+├── MultiBridgeMessageSender.sol
 ├── adapters
 │   ├── BaseSenderAdapter.sol
 │   ├── axelar
@@ -126,7 +126,7 @@ contracts
 │   ├── IGovernanceTimelock.sol
 │   ├── IMessageReceiverAdapter.sol
 │   ├── IMessageSenderAdapter.sol
-│   └── IMultiMessageReceiver.sol
+│   └── IMultiBridgeMessageReceiver.sol
 └── libraries
     ├── Error.sol
     ├── Message.sol

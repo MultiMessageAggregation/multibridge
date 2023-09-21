@@ -14,11 +14,11 @@ contract MessageSenderGAC is GAC {
     //////////////////////////////////////////////////////////////*/
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
 
-    event MultiMessageCallerUpdated(address indexed mmaCaller);
+    event MultiBridgeMessageCallerUpdated(address indexed mmaCaller);
 
-    event MultiMessageSenderUpdated(address indexed mmaSender);
+    event MultiBridgeMessageSenderUpdated(address indexed mmaSender);
 
-    event MultiMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
+    event MultiBridgeMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
     /*///////////////////////////////////////////////////////////////
                              CONSTANTS
@@ -32,25 +32,25 @@ contract MessageSenderGAC is GAC {
 
     /// @notice is the MMA Core Contracts on the chain
     /// @dev leveraged by bridge adapters for authentication
-    address public multiMessageSender;
+    address public multiBridgeMessageSender;
 
     /// @dev is the authorised caller for the multi-message sender
     address public authorisedCaller;
 
-    mapping(uint256 chainId => address mmaReceiver) public remoteMultiMessageReceiver;
+    mapping(uint256 chainId => address mmaReceiver) public remoteMultiBridgeMessageReceiver;
 
     /*///////////////////////////////////////////////////////////////
                           EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function setMultiMessageSender(address _mmaSender) external onlyOwner {
+    function setMultiBridgeMessageSender(address _mmaSender) external onlyOwner {
         if (_mmaSender == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        multiMessageSender = _mmaSender;
+        multiBridgeMessageSender = _mmaSender;
 
-        emit MultiMessageSenderUpdated(_mmaSender);
+        emit MultiBridgeMessageSenderUpdated(_mmaSender);
     }
 
     function setAuthorisedCaller(address newMMSCaller) external onlyOwner {
@@ -60,10 +60,10 @@ contract MessageSenderGAC is GAC {
 
         authorisedCaller = newMMSCaller;
 
-        emit MultiMessageCallerUpdated(newMMSCaller);
+        emit MultiBridgeMessageCallerUpdated(newMMSCaller);
     }
 
-    function setRemoteMultiMessageReceiver(uint256 _chainId, address _remoteMMR) external onlyOwner {
+    function setRemoteMultiBridgeMessageReceiver(uint256 _chainId, address _remoteMMR) external onlyOwner {
         if (_remoteMMR == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
@@ -72,10 +72,10 @@ contract MessageSenderGAC is GAC {
             revert Error.ZERO_CHAIN_ID();
         }
 
-        address oldRemoteMMR = remoteMultiMessageReceiver[_chainId];
-        remoteMultiMessageReceiver[_chainId] = _remoteMMR;
+        address oldRemoteMMR = remoteMultiBridgeMessageReceiver[_chainId];
+        remoteMultiBridgeMessageReceiver[_chainId] = _remoteMMR;
 
-        emit MultiMessageReceiverUpdated(_chainId, oldRemoteMMR, _remoteMMR);
+        emit MultiBridgeMessageReceiverUpdated(_chainId, oldRemoteMMR, _remoteMMR);
     }
 
     function setGlobalMsgDeliveryGasLimit(uint256 _gasLimit) external onlyOwner {
@@ -97,12 +97,12 @@ contract MessageSenderGAC is GAC {
         _gasLimit = dstGasLimit;
     }
 
-    function getMultiMessageSender() external view returns (address _mmaSender) {
-        _mmaSender = multiMessageSender;
+    function getMultiBridgeMessageSender() external view returns (address _mmaSender) {
+        _mmaSender = multiBridgeMessageSender;
     }
 
-    function getRemoteMultiMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver) {
-        _mmaReceiver = remoteMultiMessageReceiver[_chainId];
+    function getRemoteMultiBridgeMessageReceiver(uint256 _chainId) external view returns (address _mmaReceiver) {
+        _mmaReceiver = remoteMultiBridgeMessageReceiver[_chainId];
     }
 
     function getAuthorisedCaller() external view returns (address _mmaCaller) {

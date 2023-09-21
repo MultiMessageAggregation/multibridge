@@ -21,8 +21,8 @@ import {MessageSenderGAC} from "src/controllers/MessageSenderGAC.sol";
 import {MessageReceiverGAC} from "src/controllers/MessageReceiverGAC.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
+import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 
 /// @dev can inherit the setup in tests
 abstract contract Setup is Test {
@@ -156,9 +156,8 @@ abstract contract Setup is Test {
         /// @notice deploy source adapter to SRC_CHAIN (ETH)
         vm.selectFork(fork[SRC_CHAIN_ID]);
 
-        contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")] = address(
-            new WormholeSenderAdapter{salt: _salt}(ETH_RELAYER, contractAddress[SRC_CHAIN_ID][bytes("GAC")])
-        );
+        contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")] =
+            address(new WormholeSenderAdapter{salt: _salt}(ETH_RELAYER, contractAddress[SRC_CHAIN_ID][bytes("GAC")]));
 
         uint256 len = DST_CHAINS.length;
 
@@ -184,8 +183,9 @@ abstract contract Setup is Test {
         /// @dev sets some configs to sender adapter (ETH_CHAIN_ADAPTER)
         vm.selectFork(fork[SRC_CHAIN_ID]);
 
-        WormholeSenderAdapter(contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")])
-            .updateReceiverAdapter(DST_CHAINS, _receiverAdapters);
+        WormholeSenderAdapter(contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")]).updateReceiverAdapter(
+            DST_CHAINS, _receiverAdapters
+        );
 
         WormholeSenderAdapter(contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")]).setChainIdMap(
             DST_CHAINS, WORMHOLE_CHAIN_IDS
@@ -263,14 +263,14 @@ abstract contract Setup is Test {
         /// @notice deploy mma sender to ETHEREUM
         vm.selectFork(fork[SRC_CHAIN_ID]);
         contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")] =
-            address(new MultiMessageSender{salt: _salt}(contractAddress[SRC_CHAIN_ID][bytes("GAC")]));
+            address(new MultiBridgeMessageSender{salt: _salt}(contractAddress[SRC_CHAIN_ID][bytes("GAC")]));
 
         /// @notice deploy amb helpers to BSC & POLYGON
         for (uint256 i; i < DST_CHAINS.length; i++) {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            address mmaReceiver = address(new MultiMessageReceiver{salt: _salt}());
+            address mmaReceiver = address(new MultiBridgeMessageReceiver{salt: _salt}());
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
                 address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver, 3 days)));
@@ -287,10 +287,10 @@ abstract contract Setup is Test {
         _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
         _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
 
-        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
+        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
 
         MessageSenderGAC senderGAC = MessageSenderGAC(contractAddress[SRC_CHAIN_ID][bytes("GAC")]);
-        senderGAC.setMultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
+        senderGAC.setMultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
 
         /// setup mma receiver adapters
         for (uint256 i; i < DST_CHAINS.length;) {
@@ -307,15 +307,15 @@ abstract contract Setup is Test {
             /// setup receiver adapters
             vm.selectFork(fork[chainId]);
             address dstMMReceiver = contractAddress[chainId][bytes("MMA_RECEIVER")];
-            MultiMessageReceiver(dstMMReceiver).initialize(
+            MultiBridgeMessageReceiver(dstMMReceiver).initialize(
                 SRC_CHAIN_ID, _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
             );
 
             MessageReceiverGAC receiverGAC = MessageReceiverGAC(contractAddress[chainId][bytes("GAC")]);
-            receiverGAC.setMultiMessageReceiver(dstMMReceiver);
+            receiverGAC.setMultiBridgeMessageReceiver(dstMMReceiver);
 
             vm.selectFork(fork[SRC_CHAIN_ID]);
-            senderGAC.setRemoteMultiMessageReceiver(chainId, dstMMReceiver);
+            senderGAC.setRemoteMultiBridgeMessageReceiver(chainId, dstMMReceiver);
 
             unchecked {
                 ++i;
@@ -398,15 +398,15 @@ abstract contract Setup is Test {
 
     /// @dev returns the relayer of wormhole for chain id
     function _wormholeRelayer(uint256 _chainId) internal pure returns (address) {
-        if (_chainId == 1) {
+        if (_chainId == ETHEREUM_CHAIN_ID) {
             return ETH_RELAYER;
         }
 
-        if (_chainId == 56) {
+        if (_chainId == BSC_CHAIN_ID) {
             return BSC_RELAYER;
         }
 
-        if (_chainId == 137) {
+        if (_chainId == POLYGON_CHAIN_ID) {
             return POLYGON_RELAYER;
         }
 
@@ -433,7 +433,7 @@ abstract contract Setup is Test {
     /// @dev gets the message id from msg logs
     function _getMsgId(Vm.Log[] memory logs) internal pure returns (bytes32 msgId) {
         for (uint256 i; i < logs.length; i++) {
-            if (logs[i].topics[0] == keccak256("SingleBridgeMsgReceived(bytes32,string,uint256,address)")) {
+            if (logs[i].topics[0] == keccak256("BridgeMessageReceived(bytes32,string,uint256,address)")) {
                 msgId = logs[i].topics[1];
             }
         }

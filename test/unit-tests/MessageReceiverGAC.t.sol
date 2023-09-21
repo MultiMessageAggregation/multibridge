@@ -9,13 +9,13 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 /// local imports
 import "../Setup.t.sol";
 import "../contracts-mock/ZeroAddressReceiverGAC.sol";
-import "src/interfaces/IMultiMessageReceiver.sol";
-import "src/interfaces/IGAC.sol";
+import "src/interfaces/IMultiBridgeMessageReceiver.sol";
+import "../../src/interfaces/controllers/IGAC.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 
 contract MessageReceiverGACTest is Setup {
-    event MultiMessageReceiverUpdated(address indexed oldReceiver, address indexed newReceiver);
+    event MultiBridgeMessageReceiverUpdated(address indexed oldReceiver, address indexed newReceiver);
 
     MessageReceiverGAC receiverGAC;
 
@@ -37,11 +37,11 @@ contract MessageReceiverGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(receiverGAC));
-        emit MultiMessageReceiverUpdated(address(receiverGAC.getMultiMessageReceiver()), address(42));
+        emit MultiBridgeMessageReceiverUpdated(address(receiverGAC.getMultiBridgeMessageReceiver()), address(42));
 
-        receiverGAC.setMultiMessageReceiver(address(42));
+        receiverGAC.setMultiBridgeMessageReceiver(address(42));
 
-        assertEq(receiverGAC.getMultiMessageReceiver(), address(42));
+        assertEq(receiverGAC.getMultiBridgeMessageReceiver(), address(42));
     }
 
     /// @dev only owner can set multi message receiver
@@ -49,7 +49,7 @@ contract MessageReceiverGACTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        receiverGAC.setMultiMessageReceiver(address(42));
+        receiverGAC.setMultiBridgeMessageReceiver(address(42));
     }
 
     /// @dev cannot set multi message receiver to zero address
@@ -57,7 +57,7 @@ contract MessageReceiverGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        receiverGAC.setMultiMessageReceiver(address(0));
+        receiverGAC.setMultiBridgeMessageReceiver(address(0));
     }
 
     /// @dev checks if address is the global owner

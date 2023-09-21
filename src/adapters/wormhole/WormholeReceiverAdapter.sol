@@ -5,8 +5,8 @@ pragma solidity >=0.8.9;
 import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
 
 /// local imports
-import "../../interfaces/IMessageReceiverAdapter.sol";
-import "../../interfaces/IMultiMessageReceiver.sol";
+import "../../interfaces/adapters/IMessageReceiverAdapter.sol";
+import "../../interfaces/IMultiBridgeMessageReceiver.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/TypeCasts.sol";
@@ -103,13 +103,13 @@ contract WormholeReceiverAdapter is BaseReceiverAdapter, IWormholeReceiver {
         }
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != receiverGAC.getMultiMessageReceiver()) {
+        if (decodedPayload.finalDestination != receiverGAC.getMultiBridgeMessageReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
+        try IMultiBridgeMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);

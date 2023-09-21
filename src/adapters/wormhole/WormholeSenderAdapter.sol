@@ -6,7 +6,7 @@ import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 
 /// local imports
 import "../BaseSenderAdapter.sol";
-import "../../interfaces/IGAC.sol";
+import "../../interfaces/controllers/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 
@@ -36,7 +36,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
         external
         payable
         override
-        onlyMultiMessageSender
+        onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
         address receiverAdapter = receiverAdapters[_toChainId];

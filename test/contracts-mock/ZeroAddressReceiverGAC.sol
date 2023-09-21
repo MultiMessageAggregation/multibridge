@@ -9,7 +9,7 @@ contract ZeroAddressReceiverGAC {
         caller = _caller;
     }
 
-    function getRemoteMultiMessageReceiver(uint256) external pure returns (address _mmaReceiver) {
+    function getRemoteMultiBridgeMessageReceiver(uint256) external pure returns (address _mmaReceiver) {
         return address(0);
     }
 

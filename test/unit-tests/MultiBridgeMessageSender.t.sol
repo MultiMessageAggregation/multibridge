@@ -8,15 +8,15 @@ import {Vm} from "forge-std/Test.sol";
 import "test/Setup.t.sol";
 import "test/contracts-mock/FailingSenderAdapter.sol";
 import "test/contracts-mock/ZeroAddressReceiverGAC.sol";
-import "src/interfaces/IMessageSenderAdapter.sol";
-import "src/interfaces/IMultiMessageReceiver.sol";
-import "src/interfaces/IGAC.sol";
+import "../../src/interfaces/adapters/IMessageSenderAdapter.sol";
+import "src/interfaces/IMultiBridgeMessageReceiver.sol";
+import "../../src/interfaces/controllers/IGAC.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
-contract MultiMessageSenderTest is Setup {
-    event MultiMessageSent(
+contract MultiBridgeMessageSenderTest is Setup {
+    event MultiBridgeMessageSent(
         bytes32 indexed msgId,
         uint256 nonce,
         uint256 indexed dstChainId,
@@ -30,7 +30,7 @@ contract MultiMessageSenderTest is Setup {
     event SenderAdapterUpdated(address indexed senderAdapter, bool add);
     event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
-    MultiMessageSender sender;
+    MultiBridgeMessageSender sender;
     address receiver;
     IGAC gac;
     address wormholeAdapterAddr;
@@ -41,7 +41,7 @@ contract MultiMessageSenderTest is Setup {
         super.setUp();
 
         vm.selectFork(fork[SRC_CHAIN_ID]);
-        sender = MultiMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]);
+        sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]);
         receiver = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
         gac = IGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
         wormholeAdapterAddr = contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"];
@@ -57,7 +57,7 @@ contract MultiMessageSenderTest is Setup {
     /// @dev cannot be called with zero address GAC
     function test_constructor_zero_address_input() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiMessageSender(address(0));
+        new MultiBridgeMessageSender(address(0));
     }
 
     /// @dev perform remote call
@@ -88,7 +88,7 @@ contract MultiMessageSenderTest is Setup {
         uint256 fee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -143,7 +143,7 @@ contract MultiMessageSenderTest is Setup {
             IMessageSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, abi.encode(message));
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -262,7 +262,7 @@ contract MultiMessageSenderTest is Setup {
     function test_remote_call_zero_receiver_address() public {
         vm.startPrank(caller);
 
-        MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGAC(caller)));
+        MultiBridgeMessageSender dummySender = new MultiBridgeMessageSender(address(new ZeroAddressReceiverGAC(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
         dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress);
@@ -326,7 +326,7 @@ contract MultiMessageSenderTest is Setup {
         emit MessageSendFailed(failingAdapterAddr, message);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -452,7 +452,7 @@ contract MultiMessageSenderTest is Setup {
         });
 
         uint256 totalFee = sender.estimateTotalMessageFee(DST_CHAIN_ID, receiver, address(42), bytes("42"), 0);
-        bytes memory data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
+        bytes memory data = abi.encodeWithSelector(IMultiBridgeMessageReceiver.receiveMessage.selector, message);
 
         uint256 expectedTotalFee;
         expectedTotalFee += IMessageSenderAdapter(wormholeAdapterAddr).getMessageFee(DST_CHAIN_ID, receiver, data);
