@@ -87,35 +87,6 @@ contract WormholeReceiverAdapterTest is Setup {
         adapter.updateSenderAdapter(address(0));
     }
 
-    /// @dev sets chain ID map
-    function test_set_chain_id_map() public {
-        vm.startPrank(owner);
-
-        uint256[] memory origIds = new uint256[](1);
-        origIds[0] = 1234;
-        uint16[] memory whIds = new uint16[](1);
-        whIds[0] = uint16(5678);
-        adapter.setChainIdMap(origIds, whIds);
-
-        assertEq(adapter.chainIdMap(1234), uint16(5678));
-    }
-
-    /// @dev only global owner can set chain ID map
-    function test_set_chain_id_map_only_global_owner() public {
-        vm.startPrank(caller);
-
-        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
-        adapter.setChainIdMap(new uint256[](0), new uint16[](0));
-    }
-
-    /// @dev cannot set chain ID map with mismatched array lengths
-    function test_set_chain_id_map_array_length_mismatched() public {
-        vm.startPrank(owner);
-
-        vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
-        adapter.setChainIdMap(new uint256[](0), new uint16[](1));
-    }
-
     /// @dev receives Wormhole message
     function test_receive_wormhole_messages() public {
         vm.startPrank(POLYGON_RELAYER);
