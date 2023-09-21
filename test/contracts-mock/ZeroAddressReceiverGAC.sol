@@ -3,7 +3,7 @@ pragma solidity >=0.8.9;
 
 /// @dev A mock GAC with zero address receiver
 contract ZeroAddressReceiverGAC {
-    address private immutable caller;
+    address immutable caller;
 
     constructor(address _caller) {
         caller = _caller;

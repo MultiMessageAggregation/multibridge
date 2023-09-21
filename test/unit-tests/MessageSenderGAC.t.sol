@@ -23,9 +23,9 @@ contract MessageSenderGACTest is Setup {
     event MultiMessageSenderUpdated(address indexed mmaSender);
     event MultiMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
-    address private senderAddr;
-    address private receiverAddr;
-    MessageSenderGAC private senderGAC;
+    address senderAddr;
+    address receiverAddr;
+    MessageSenderGAC senderGAC;
 
     /// @dev initializes the setup
     function setUp() public override {

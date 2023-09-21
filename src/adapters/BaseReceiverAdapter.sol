@@ -23,14 +23,14 @@ abstract contract BaseReceiverAdapter is IMessageReceiverAdapter {
     }
 
     /// @inheritdoc IMessageReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
-        if (_senderAdapter == address(0)) {
+    function updateSenderAdapter(address _newSender) external override onlyGlobalOwner {
+        if (_newSender == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        address oldAdapter = senderAdapter;
-        senderAdapter = _senderAdapter;
+        address oldSender = senderAdapter;
+        senderAdapter = _newSender;
 
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
+        emit SenderAdapterUpdated(oldSender, _newSender);
     }
 }

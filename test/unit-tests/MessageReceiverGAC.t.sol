@@ -17,7 +17,7 @@ import "src/libraries/Message.sol";
 contract MessageReceiverGACTest is Setup {
     event MultiMessageReceiverUpdated(address indexed oldReceiver, address indexed newReceiver);
 
-    MessageReceiverGAC private receiverGAC;
+    MessageReceiverGAC receiverGAC;
 
     /// @dev initializes the setup
     function setUp() public override {
