@@ -31,9 +31,9 @@ library MessageLibrary {
                 _message.dstChainId,
                 _message.nonce,
                 _message.target,
-                _message.callData,
                 _message.nativeValue,
-                _message.expiration
+                _message.expiration,
+                _message.callData
             )
         );
     }
