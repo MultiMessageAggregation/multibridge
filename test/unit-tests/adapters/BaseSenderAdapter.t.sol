@@ -8,12 +8,13 @@ import {Vm} from "forge-std/Test.sol";
 import "../../Setup.t.sol";
 import "src/libraries/Error.sol";
 import {AxelarSenderAdapter} from "src/adapters/axelar/AxelarSenderAdapter.sol";
+import {BaseSenderAdapter} from "src/adapters/BaseSenderAdapter.sol";
 
 contract AxelarSenderAdapterTest is Setup {
-    event ReceiverAdapterUpdated(uint256 indexed dstChainId, address indexed receiverAdapter);
+    event ReceiverAdapterUpdated(uint256 indexed dstChainId, address indexed oldReceiver, address indexed newReceiver);
 
     // Test base contract with Axelar adapter
-    AxelarSenderAdapter adapter;
+    BaseSenderAdapter adapter;
 
     /// @dev initializes the setup
     function setUp() public override {
@@ -32,14 +33,14 @@ contract AxelarSenderAdapterTest is Setup {
         receiverAdapters[1] = address(43);
 
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ReceiverAdapterUpdated(BSC_CHAIN_ID, address(42));
+        emit ReceiverAdapterUpdated(BSC_CHAIN_ID, adapter.getReceiverAdapter(BSC_CHAIN_ID), address(42));
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ReceiverAdapterUpdated(POLYGON_CHAIN_ID, address(43));
+        emit ReceiverAdapterUpdated(POLYGON_CHAIN_ID, adapter.getReceiverAdapter(POLYGON_CHAIN_ID), address(43));
 
         adapter.updateReceiverAdapter(DST_CHAINS, receiverAdapters);
 
-        assertEq(adapter.receiverAdapters(BSC_CHAIN_ID), address(42));
-        assertEq(adapter.receiverAdapters(POLYGON_CHAIN_ID), address(43));
+        assertEq(adapter.getReceiverAdapter(BSC_CHAIN_ID), address(42));
+        assertEq(adapter.getReceiverAdapter(POLYGON_CHAIN_ID), address(43));
     }
 
     /// @dev only global owner can update receiver adapter

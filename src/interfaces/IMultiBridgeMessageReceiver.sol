@@ -19,16 +19,6 @@ interface IMultiBridgeMessageReceiver {
         uint256 expiration;
     }
 
-    /// @notice emitted when receiver adapter of a specific bridge is updated
-    /// @param receiverAdapter is the new receiver adapter address
-    /// @param add is true if the receiver adapter was added, false if removed
-    event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
-
-    /// @notice emitted when the quorum for message validity is updated
-    /// @param oldQuorum is the old quorum value
-    /// @param newQuorum is the new quorum value
-    event QuorumUpdated(uint64 oldQuorum, uint64 newQuorum);
-
     /// @notice emitted when a message has been received from a single bridge
     /// @param msgId is the unique identifier of the message
     /// @param bridgeName is the name of the bridge from which the message was received
@@ -47,6 +37,16 @@ interface IMultiBridgeMessageReceiver {
     event MessageExecuted(
         bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
     );
+
+    /// @notice emitted when receiver adapter of a specific bridge is updated
+    /// @param receiverAdapter is the new receiver adapter address
+    /// @param add is true if the receiver adapter was added, false if removed
+    event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
+
+    /// @notice emitted when the quorum for message validity is updated
+    /// @param oldQuorum is the old quorum value
+    /// @param newQuorum is the new quorum value
+    event QuorumUpdated(uint64 oldQuorum, uint64 newQuorum);
 
     /// @notice Receive messages from allowed bridge receiver adapters.
     /// @dev Every receiver adapter should call this function with decoded MessageLibrary.Message

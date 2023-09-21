@@ -3,7 +3,6 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import {Test, Vm} from "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 /// @dev imports from Pigeon Helper (Facilitate State Transfer Mocks)
 import {WormholeHelper} from "pigeon/wormhole/WormholeHelper.sol";

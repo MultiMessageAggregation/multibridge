@@ -62,13 +62,19 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
         }
 
         for (uint256 i; i < arrLength;) {
+            address oldReceiver = receiverAdapters[_dstChainIds[i]];
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
-            emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
+            emit ReceiverAdapterUpdated(_dstChainIds[i], oldReceiver, _receiverAdapters[i]);
 
             unchecked {
                 ++i;
             }
         }
+    }
+
+    /// @inheritdoc IMessageSenderAdapter
+    function getReceiverAdapter(uint256 _dstChainId) external view override returns (address) {
+        return receiverAdapters[_dstChainId];
     }
 
     /*/////////////////////////////////////////////////////////////////
