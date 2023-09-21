@@ -6,7 +6,7 @@ import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 
 /// local imports
 import "../BaseSenderAdapter.sol";
-import "../../interfaces/IGAC.sol";
+import "../../interfaces/controllers/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 
@@ -36,7 +36,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
         external
         payable
         override
-        onlyMultiMessageSender
+        onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
         address receiverAdapter = receiverAdapters[_toChainId];
@@ -60,7 +60,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
             payload,
             0,
             /// @dev no receiver value since just passing message
-            gac.getGlobalMsgDeliveryGasLimit()
+            senderGAC.getGlobalMsgDeliveryGasLimit()
         );
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
@@ -92,6 +92,6 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
     /// @inheritdoc IMessageSenderAdapter
     function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256 fee) {
         /// note: 50000 GAS is commonly used across the MMA; move to some global contract
-        (fee,) = relayer.quoteEVMDeliveryPrice(chainIdMap[_toChainId], 0, gac.getGlobalMsgDeliveryGasLimit());
+        (fee,) = relayer.quoteEVMDeliveryPrice(chainIdMap[_toChainId], 0, senderGAC.getGlobalMsgDeliveryGasLimit());
     }
 }

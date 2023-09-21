@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-import "../interfaces/IGAC.sol";
 import "../libraries/Error.sol";
-import "../interfaces/IMessageSenderAdapter.sol";
+import "../interfaces/adapters/IMessageSenderAdapter.sol";
+import "../controllers/MessageSenderGAC.sol";
 
 abstract contract BaseSenderAdapter is IMessageSenderAdapter {
-    IGAC public immutable gac;
+    MessageSenderGAC public immutable senderGAC;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -18,15 +18,15 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyMultiMessageSender() {
-        if (msg.sender != gac.getMultiMessageSender()) {
+    modifier onlyMultiBridgeMessageSender() {
+        if (msg.sender != senderGAC.getMultiBridgeMessageSender()) {
             revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
         }
         _;
     }
 
     modifier onlyGlobalOwner() {
-        if (!gac.isGlobalOwner(msg.sender)) {
+        if (!senderGAC.isGlobalOwner(msg.sender)) {
             revert Error.CALLER_NOT_OWNER();
         }
         _;
@@ -36,13 +36,13 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
                                  CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _gac is the global access control contract
-    constructor(address _gac) {
-        if (_gac == address(0)) {
+    /// @param _senderGAC is the global access control contract
+    constructor(address _senderGAC) {
+        if (_senderGAC == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        gac = IGAC(_gac);
+        senderGAC = MessageSenderGAC(_senderGAC);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -62,13 +62,19 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
         }
 
         for (uint256 i; i < arrLength;) {
+            address oldReceiver = receiverAdapters[_dstChainIds[i]];
             receiverAdapters[_dstChainIds[i]] = _receiverAdapters[i];
-            emit ReceiverAdapterUpdated(_dstChainIds[i], _receiverAdapters[i]);
+            emit ReceiverAdapterUpdated(_dstChainIds[i], oldReceiver, _receiverAdapters[i]);
 
             unchecked {
                 ++i;
             }
         }
+    }
+
+    /// @inheritdoc IMessageSenderAdapter
+    function getReceiverAdapter(uint256 _dstChainId) external view override returns (address) {
+        return receiverAdapters[_dstChainId];
     }
 
     /*/////////////////////////////////////////////////////////////////

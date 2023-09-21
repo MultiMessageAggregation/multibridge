@@ -31,7 +31,7 @@ contract AxelarSenderAdapterTest is Setup {
         // checks existing setup
         assertEq(address(adapter.gasService()), ETH_GAS_SERVICE);
         assertEq(address(adapter.gateway()), ETH_GATEWAY);
-        assertEq(address(adapter.gac()), contractAddress[SRC_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev dispatches message

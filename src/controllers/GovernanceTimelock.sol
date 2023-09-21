@@ -2,7 +2,7 @@
 pragma solidity >=0.8.9;
 
 /// interfaces
-import "../interfaces/IGovernanceTimelock.sol";
+import "../interfaces/controllers/IGovernanceTimelock.sol";
 
 /// libraries
 import "../libraries/Error.sol";

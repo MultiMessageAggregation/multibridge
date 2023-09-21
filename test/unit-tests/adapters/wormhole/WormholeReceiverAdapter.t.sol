@@ -6,7 +6,7 @@ import {Vm} from "forge-std/Test.sol";
 
 /// local imports
 import "../../../Setup.t.sol";
-import "src/MultiMessageReceiver.sol";
+import "src/MultiBridgeMessageReceiver.sol";
 import "src/interfaces/EIP5164/MessageExecutor.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
@@ -32,25 +32,25 @@ contract WormholeReceiverAdapterTest is Setup {
     function test_constructor() public {
         // checks existing setup
         assertEq(address(adapter.relayer()), POLYGON_RELAYER);
-        assertEq(address(adapter.gac()), contractAddress[DST_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.receiverGAC()), contractAddress[DST_CHAIN_ID]["GAC"]);
     }
 
     /// @dev constructor cannot be called with zero address relayer
     function test_constructor_zero_address_relayer() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new WormholeReceiverAdapter(address(0), address(42), _wormholeChainId(ETHEREUM_CHAIN_ID));
+        new WormholeReceiverAdapter(address(0), _wormholeChainId(ETHEREUM_CHAIN_ID), address(42));
     }
 
     /// @dev constructor cannot be called with zero address GAC
     function test_constructor_zero_address_gac() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new WormholeReceiverAdapter(address(42), address(0), _wormholeChainId(ETHEREUM_CHAIN_ID));
+        new WormholeReceiverAdapter(address(42), _wormholeChainId(ETHEREUM_CHAIN_ID), address(0));
     }
 
     /// @dev constructor cannot be called with zero sender chain id
     function test_constructor_zero_chain_id() public {
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
-        new WormholeReceiverAdapter(address(42), address(42), uint16(0));
+        new WormholeReceiverAdapter(address(42), uint16(0), address(42));
     }
 
     /// @dev gets the name
@@ -85,35 +85,6 @@ contract WormholeReceiverAdapterTest is Setup {
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
         adapter.updateSenderAdapter(address(0));
-    }
-
-    /// @dev sets chain ID map
-    function test_set_chain_id_map() public {
-        vm.startPrank(owner);
-
-        uint256[] memory origIds = new uint256[](1);
-        origIds[0] = 1234;
-        uint16[] memory whIds = new uint16[](1);
-        whIds[0] = uint16(5678);
-        adapter.setChainIdMap(origIds, whIds);
-
-        assertEq(adapter.chainIdMap(1234), uint16(5678));
-    }
-
-    /// @dev only global owner can set chain ID map
-    function test_set_chain_id_map_only_global_owner() public {
-        vm.startPrank(caller);
-
-        vm.expectRevert(Error.CALLER_NOT_OWNER.selector);
-        adapter.setChainIdMap(new uint256[](0), new uint16[](0));
-    }
-
-    /// @dev cannot set chain ID map with mismatched array lengths
-    function test_set_chain_id_map_array_length_mismatched() public {
-        vm.startPrank(owner);
-
-        vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
-        adapter.setChainIdMap(new uint256[](0), new uint16[](1));
     }
 
     /// @dev receives Wormhole message

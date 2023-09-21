@@ -3,9 +3,9 @@
 pragma solidity >=0.8.9;
 
 /// interfaces
-import "./interfaces/IMessageSenderAdapter.sol";
-import "./interfaces/IMultiMessageReceiver.sol";
-import "./interfaces/IGAC.sol";
+import "./interfaces/adapters/IMessageSenderAdapter.sol";
+import "./interfaces/IMultiBridgeMessageReceiver.sol";
+import "./controllers/MessageSenderGAC.sol";
 
 /// libraries
 import "./libraries/Message.sol";
@@ -16,13 +16,13 @@ import "./libraries/Error.sol";
 /// The contract has only a single authorised caller that can send messages, and an owner that can change key parameters.
 /// Both of these are configured in the Global Access Control contract. In the case of Uniswap, both the authorised caller
 /// and owner should be set to the Uniswap V2 Timelock contract on Ethereum.
-contract MultiMessageSender {
+contract MultiBridgeMessageSender {
     /*///////////////////////////////////////////////////////////////
                              CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Global Access Controller (GAC) contract
-    IGAC public immutable gac;
+    MessageSenderGAC public immutable senderGAC;
 
     /// @dev the minimum and maximum duration that a message's expiration parameter can be set to
     uint256 public constant MIN_EXPIRATION = 2 days;
@@ -51,10 +51,10 @@ contract MultiMessageSender {
     /// @param target is the target execution address on the destination chain
     /// @param callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param expiration refers to the number seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param senderAdapters are the sender adapters that were used to send the message
     /// @param adapterSuccess are the message sending success status for each of the corresponding adapters listed in senderAdapters
-    event MultiMessageSent(
+    event MultiBridgeMessageSent(
         bytes32 indexed msgId,
         uint256 nonce,
         uint256 indexed dstChainId,
@@ -82,7 +82,7 @@ contract MultiMessageSender {
 
     /// @dev checks if msg.sender is the owner configured in GAC
     modifier onlyOwner() {
-        if (msg.sender != gac.getGlobalOwner()) {
+        if (msg.sender != senderGAC.getGlobalOwner()) {
             revert Error.CALLER_NOT_OWNER();
         }
         _;
@@ -90,7 +90,7 @@ contract MultiMessageSender {
 
     /// @dev checks if msg.sender is the authorised caller configured in GAC
     modifier onlyCaller() {
-        if (msg.sender != gac.getMultiMessageCaller()) {
+        if (msg.sender != senderGAC.getAuthorisedCaller()) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -109,13 +109,13 @@ contract MultiMessageSender {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
-    /// @param _gac is the controller/registry of MMA
-    constructor(address _gac) {
-        if (_gac == address(0)) {
+    /// @param _senderGAC is the controller/registry of MMA
+    constructor(address _senderGAC) {
+        if (_senderGAC == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        gac = IGAC(_gac);
+        senderGAC = MessageSenderGAC(_senderGAC);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -131,7 +131,7 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
     function remoteCall(
         uint256 _dstChainId,
@@ -149,7 +149,7 @@ contract MultiMessageSender {
     /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _expiration refers to the number of days that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
     function remoteCall(
@@ -195,7 +195,7 @@ contract MultiMessageSender {
     /// @notice A helper function for estimating total required message fee by all available message bridges.
     function estimateTotalMessageFee(
         uint256 _dstChainId,
-        address _multiMessageReceiver,
+        address _multiBridgeMessageReceiver,
         address _target,
         bytes calldata _callData,
         uint256 _nativeValue
@@ -208,11 +208,12 @@ contract MultiMessageSender {
         address[] storage adapters = senderAdapters;
 
         /// @dev generates the dst chain function call
-        data = abi.encodeWithSelector(IMultiMessageReceiver.receiveMessage.selector, message);
+        data = abi.encodeWithSelector(IMultiBridgeMessageReceiver.receiveMessage.selector, message);
 
         for (uint256 i; i < adapters.length; ++i) {
-            uint256 fee =
-                IMessageSenderAdapter(adapters[i]).getMessageFee(uint256(_dstChainId), _multiMessageReceiver, data);
+            uint256 fee = IMessageSenderAdapter(adapters[i]).getMessageFee(
+                uint256(_dstChainId), _multiBridgeMessageReceiver, data
+            );
 
             totalFee += fee;
         }
@@ -247,7 +248,7 @@ contract MultiMessageSender {
             revert Error.INVALID_REFUND_ADDRESS();
         }
 
-        address mmaReceiver = gac.getMultiMessageReceiver(_dstChainId);
+        address mmaReceiver = senderGAC.getRemoteMultiBridgeMessageReceiver(_dstChainId);
 
         if (mmaReceiver == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();
@@ -267,7 +268,7 @@ contract MultiMessageSender {
         }
 
         bool[] memory adapterSuccesses = _dispatchMessages(adapters, mmaReceiver, _dstChainId, message);
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, nonce, _dstChainId, _target, _callData, _nativeValue, _expiration, adapters, adapterSuccesses
         );
 
