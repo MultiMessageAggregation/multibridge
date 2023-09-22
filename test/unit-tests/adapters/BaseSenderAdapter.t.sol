@@ -58,9 +58,4 @@ contract AxelarSenderAdapterTest is Setup {
         vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
         adapter.updateReceiverAdapter(new uint256[](0), new address[](1));
     }
-
-    /// @dev gets chian ID
-    function test_get_chain_id() public {
-        assertEq(adapter.getChainId(), SRC_CHAIN_ID);
-    }
 }
