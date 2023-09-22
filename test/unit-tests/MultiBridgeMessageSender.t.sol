@@ -66,8 +66,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         address[] memory senderAdapters = new address[](2);
-        senderAdapters[0] = wormholeAdapterAddr;
-        senderAdapters[1] = axelarAdapterAddr;
+        senderAdapters[0] = axelarAdapterAddr;
+        senderAdapters[1] = wormholeAdapterAddr;
 
         bool[] memory adapterSuccess = new bool[](2);
         adapterSuccess[0] = true;
@@ -91,8 +91,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
             _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
-        fees[0] = wormholeFee;
-        fees[1] = 0.01 ether;
+        fees[0] = 0.01 ether;
+        fees[1] = wormholeFee;
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiBridgeMessageSent(
@@ -120,8 +120,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
             _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
-        fees[0] = wormholeFee;
-        fees[1] = 0.01 ether;
+        fees[0] = 0.01 ether;
+        fees[1] = wormholeFee;
         sender.remoteCall{value: nativeValue}(
             DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees
         );
@@ -342,8 +342,8 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         // Remove both adapters
         address[] memory senderAdapters = new address[](2);
-        senderAdapters[0] = wormholeAdapterAddr;
-        senderAdapters[1] = axelarAdapterAddr;
+        senderAdapters[0] = axelarAdapterAddr;
+        senderAdapters[1] = wormholeAdapterAddr;
 
         sender.removeSenderAdapters(senderAdapters);
 
@@ -367,8 +367,8 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         address[] memory senderAdapters = new address[](3);
         senderAdapters[0] = failingAdapterAddr;
-        senderAdapters[1] = wormholeAdapterAddr;
-        senderAdapters[2] = axelarAdapterAddr;
+        senderAdapters[1] = axelarAdapterAddr;
+        senderAdapters[2] = wormholeAdapterAddr;
 
         bool[] memory adapterSuccess = new bool[](3);
         adapterSuccess[0] = false;
@@ -393,8 +393,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
         fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
-        fees[2] = 0.01 ether;
+        fees[1] = 0.01 ether;
+        fees[2] = wormholeFee;
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MessageSendFailed(failingAdapterAddr, message);
@@ -447,8 +447,8 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         assertEq(sender.senderAdapters(0), address(42));
         assertEq(sender.senderAdapters(1), address(43));
-        assertEq(sender.senderAdapters(2), wormholeAdapterAddr);
-        assertEq(sender.senderAdapters(3), axelarAdapterAddr);
+        assertEq(sender.senderAdapters(2), axelarAdapterAddr);
+        assertEq(sender.senderAdapters(3), wormholeAdapterAddr);
     }
 
     /// @dev add to empty sender adapters
@@ -456,8 +456,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         address[] memory removals = new address[](2);
-        removals[0] = wormholeAdapterAddr;
-        removals[1] = axelarAdapterAddr;
+        removals[0] = axelarAdapterAddr;
+        removals[1] = wormholeAdapterAddr;
         sender.removeSenderAdapters(removals);
 
         address[] memory additions = new address[](2);
@@ -492,10 +492,10 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         sender.addSenderAdapters(adapters);
 
-        assertEq(sender.senderAdapters(0), wormholeAdapterAddr);
-        assertEq(sender.senderAdapters(1), axelarAdapterAddr);
-        assertEq(sender.senderAdapters(2), higherAddr0);
-        assertEq(sender.senderAdapters(3), higherAddr1);
+        assertEq(sender.senderAdapters(0), axelarAdapterAddr);
+        assertEq(sender.senderAdapters(1), higherAddr0);
+        assertEq(sender.senderAdapters(2), higherAddr1);
+        assertEq(sender.senderAdapters(3), wormholeAdapterAddr);
     }
 
     /// @dev only owner can call
@@ -556,13 +556,13 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         address[] memory adapters = new address[](2);
-        adapters[0] = wormholeAdapterAddr;
-        adapters[1] = axelarAdapterAddr;
+        adapters[0] = axelarAdapterAddr;
+        adapters[1] = wormholeAdapterAddr;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(wormholeAdapterAddr, false);
-        vm.expectEmit(true, true, true, true, address(sender));
         emit SenderAdapterUpdated(axelarAdapterAddr, false);
+        vm.expectEmit(true, true, true, true, address(sender));
+        emit SenderAdapterUpdated(wormholeAdapterAddr, false);
 
         sender.removeSenderAdapters(adapters);
 

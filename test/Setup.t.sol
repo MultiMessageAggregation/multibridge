@@ -283,8 +283,8 @@ abstract contract Setup is Test {
         vm.startPrank(owner);
 
         address[] memory _senderAdapters = new address[](2);
-        _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
-        _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
+        _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
+        _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
 
         MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
 
