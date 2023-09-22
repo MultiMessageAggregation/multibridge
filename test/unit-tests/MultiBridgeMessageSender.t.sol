@@ -28,7 +28,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         address[] senderAdapters,
         bool[] adapterSuccess
     );
-    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
+    event SenderAdaptersUpdated(address[] indexed senderAdapters, bool add);
     event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
     MultiBridgeMessageSender sender;
@@ -439,9 +439,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         adapters[1] = address(43);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(address(42), true);
-        vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(address(43), true);
+        emit SenderAdaptersUpdated(adapters, true);
 
         sender.addSenderAdapters(adapters);
 
@@ -465,9 +463,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         additions[1] = address(43);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(address(42), true);
-        vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(address(43), true);
+        emit SenderAdaptersUpdated(additions, true);
 
         sender.addSenderAdapters(additions);
 
@@ -486,9 +482,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         adapters[1] = higherAddr1;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(higherAddr0, true);
-        vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(higherAddr1, true);
+        emit SenderAdaptersUpdated(adapters, true);
 
         sender.addSenderAdapters(adapters);
 
@@ -560,9 +554,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         adapters[1] = wormholeAdapterAddr;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(axelarAdapterAddr, false);
-        vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(wormholeAdapterAddr, false);
+        emit SenderAdaptersUpdated(adapters, false);
 
         sender.removeSenderAdapters(adapters);
 
@@ -578,7 +570,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         adapters[0] = wormholeAdapterAddr;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(wormholeAdapterAddr, false);
+        emit SenderAdaptersUpdated(adapters, false);
 
         sender.removeSenderAdapters(adapters);
 

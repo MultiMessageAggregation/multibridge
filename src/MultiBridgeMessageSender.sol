@@ -86,10 +86,10 @@ contract MultiBridgeMessageSender {
     /// @param message is the message that failed to be sent
     event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
-    /// @notice is emitted when owner updates the sender adapter
-    /// @param senderAdapter the address of the sender adapter that was updated
-    /// @param add true if the sender adapter was added, false if it was removed
-    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
+    /// @notice is emitted when owner updates the one or more sender adapters
+    /// @param senderAdapters the address of the sender adapters that were updated
+    /// @param add true if the sender adapters were added, false if they were removed
+    event SenderAdaptersUpdated(address[] indexed senderAdapters, bool add);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -452,12 +452,7 @@ contract MultiBridgeMessageSender {
     }
 
     function _logSenderAdapterUpdates(address[] memory _updates, bool _add) private {
-        for (uint256 i = 0; i < _updates.length;) {
-            emit SenderAdapterUpdated(_updates[i], _add);
-            unchecked {
-                ++i;
-            }
-        }
+        emit SenderAdaptersUpdated(_updates, _add);
     }
 
     /// @dev transfer ETH to an address, revert if it fails.
