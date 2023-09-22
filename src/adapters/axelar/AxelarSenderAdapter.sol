@@ -19,7 +19,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    IAxelarGasService public gasService;
+    IAxelarGasService public immutable gasService;
     mapping(uint256 => string) public chainIdMap;
 
     /*/////////////////////////////////////////////////////////////////
