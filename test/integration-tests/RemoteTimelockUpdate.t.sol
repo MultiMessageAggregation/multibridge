@@ -3,6 +3,7 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import {Vm} from "forge-std/Test.sol";
+import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 
 /// local imports
 import "test/Setup.t.sol";
@@ -28,13 +29,19 @@ contract RemoteTimelockUpdate is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
+        uint256[] memory fees = new uint256[](2);
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        fees[0] = wormholeFee;
+        fees[1] = 0.01 ether;
         MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             POLYGON_CHAIN_ID,
             address(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]),
             abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, newDelay),
             0,
             EXPIRATION_CONSTANT,
-            refundAddress
+            refundAddress,
+            fees
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

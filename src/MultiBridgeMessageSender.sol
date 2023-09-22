@@ -17,6 +17,20 @@ import "./libraries/Error.sol";
 /// Both of these are configured in the Global Access Control contract. In the case of Uniswap, both the authorised caller
 /// and owner should be set to the Uniswap V2 Timelock contract on Ethereum.
 contract MultiBridgeMessageSender {
+    /*/////////////////////////////////////////////////////////////////
+                                    STRUCTS
+    ////////////////////////////////////////////////////////////////*/
+    struct RemoteCallArgs {
+        uint256 dstChainId;
+        address target;
+        bytes callData;
+        uint256 nativeValue;
+        uint256 expiration;
+        address refundAddress;
+        uint256[] fees;
+        address[] excludedAdapters;
+    }
+
     /*///////////////////////////////////////////////////////////////
                              CONSTANTS
     //////////////////////////////////////////////////////////////*/
@@ -33,6 +47,7 @@ contract MultiBridgeMessageSender {
     ////////////////////////////////////////////////////////////////*/
 
     /// @dev the list of message sender adapters for different bridges, each of which implements the IMessageSenderAdapter interface.
+    /// The list is always kept in ascending order by adapter address
     address[] public senderAdapters;
 
     /// @dev nonce for msgId uniqueness
@@ -126,32 +141,14 @@ contract MultiBridgeMessageSender {
     /// via all available bridges. This function can only be called by the authorised called configured in the GAC.
     /// @dev a fee in native token may be required by each message bridge to send messages. Any native token fee remained
     /// will be refunded back to a refund address defined in the _refundAddress parameter.
-    /// Caller can use estimateTotalMessageFee() to get total message fees before calling this function.
+    /// Caller needs to specify fees for each adapter when calling this function.
     /// @param _dstChainId is the destination chainId
     /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
-    function remoteCall(
-        uint256 _dstChainId,
-        address _target,
-        bytes calldata _callData,
-        uint256 _nativeValue,
-        uint256 _expiration,
-        address _refundAddress
-    ) external payable onlyCaller validateExpiration(_expiration) {
-        address[] memory excludedAdapters;
-        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, excludedAdapters);
-    }
-
-    /// @param _dstChainId is the destination chainId
-    /// @param _target is the target execution point on the destination chain
-    /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
-    /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
-    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message
-    /// @param _refundAddress refers to the refund address for any extra native tokens paid
+    /// @param _fees refers to the fees to pay to each adapter
     function remoteCall(
         uint256 _dstChainId,
         address _target,
@@ -159,79 +156,157 @@ contract MultiBridgeMessageSender {
         uint256 _nativeValue,
         uint256 _expiration,
         address _refundAddress,
+        uint256[] calldata _fees
+    ) external payable onlyCaller validateExpiration(_expiration) {
+        _remoteCall(
+            RemoteCallArgs(
+                _dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, _fees, new address[](0)
+            )
+        );
+    }
+
+    /// @param _dstChainId is the destination chainId
+    /// @param _target is the target execution point on the destination chain
+    /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
+    /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
+    /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
+    /// @param _refundAddress refers to the refund address for any extra native tokens paid
+    /// @param _fees refers to the fees to pay to each adapter
+    /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message, in ascending order by address
+    function remoteCall(
+        uint256 _dstChainId,
+        address _target,
+        bytes calldata _callData,
+        uint256 _nativeValue,
+        uint256 _expiration,
+        address _refundAddress,
+        uint256[] calldata _fees,
         address[] calldata _excludedAdapters
     ) external payable onlyCaller validateExpiration(_expiration) {
-        _remoteCall(_dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, _excludedAdapters);
+        _remoteCall(
+            RemoteCallArgs(
+                _dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, _fees, _excludedAdapters
+            )
+        );
     }
 
     /// @notice Add bridge sender adapters
-    /// @param _adapters is the adapter address to add
-    function addSenderAdapters(address[] calldata _adapters) external onlyOwner {
-        for (uint256 i; i < _adapters.length;) {
-            _addSenderAdapter(_adapters[i]);
+    /// @param _additions are the adapter address to add, in ascending order with no duplicates
+    function addSenderAdapters(address[] calldata _additions) external onlyOwner {
+        _checkAdaptersOrder(_additions);
 
+        address[] memory existings = senderAdapters;
+
+        if (existings.length == 0) {
+            senderAdapters = _additions;
+            _logSenderAdapterUpdates(_additions, true);
+            return;
+        }
+
+        uint256 i;
+        uint256 j;
+        uint256 k;
+        address[] memory merged = new address[](existings.length + _additions.length);
+        while (i < existings.length && j < _additions.length) {
+            address existing = existings[i];
+            address added = _additions[j];
+            if (existing < added) {
+                merged[k] = existing;
+                unchecked {
+                    ++i;
+                }
+            } else if (existing == added) {
+                revert Error.DUPLICATE_SENDER_ADAPTER();
+            } else {
+                merged[k] = added;
+                unchecked {
+                    ++j;
+                }
+            }
             unchecked {
-                ++i;
+                ++k;
             }
         }
+        while (i < existings.length) {
+            merged[k] = existings[i];
+            unchecked {
+                ++i;
+                ++k;
+            }
+        }
+        while (j < _additions.length) {
+            merged[k] = _additions[j];
+            unchecked {
+                ++j;
+                ++k;
+            }
+        }
+
+        senderAdapters = merged;
+        _logSenderAdapterUpdates(_additions, true);
     }
 
     /// @notice Remove bridge sender adapters
-    /// @param _adapters is the adapter address to remove
-    function removeSenderAdapters(address[] calldata _adapters) external onlyOwner {
-        for (uint256 i; i < _adapters.length;) {
-            _removeSenderAdapter(_adapters[i]);
+    /// @param _removals are the adapter addresses to remove
+    function removeSenderAdapters(address[] calldata _removals) external onlyOwner {
+        _checkAdaptersOrder(_removals);
 
-            unchecked {
-                ++i;
-            }
-        }
-    }
+        address[] memory existings = senderAdapters;
+        address[] memory filtered = _filterAdapters(existings, _removals);
 
-    /*/////////////////////////////////////////////////////////////////
-                            EXTERNAL VIEW FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
-
-    /// @notice A helper function for estimating total required message fee by all available message bridges.
-    function estimateTotalMessageFee(
-        uint256 _dstChainId,
-        address _multiBridgeMessageReceiver,
-        address _target,
-        bytes calldata _callData,
-        uint256 _nativeValue
-    ) public view returns (uint256 totalFee) {
-        MessageLibrary.Message memory message =
-            MessageLibrary.Message(block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, 0);
-        bytes memory data;
-
-        /// @dev writes to memory for saving gas
-        address[] storage adapters = senderAdapters;
-
-        /// @dev generates the dst chain function call
-        data = abi.encodeWithSelector(IMultiBridgeMessageReceiver.receiveMessage.selector, message);
-
-        for (uint256 i; i < adapters.length; ++i) {
-            uint256 fee = IMessageSenderAdapter(adapters[i]).getMessageFee(
-                uint256(_dstChainId), _multiBridgeMessageReceiver, data
-            );
-
-            totalFee += fee;
-        }
+        senderAdapters = filtered;
+        _logSenderAdapterUpdates(_removals, false);
     }
 
     /*/////////////////////////////////////////////////////////////////
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function _remoteCall(
+    function _remoteCall(RemoteCallArgs memory _args) private {
+        (address mmaReceiver, address[] memory adapters) = _checkAndProcessArgs(
+            _args.dstChainId, _args.target, _args.refundAddress, _args.fees, _args.excludedAdapters
+        );
+
+        /// @dev increments nonce
+        ++nonce;
+
+        MessageLibrary.Message memory message = MessageLibrary.Message(
+            block.chainid,
+            _args.dstChainId,
+            _args.target,
+            nonce,
+            _args.callData,
+            _args.nativeValue,
+            block.timestamp + _args.expiration
+        );
+        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bool[] memory adapterSuccess = _dispatchMessages(adapters, mmaReceiver, _args.dstChainId, message, _args.fees);
+
+        emit MultiBridgeMessageSent(
+            msgId,
+            nonce,
+            _args.dstChainId,
+            _args.target,
+            _args.callData,
+            _args.nativeValue,
+            _args.expiration,
+            adapters,
+            adapterSuccess
+        );
+
+        /// refund remaining fee
+        if (address(this).balance > 0) {
+            _safeTransferETH(_args.refundAddress, address(this).balance);
+        }
+    }
+
+    function _checkAndProcessArgs(
         uint256 _dstChainId,
         address _target,
-        bytes calldata _callData,
-        uint256 _nativeValue,
-        uint256 _expiration,
         address _refundAddress,
+        uint256[] memory _fees,
         address[] memory _excludedAdapters
-    ) private {
+    ) private view returns (address mmaReceiver, address[] memory adapters) {
         if (_dstChainId == 0) {
             revert Error.ZERO_CHAIN_ID();
         }
@@ -248,62 +323,29 @@ contract MultiBridgeMessageSender {
             revert Error.INVALID_REFUND_ADDRESS();
         }
 
-        address mmaReceiver = senderGAC.getRemoteMultiBridgeMessageReceiver(_dstChainId);
+        mmaReceiver = senderGAC.getRemoteMultiBridgeMessageReceiver(_dstChainId);
 
         if (mmaReceiver == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();
         }
 
-        /// @dev increments nonce
-        ++nonce;
-        MessageLibrary.Message memory message = MessageLibrary.Message(
-            block.chainid, _dstChainId, _target, nonce, _callData, _nativeValue, block.timestamp + _expiration
-        );
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
-
-        address[] memory adapters = _getSenderAdapters(_excludedAdapters);
+        adapters = _filterAdapters(senderAdapters, _excludedAdapters);
 
         if (adapters.length == 0) {
             revert Error.NO_SENDER_ADAPTER_FOUND();
         }
-
-        bool[] memory adapterSuccesses = _dispatchMessages(adapters, mmaReceiver, _dstChainId, message);
-        emit MultiBridgeMessageSent(
-            msgId, nonce, _dstChainId, _target, _callData, _nativeValue, _expiration, adapters, adapterSuccesses
-        );
-
-        /// refund remaining fee
-        if (address(this).balance > 0) {
-            _safeTransferETH(_refundAddress, address(this).balance);
+        if (adapters.length != _fees.length) {
+            revert Error.INVALID_SENDER_ADAPTER_FEES();
         }
-    }
-
-    function _addSenderAdapter(address _adapter) private {
-        if (_adapter == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        /// @dev reverts if it finds a duplicate
-        _checkDuplicates(_adapter);
-
-        senderAdapters.push(_adapter);
-        emit SenderAdapterUpdated(_adapter, true);
-    }
-
-    function _removeSenderAdapter(address _adapter) private {
-        uint256 lastIndex = senderAdapters.length - 1;
-
-        for (uint256 i; i < senderAdapters.length; ++i) {
-            if (senderAdapters[i] == _adapter) {
-                if (i < lastIndex) {
-                    senderAdapters[i] = senderAdapters[lastIndex];
-                }
-
-                senderAdapters.pop();
-
-                emit SenderAdapterUpdated(_adapter, false);
-                return;
+        uint256 totalFees;
+        for (uint256 i; i < _fees.length;) {
+            totalFees += _fees[i];
+            unchecked {
+                ++i;
             }
+        }
+        if (totalFees > msg.value) {
+            revert Error.INVALID_MSG_VALUE();
         }
     }
 
@@ -311,17 +353,14 @@ contract MultiBridgeMessageSender {
         address[] memory _adapters,
         address _mmaReceiver,
         uint256 _dstChainId,
-        MessageLibrary.Message memory _message
+        MessageLibrary.Message memory _message,
+        uint256[] memory _fees
     ) private returns (bool[] memory) {
         uint256 len = _adapters.length;
         bool[] memory successes = new bool[](len);
         for (uint256 i; i < len;) {
-            IMessageSenderAdapter bridgeAdapter = IMessageSenderAdapter(_adapters[i]);
-            /// @dev assumes CREATE2 deployment for mma sender & receiver
-            uint256 fee = bridgeAdapter.getMessageFee(_dstChainId, _mmaReceiver, abi.encode(_message));
-
             /// @dev if one bridge is paused, the flow shouldn't be broken
-            try IMessageSenderAdapter(_adapters[i]).dispatchMessage{value: fee}(
+            try IMessageSenderAdapter(_adapters[i]).dispatchMessage{value: _fees[i]}(
                 _dstChainId, _mmaReceiver, abi.encode(_message)
             ) {
                 successes[i] = true;
@@ -337,43 +376,83 @@ contract MultiBridgeMessageSender {
         return successes;
     }
 
-    function _getSenderAdapters(address[] memory _exclusions) private view returns (address[] memory) {
-        uint256 allLen = senderAdapters.length;
-        uint256 exclLen = _exclusions.length;
+    function _filterAdapters(address[] memory _existings, address[] memory _removals)
+        private
+        pure
+        returns (address[] memory)
+    {
+        if (_existings.length < _removals.length) {
+            revert Error.SENDER_ADAPTER_NOT_EXIST();
+        }
 
-        address[] memory inclAdapters = new address[](allLen - exclLen);
-        uint256 inclCount;
-        for (uint256 i; i < allLen;) {
-            bool excluded = false;
-            for (uint256 j; j < exclLen;) {
-                if (senderAdapters[i] == _exclusions[j]) {
-                    excluded = true;
-                    break;
-                }
+        uint256 i;
+        uint256 j;
+        uint256 k;
+        address[] memory filtered = new address[](_existings.length - _removals.length);
+        while (i < _existings.length && j < _removals.length) {
+            address existing = _existings[i];
+            address removed = _removals[j];
+            if (existing == removed) {
                 unchecked {
                     ++j;
                 }
-            }
-            if (!excluded) {
-                inclAdapters[inclCount++] = senderAdapters[i];
+            } else {
+                if (k == filtered.length) {
+                    revert Error.SENDER_ADAPTER_NOT_EXIST();
+                }
+                filtered[k] = existing;
+                unchecked {
+                    ++k;
+                }
+                if (existing > removed) {
+                    unchecked {
+                        ++j;
+                    }
+                }
             }
             unchecked {
                 ++i;
             }
         }
-        return inclAdapters;
+        while (i < _existings.length) {
+            if (k == filtered.length) {
+                revert Error.SENDER_ADAPTER_NOT_EXIST();
+            }
+            filtered[k] = _existings[i];
+            unchecked {
+                ++i;
+                ++k;
+            }
+        }
+        return filtered;
     }
 
-    /// @dev validates if the sender adapter already exists
-    /// @param _adapter is the address of the sender to check
-    function _checkDuplicates(address _adapter) internal view {
-        uint256 len = senderAdapters.length;
+    /// @dev validates if the adapters addresses are in ascending order
+    /// @param _adapters are the addresses to check
+    function _checkAdaptersOrder(address[] memory _adapters) private pure {
+        uint256 len = _adapters.length;
 
+        address prev;
         for (uint256 i; i < len;) {
-            if (senderAdapters[i] == _adapter) {
+            address curr = _adapters[i];
+            if (curr < prev) {
+                revert Error.INVALID_SENDER_ADAPTER_ORDER();
+            } else if (curr == prev) {
+                if (curr == address(0)) {
+                    revert Error.ZERO_ADDRESS_INPUT();
+                }
                 revert Error.DUPLICATE_SENDER_ADAPTER();
             }
+            prev = curr;
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
+    function _logSenderAdapterUpdates(address[] memory _updates, bool _add) private {
+        for (uint256 i = 0; i < _updates.length;) {
+            emit SenderAdapterUpdated(_updates[i], _add);
             unchecked {
                 ++i;
             }
@@ -383,7 +462,7 @@ contract MultiBridgeMessageSender {
     /// @dev transfer ETH to an address, revert if it fails.
     /// @param to recipient of the transfer
     /// @param value the amount to send
-    function _safeTransferETH(address to, uint256 value) internal {
+    function _safeTransferETH(address to, uint256 value) private {
         (bool success,) = to.call{value: value}(new bytes(0));
         require(success, "safeTransferETH: ETH transfer failed");
     }

@@ -6,8 +6,4 @@ contract FailingSenderAdapter {
     function dispatchMessage(uint256, address, bytes calldata) external payable returns (bytes32) {
         revert();
     }
-
-    function getMessageFee(uint256, address, bytes calldata) external pure returns (uint256) {
-        return 0;
-    }
 }
