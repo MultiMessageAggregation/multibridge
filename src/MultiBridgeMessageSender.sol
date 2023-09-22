@@ -86,10 +86,10 @@ contract MultiBridgeMessageSender {
     /// @param message is the message that failed to be sent
     event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
-    /// @notice is emitted when owner updates the sender adapter
-    /// @param senderAdapter the address of the sender adapter that was updated
-    /// @param add true if the sender adapter was added, false if it was removed
-    event SenderAdapterUpdated(address indexed senderAdapter, bool add);
+    /// @notice is emitted when owner updates the one or more sender adapters
+    /// @param senderAdapters the address of the sender adapters that were updated
+    /// @param add true if the sender adapters were added, false if they were removed
+    event SenderAdaptersUpdated(address[] indexed senderAdapters, bool add);
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -171,7 +171,8 @@ contract MultiBridgeMessageSender {
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
-    /// @param _fees refers to the fees to pay to each adapter
+    /// @param _fees refers to the fees to pay to each sender adapter that is not in the exclusion list specified by _excludedAdapters.
+    ///         The fees are in the same order as the sender adapters in the senderAdapters list, after the exclusion list is applied.
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message, in ascending order by address
     function remoteCall(
         uint256 _dstChainId,
@@ -451,12 +452,7 @@ contract MultiBridgeMessageSender {
     }
 
     function _logSenderAdapterUpdates(address[] memory _updates, bool _add) private {
-        for (uint256 i = 0; i < _updates.length;) {
-            emit SenderAdapterUpdated(_updates[i], _add);
-            unchecked {
-                ++i;
-            }
-        }
+        emit SenderAdaptersUpdated(_updates, _add);
     }
 
     /// @dev transfer ETH to an address, revert if it fails.

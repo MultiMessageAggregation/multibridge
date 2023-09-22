@@ -35,8 +35,8 @@ contract GracePeriodExpiryTest is Setup {
         uint256[] memory fees = new uint256[](2);
         (uint256 wormholeFee,) =
             IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
-        fees[0] = wormholeFee;
-        fees[1] = 0.01 ether;
+        fees[0] = 0.01 ether;
+        fees[1] = wormholeFee;
         MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
             address(target),
