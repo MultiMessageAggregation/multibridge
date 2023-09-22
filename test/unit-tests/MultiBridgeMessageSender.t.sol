@@ -480,8 +480,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         address[] memory adapters = new address[](2);
-        address higherAddr0 = address(uint160(axelarAdapterAddr) + 1);
-        address higherAddr1 = address(uint160(axelarAdapterAddr) + 2);
+        address higherAddr0 = address(uint160(wormholeAdapterAddr) + 1);
+        address higherAddr1 = address(uint160(wormholeAdapterAddr) + 2);
         adapters[0] = higherAddr0;
         adapters[1] = higherAddr1;
 
@@ -493,9 +493,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         sender.addSenderAdapters(adapters);
 
         assertEq(sender.senderAdapters(0), axelarAdapterAddr);
-        assertEq(sender.senderAdapters(1), higherAddr0);
-        assertEq(sender.senderAdapters(2), higherAddr1);
-        assertEq(sender.senderAdapters(3), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(1), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(2), higherAddr0);
+        assertEq(sender.senderAdapters(3), higherAddr1);
     }
 
     /// @dev only owner can call
