@@ -171,7 +171,8 @@ contract MultiBridgeMessageSender {
     /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
     /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
-    /// @param _fees refers to the fees to pay to each adapter
+    /// @param _fees refers to the fees to pay to each sender adapter that is not in the exclusion list specified by _excludedAdapters.
+    ///         The fees are in the same order as the sender adapters in the senderAdapters list, after the exclusion list is applied.
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message, in ascending order by address
     function remoteCall(
         uint256 _dstChainId,
