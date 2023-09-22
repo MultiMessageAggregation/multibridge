@@ -9,19 +9,19 @@ import "test/Setup.t.sol";
 import "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
-import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 
-contract MultiMessageReceiverTest is Setup {
-    event ReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
+contract MultiBridgeMessageReceiverTest is Setup {
+    event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
     event QuorumUpdated(uint64 oldValue, uint64 newValue);
-    event SingleBridgeMsgReceived(
+    event BridgeMessageReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
     event MessageExecuted(
         bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
     );
 
-    MultiMessageReceiver receiver;
+    MultiBridgeMessageReceiver receiver;
     address axelarAdapterAddr;
     address wormholeAdapterAddr;
     address timelockAddr;
@@ -31,7 +31,7 @@ contract MultiMessageReceiverTest is Setup {
         super.setUp();
 
         vm.selectFork(fork[DST_CHAIN_ID]);
-        receiver = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]);
+        receiver = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]);
         axelarAdapterAddr = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
         wormholeAdapterAddr = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
@@ -47,7 +47,7 @@ contract MultiMessageReceiverTest is Setup {
         operation[0] = true;
         operation[1] = true;
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
         dummyReceiver.initialize(ETHEREUM_CHAIN_ID, adapters, operation, 2, timelockAddr);
 
         assertEq(dummyReceiver.quorum(), 2);
@@ -67,7 +67,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_initialize_zero_receiver_adapter() public {
         vm.startPrank(caller);
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
         dummyReceiver.initialize(ETHEREUM_CHAIN_ID, new address[](0), new bool[](0), 0, address(42));
@@ -77,7 +77,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_initialize_zero_address_input() public {
         vm.startPrank(caller);
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
         address[] memory adapters = new address[](1);
         adapters[0] = address(0);
 
@@ -92,7 +92,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_initialize_quorum_too_large() public {
         vm.startPrank(caller);
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
 
@@ -107,7 +107,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_initialize_quorum_larger_than_num_trusted_executors() public {
         vm.startPrank(caller);
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
         address[] memory adapters = new address[](2);
         adapters[0] = address(42);
         adapters[1] = address(42);
@@ -124,7 +124,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_initialize_zero_quorum() public {
         vm.startPrank(caller);
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
 
@@ -139,7 +139,7 @@ contract MultiMessageReceiverTest is Setup {
     function test_initialize_zero_governance_timelock() public {
         vm.startPrank(caller);
 
-        MultiMessageReceiver dummyReceiver = new MultiMessageReceiver();
+        MultiBridgeMessageReceiver dummyReceiver = new MultiBridgeMessageReceiver();
         address[] memory adapters = new address[](1);
         adapters[0] = address(42);
 
@@ -166,9 +166,9 @@ contract MultiMessageReceiverTest is Setup {
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit SingleBridgeMsgReceived(msgId, "WORMHOLE", 42, wormholeAdapterAddr);
+        emit BridgeMessageReceived(msgId, "WORMHOLE", 42, wormholeAdapterAddr);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         assertFalse(receiver.isExecuted(msgId));
 
@@ -200,10 +200,10 @@ contract MultiMessageReceiverTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         vm.startPrank(axelarAdapterAddr);
-        receiver.receiveMessage(message, "AXELAR");
+        receiver.receiveMessage(message);
 
         assertEq(receiver.msgDeliveryCount(msgId), 2);
     }
@@ -222,8 +222,7 @@ contract MultiMessageReceiverTest is Setup {
                 callData: bytes(""),
                 nativeValue: 0,
                 expiration: 0
-            }),
-            "WORMHOLE"
+            })
         );
     }
 
@@ -241,8 +240,7 @@ contract MultiMessageReceiverTest is Setup {
                 callData: bytes(""),
                 nativeValue: 0,
                 expiration: 0
-            }),
-            "WORMHOLE"
+            })
         );
     }
 
@@ -260,8 +258,7 @@ contract MultiMessageReceiverTest is Setup {
                 callData: bytes(""),
                 nativeValue: 0,
                 expiration: 0
-            }),
-            "WORMHOLE"
+            })
         );
     }
 
@@ -279,8 +276,7 @@ contract MultiMessageReceiverTest is Setup {
                 callData: bytes(""),
                 nativeValue: 0,
                 expiration: 0
-            }),
-            "WORMHOLE"
+            })
         );
     }
 
@@ -298,10 +294,10 @@ contract MultiMessageReceiverTest is Setup {
             expiration: type(uint256).max
         });
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         vm.expectRevert(Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER.selector);
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
     }
 
     /// @dev executed message should be rejected
@@ -322,13 +318,13 @@ contract MultiMessageReceiverTest is Setup {
         receiver.updateQuorum(1);
 
         vm.startPrank(wormholeAdapterAddr);
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         receiver.executeMessage(msgId);
 
         vm.startPrank(axelarAdapterAddr);
         vm.expectRevert(Error.MSG_ID_ALREADY_EXECUTED.selector);
-        receiver.receiveMessage(message, "AXELAR");
+        receiver.receiveMessage(message);
     }
 
     /// @dev executes message delivered by two adapters
@@ -346,10 +342,10 @@ contract MultiMessageReceiverTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         vm.startPrank(axelarAdapterAddr);
-        receiver.receiveMessage(message, "AXELAR");
+        receiver.receiveMessage(message);
 
         vm.expectEmit(true, true, true, true, address(receiver));
         emit MessageExecuted(msgId, address(42), 0, 42, bytes("42"));
@@ -374,7 +370,7 @@ contract MultiMessageReceiverTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         vm.expectRevert(Error.MSG_EXECUTION_PASSED_DEADLINE.selector);
         receiver.executeMessage(msgId);
@@ -395,10 +391,10 @@ contract MultiMessageReceiverTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         vm.startPrank(axelarAdapterAddr);
-        receiver.receiveMessage(message, "AXELAR");
+        receiver.receiveMessage(message);
 
         receiver.executeMessage(msgId);
 
@@ -421,7 +417,7 @@ contract MultiMessageReceiverTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         vm.expectRevert(Error.QUORUM_NOT_ACHIEVED.selector);
         receiver.executeMessage(msgId);
@@ -439,7 +435,7 @@ contract MultiMessageReceiverTest is Setup {
         assertFalse(receiver.isTrustedExecutor(address(42)));
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit ReceiverAdapterUpdated(address(42), true);
+        emit BridgeReceiverAdapterUpdated(address(42), true);
         receiver.updateReceiverAdapters(updatedAdapters, operations);
 
         assertTrue(receiver.isTrustedExecutor(wormholeAdapterAddr));
@@ -460,7 +456,7 @@ contract MultiMessageReceiverTest is Setup {
         operations[0] = false;
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit ReceiverAdapterUpdated(wormholeAdapterAddr, false);
+        emit BridgeReceiverAdapterUpdated(wormholeAdapterAddr, false);
 
         receiver.updateReceiverAdapters(updatedAdapters, operations);
         assertFalse(receiver.isTrustedExecutor(wormholeAdapterAddr));
@@ -589,7 +585,7 @@ contract MultiMessageReceiverTest is Setup {
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
-        receiver.receiveMessage(message, "WORMHOLE");
+        receiver.receiveMessage(message);
 
         (bool isExecuted, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
         assertFalse(isExecuted);

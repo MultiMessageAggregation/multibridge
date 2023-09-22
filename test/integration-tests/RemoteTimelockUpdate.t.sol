@@ -8,8 +8,8 @@ import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 /// local imports
 import "test/Setup.t.sol";
 
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
+import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
@@ -32,9 +32,9 @@ contract RemoteTimelockUpdate is Setup {
         uint256[] memory fees = new uint256[](2);
         (uint256 wormholeFee,) =
             IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
-        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+        fees[0] = wormholeFee;
+        fees[1] = 0.01 ether;
+        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             POLYGON_CHAIN_ID,
             address(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]),
             abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, newDelay),
@@ -56,7 +56,7 @@ contract RemoteTimelockUpdate is Setup {
         vm.selectFork(fork[POLYGON_CHAIN_ID]);
         vm.recordLogs();
         /// execute the message and move it to governance timelock contract
-        MultiMessageReceiver(contractAddress[POLYGON_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        MultiBridgeMessageReceiver(contractAddress[POLYGON_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 

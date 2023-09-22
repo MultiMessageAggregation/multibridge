@@ -8,16 +8,16 @@ import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 /// local imports
 import "test/Setup.t.sol";
 import "test/contracts-mock/FailingSenderAdapter.sol";
-import "test/contracts-mock/ZeroAddressReceiverGac.sol";
-import "src/interfaces/IMessageSenderAdapter.sol";
-import "src/interfaces/IMultiMessageReceiver.sol";
-import "src/interfaces/IGAC.sol";
+import "test/contracts-mock/ZeroAddressReceiverGAC.sol";
+import "src/controllers/MessageSenderGAC.sol";
+import "src/interfaces/adapters/IMessageSenderAdapter.sol";
+import "src/interfaces/IMultiBridgeMessageReceiver.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
-contract MultiMessageSenderTest is Setup {
-    event MultiMessageSent(
+contract MultiBridgeMessageSenderTest is Setup {
+    event MultiBridgeMessageSent(
         bytes32 indexed msgId,
         uint256 nonce,
         uint256 indexed dstChainId,
@@ -31,34 +31,34 @@ contract MultiMessageSenderTest is Setup {
     event SenderAdapterUpdated(address indexed senderAdapter, bool add);
     event MessageSendFailed(address indexed senderAdapter, MessageLibrary.Message message);
 
-    MultiMessageSender sender;
+    MultiBridgeMessageSender sender;
     address receiver;
-    IGAC gac;
-    address axelarAdapterAddr;
+    MessageSenderGAC senderGAC;
     address wormholeAdapterAddr;
+    address axelarAdapterAddr;
 
     /// @dev initializes the setup
     function setUp() public override {
         super.setUp();
 
         vm.selectFork(fork[SRC_CHAIN_ID]);
-        sender = MultiMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]);
+        sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]);
         receiver = contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"];
-        gac = IGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
-        axelarAdapterAddr = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
+        senderGAC = MessageSenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
         wormholeAdapterAddr = contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"];
+        axelarAdapterAddr = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
     }
 
     /// @dev constructor
     function test_constructor() public {
         // checks existing setup
-        assertEq(address(sender.gac()), contractAddress[SRC_CHAIN_ID]["GAC"]);
+        assertEq(address(sender.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev cannot be called with zero address GAC
     function test_constructor_zero_address_input() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiMessageSender(address(0));
+        new MultiBridgeMessageSender(address(0));
     }
 
     /// @dev perform remote call
@@ -66,8 +66,8 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         address[] memory senderAdapters = new address[](2);
-        senderAdapters[0] = axelarAdapterAddr;
-        senderAdapters[1] = wormholeAdapterAddr;
+        senderAdapters[0] = wormholeAdapterAddr;
+        senderAdapters[1] = axelarAdapterAddr;
 
         bool[] memory adapterSuccess = new bool[](2);
         adapterSuccess[0] = true;
@@ -89,13 +89,13 @@ contract MultiMessageSenderTest is Setup {
         uint256[] memory fees = new uint256[](2);
         // Wormhole requires exact fees to be passed in
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, gac.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
+        fees[0] = wormholeFee;
+        fees[1] = 0.01 ether;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -118,10 +118,10 @@ contract MultiMessageSenderTest is Setup {
 
         uint256[] memory fees = new uint256[](2);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, gac.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
+        fees[0] = wormholeFee;
+        fees[1] = 0.01 ether;
         sender.remoteCall{value: nativeValue}(
             DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees
         );
@@ -158,12 +158,12 @@ contract MultiMessageSenderTest is Setup {
 
         uint256[] memory fees = new uint256[](1);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, gac.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
         fees[0] = wormholeFee;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
@@ -210,8 +210,8 @@ contract MultiMessageSenderTest is Setup {
 
     /// @dev message expiration has to be within allowed range
     function test_remote_call_invalid_expiration() public {
-        uint256 invalidExpMin = sender.MIN_EXPIRATION() - 1 days;
-        uint256 invalidExpMax = sender.MAX_EXPIRATION() + 1 days;
+        uint256 invalidExpMin = sender.MIN_MESSAGE_EXPIRATION() - 1 days;
+        uint256 invalidExpMax = sender.MAX_MESSAGE_EXPIRATION() + 1 days;
 
         uint256[] memory fees = new uint256[](2);
         fees[0] = 0.01 ether;
@@ -326,7 +326,7 @@ contract MultiMessageSenderTest is Setup {
         fees[0] = 0.01 ether;
         fees[1] = 0.01 ether;
 
-        MultiMessageSender dummySender = new MultiMessageSender(address(new ZeroAddressReceiverGac(caller)));
+        MultiBridgeMessageSender dummySender = new MultiBridgeMessageSender(address(new ZeroAddressReceiverGAC(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
         dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
@@ -342,8 +342,8 @@ contract MultiMessageSenderTest is Setup {
 
         // Remove both adapters
         address[] memory senderAdapters = new address[](2);
-        senderAdapters[0] = axelarAdapterAddr;
-        senderAdapters[1] = wormholeAdapterAddr;
+        senderAdapters[0] = wormholeAdapterAddr;
+        senderAdapters[1] = axelarAdapterAddr;
 
         sender.removeSenderAdapters(senderAdapters);
 
@@ -367,8 +367,8 @@ contract MultiMessageSenderTest is Setup {
 
         address[] memory senderAdapters = new address[](3);
         senderAdapters[0] = failingAdapterAddr;
-        senderAdapters[1] = axelarAdapterAddr;
-        senderAdapters[2] = wormholeAdapterAddr;
+        senderAdapters[1] = wormholeAdapterAddr;
+        senderAdapters[2] = axelarAdapterAddr;
 
         bool[] memory adapterSuccess = new bool[](3);
         adapterSuccess[0] = false;
@@ -390,21 +390,21 @@ contract MultiMessageSenderTest is Setup {
 
         uint256[] memory fees = new uint256[](3);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, gac.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
         fees[0] = 0.01 ether;
-        fees[1] = 0.01 ether;
-        fees[2] = wormholeFee;
+        fees[1] = wormholeFee;
+        fees[2] = 0.01 ether;
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MessageSendFailed(failingAdapterAddr, message);
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit MultiMessageSent(
+        emit MultiBridgeMessageSent(
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: 0.02 ether}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees);
+        sender.remoteCall{value: 0.1 ether}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees);
     }
 
     /// @dev cannot call with invalid fee array
@@ -415,6 +415,18 @@ contract MultiMessageSenderTest is Setup {
         fees[0] = 0.01 ether;
 
         vm.expectRevert(Error.INVALID_SENDER_ADAPTER_FEES.selector);
+        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+    }
+
+    /// @dev cannot call with msg.value less than total fees
+    function test_remote_call_invalid_msg_value() public {
+        vm.startPrank(caller);
+
+        uint256[] memory fees = new uint256[](2);
+        fees[0] = 0.01 ether;
+        fees[1] = 0.01 ether;
+
+        vm.expectRevert(Error.INVALID_MSG_VALUE.selector);
         sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
     }
 
@@ -435,8 +447,8 @@ contract MultiMessageSenderTest is Setup {
 
         assertEq(sender.senderAdapters(0), address(42));
         assertEq(sender.senderAdapters(1), address(43));
-        assertEq(sender.senderAdapters(2), axelarAdapterAddr);
-        assertEq(sender.senderAdapters(3), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(2), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(3), axelarAdapterAddr);
     }
 
     /// @dev add to empty sender adapters
@@ -444,8 +456,8 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         address[] memory removals = new address[](2);
-        removals[0] = axelarAdapterAddr;
-        removals[1] = wormholeAdapterAddr;
+        removals[0] = wormholeAdapterAddr;
+        removals[1] = axelarAdapterAddr;
         sender.removeSenderAdapters(removals);
 
         address[] memory additions = new address[](2);
@@ -468,8 +480,8 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         address[] memory adapters = new address[](2);
-        address higherAddr0 = address(uint160(wormholeAdapterAddr) + 1);
-        address higherAddr1 = address(uint160(wormholeAdapterAddr) + 2);
+        address higherAddr0 = address(uint160(axelarAdapterAddr) + 1);
+        address higherAddr1 = address(uint160(axelarAdapterAddr) + 2);
         adapters[0] = higherAddr0;
         adapters[1] = higherAddr1;
 
@@ -480,8 +492,8 @@ contract MultiMessageSenderTest is Setup {
 
         sender.addSenderAdapters(adapters);
 
-        assertEq(sender.senderAdapters(0), axelarAdapterAddr);
-        assertEq(sender.senderAdapters(1), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(0), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(1), axelarAdapterAddr);
         assertEq(sender.senderAdapters(2), higherAddr0);
         assertEq(sender.senderAdapters(3), higherAddr1);
     }
@@ -544,13 +556,13 @@ contract MultiMessageSenderTest is Setup {
         vm.startPrank(owner);
 
         address[] memory adapters = new address[](2);
-        adapters[0] = axelarAdapterAddr;
-        adapters[1] = wormholeAdapterAddr;
+        adapters[0] = wormholeAdapterAddr;
+        adapters[1] = axelarAdapterAddr;
 
         vm.expectEmit(true, true, true, true, address(sender));
-        emit SenderAdapterUpdated(axelarAdapterAddr, false);
-        vm.expectEmit(true, true, true, true, address(sender));
         emit SenderAdapterUpdated(wormholeAdapterAddr, false);
+        vm.expectEmit(true, true, true, true, address(sender));
+        emit SenderAdapterUpdated(axelarAdapterAddr, false);
 
         sender.removeSenderAdapters(adapters);
 

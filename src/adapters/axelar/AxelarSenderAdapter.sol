@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-import "forge-std/console.sol";
-
 /// local imports
 import "../BaseSenderAdapter.sol";
-import "../../interfaces/IGAC.sol";
+import "../../interfaces/controllers/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 
@@ -44,7 +42,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
         external
         payable
         override
-        onlyMultiMessageSender
+        onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
         address receiverAdapter = receiverAdapters[_toChainId];

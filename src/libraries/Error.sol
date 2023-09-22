@@ -38,7 +38,7 @@ library Error {
     /// @dev is thrown if sender adapter array has duplicates
     error DUPLICATE_SENDER_ADAPTER();
 
-    /// @dev is thrown if the sender adapter is not exist
+    /// @dev is thrown if the sender adapter does not exist
     error SENDER_ADAPTER_NOT_EXIST();
 
     /// @dev is thrown if sender adapter array is not in ascending order or has duplicates

@@ -8,8 +8,8 @@ import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 /// local imports
 import "test/Setup.t.sol";
 
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
+import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
@@ -60,12 +60,12 @@ contract RemoteAdapterAdd is Setup {
         uint256[] memory fees = new uint256[](2);
         (uint256 wormholeFee,) =
             IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
-        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+        fees[0] = wormholeFee;
+        fees[1] = 0.01 ether;
+        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
             address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
-            abi.encodeWithSelector(MultiMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation),
+            abi.encodeWithSelector(MultiBridgeMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation),
             0,
             EXPIRATION_CONSTANT,
             refundAddress,
@@ -83,7 +83,7 @@ contract RemoteAdapterAdd is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// execute the message and move it to governance timelock contract
-        MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
@@ -94,7 +94,7 @@ contract RemoteAdapterAdd is Setup {
         );
 
         for (uint256 j; j < adaptersToAdd.length; ++j) {
-            bool isTrusted = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
+            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
                 .isTrustedExecutor(adaptersToAdd[j]);
             assert(isTrusted);
         }

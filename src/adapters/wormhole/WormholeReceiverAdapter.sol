@@ -5,29 +5,27 @@ pragma solidity >=0.8.9;
 import "wormhole-solidity-sdk/interfaces/IWormholeReceiver.sol";
 
 /// local imports
-import "../../interfaces/IMessageReceiverAdapter.sol";
-import "../../interfaces/IMultiMessageReceiver.sol";
-import "../../interfaces/IGAC.sol";
+import "../../interfaces/adapters/IMessageReceiverAdapter.sol";
+import "../../interfaces/IMultiBridgeMessageReceiver.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/TypeCasts.sol";
 import "../../libraries/Message.sol";
 
+import "../../controllers/MessageReceiverGAC.sol";
+import "../BaseReceiverAdapter.sol";
+
 /// @notice receiver adapter for wormhole bridge
 /// @dev allows wormhole relayers to write to receiver adapter which then forwards the message to
 /// the MMA receiver.
-contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
-    string public constant name = "wormhole";
+contract WormholeReceiverAdapter is BaseReceiverAdapter, IWormholeReceiver {
+    string public constant name = "WORMHOLE";
     address public immutable relayer;
-    IGAC public immutable gac;
-    uint16 public immutable senderChain = uint16(2); // Wormhole chain ID for Ethereum
+    uint16 public immutable senderChain;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    address public senderAdapter;
-
-    mapping(uint256 => uint16) public chainIdMap;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public deliveryHashStatus;
@@ -35,12 +33,6 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     /*/////////////////////////////////////////////////////////////////
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
-    modifier onlyGlobalOwner() {
-        if (!gac.isGlobalOwner(msg.sender)) {
-            revert Error.CALLER_NOT_OWNER();
-        }
-        _;
-    }
 
     modifier onlyRelayerContract() {
         if (msg.sender != relayer) {
@@ -54,50 +46,25 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
     ////////////////////////////////////////////////////////////////*/
 
     /// @param _relayer is wormhole relayer.
-    /// @param _gac is global access controller.
+    /// @param _senderChain is the chain id of the sender chain.
+    /// @param _receiverGAC is global access controller.
     /// note: https://docs.wormhole.com/wormhole/quick-start/cross-chain-dev/automatic-relayer
-    constructor(address _relayer, address _gac) {
-        if (_relayer == address(0) || _gac == address(0)) {
+    constructor(address _relayer, uint16 _senderChain, address _receiverGAC) BaseReceiverAdapter(_receiverGAC) {
+        if (_relayer == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
+
+        if (_senderChain == uint16(0)) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
         relayer = _relayer;
-        gac = IGAC(_gac);
+        senderChain = _senderChain;
     }
 
     /*/////////////////////////////////////////////////////////////////
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IMessageReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
-        if (_senderAdapter == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        address oldAdapter = senderAdapter;
-        senderAdapter = _senderAdapter;
-
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
-    }
-
-    /// @dev maps the MMA chain id to bridge specific chain id
-    /// @dev _origIds is the chain's native chain id
-    /// @dev _whIds are the bridge allocated chain id
-    function setChainIdMap(uint256[] calldata _origIds, uint16[] calldata _whIds) external onlyGlobalOwner {
-        uint256 arrLength = _origIds.length;
-
-        if (arrLength != _whIds.length) {
-            revert Error.ARRAY_LENGTH_MISMATCHED();
-        }
-
-        for (uint256 i; i < arrLength;) {
-            chainIdMap[_origIds[i]] = _whIds[i];
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
 
     /// @inheritdoc IWormholeReceiver
     function receiveWormholeMessages(
@@ -136,13 +103,13 @@ contract WormholeReceiverAdapter is IMessageReceiverAdapter, IWormholeReceiver {
         }
 
         /// @dev step-5: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
+        if (decodedPayload.finalDestination != receiverGAC.getMultiBridgeMessageReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+        try IMultiBridgeMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);

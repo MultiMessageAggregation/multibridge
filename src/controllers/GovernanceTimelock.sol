@@ -2,7 +2,7 @@
 pragma solidity >=0.8.9;
 
 /// interfaces
-import "../interfaces/IGovernanceTimelock.sol";
+import "../interfaces/controllers/IGovernanceTimelock.sol";
 
 /// libraries
 import "../libraries/Error.sol";
@@ -21,7 +21,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
     uint256 public txCounter;
-    uint256 public delay = MINIMUM_DELAY;
+    uint256 public delay;
 
     /// @notice the admin is the one allowed to schedule events
     address public admin;
@@ -81,7 +81,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
         ++txCounter;
         uint256 eta = block.timestamp + delay;
 
-        scheduledTransaction[txCounter] = keccak256(abi.encodePacked(_target, _value, _data, eta));
+        scheduledTransaction[txCounter] = keccak256(abi.encodePacked(_target, _value, eta, _data));
         emit TransactionScheduled(txCounter, _target, _value, _data, eta);
     }
 
@@ -102,7 +102,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
         }
 
         /// @dev check the input params against hash
-        if (scheduledTransaction[_txId] != keccak256(abi.encodePacked(_target, _value, _data, _eta))) {
+        if (scheduledTransaction[_txId] != keccak256(abi.encodePacked(_target, _value, _eta, _data))) {
             revert Error.INVALID_TX_INPUT();
         }
 

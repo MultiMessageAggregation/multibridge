@@ -7,7 +7,7 @@ library MessageLibrary {
     /// @dev Message indicates a remote call to target contract on destination chain.
     /// @param srcChainId is the id of chain where this message is sent from
     /// @param dstChainId is the id of chain where this message is sent to
-    /// @param nonce is an incrementing number held by MultiMessageSender to ensure msgId uniqueness
+    /// @param nonce is an incrementing number held by MultiBridgeMessageSender.sol to ensure msgId uniqueness
     /// @param target is the contract to be called on dst chain
     /// @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData))
     /// @param nativeValue is the native token value to be sent to target in the low-level call(eg. address(target).call{value: nativeValue}(callData))
@@ -31,9 +31,9 @@ library MessageLibrary {
                 _message.dstChainId,
                 _message.nonce,
                 _message.target,
-                _message.callData,
                 _message.nativeValue,
-                _message.expiration
+                _message.expiration,
+                _message.callData
             )
         );
     }

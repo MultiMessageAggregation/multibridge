@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-import "forge-std/console.sol";
-
 /// local imports
-import "../../interfaces/IMessageReceiverAdapter.sol";
-import "../../interfaces/IMultiMessageReceiver.sol";
-import "../../interfaces/IGAC.sol";
+import "../../interfaces/adapters/IMessageReceiverAdapter.sol";
+import "../../interfaces/IMultiBridgeMessageReceiver.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 import "../../libraries/Message.sol";
@@ -15,57 +12,48 @@ import "./interfaces/IAxelarGateway.sol";
 import "./interfaces/IAxelarExecutable.sol";
 import "./libraries/StringAddressConversion.sol";
 
+import "../../controllers/MessageReceiverGAC.sol";
+import "../BaseSenderAdapter.sol";
+import "../BaseReceiverAdapter.sol";
+
 /// @notice receiver adapter for axelar bridge
-contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
+contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
     using StringAddressConversion for string;
 
-    string public constant name = "axelar";
-    string public constant senderChain = "ethereum";
+    string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
-    IGAC public immutable gac;
 
     /*/////////////////////////////////////////////////////////////////
                         STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    address public senderAdapter;
+    string public senderChain;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public commandIdStatus;
 
     /*/////////////////////////////////////////////////////////////////
-                                 MODIFIER
-    ////////////////////////////////////////////////////////////////*/
-    modifier onlyGlobalOwner() {
-        if (!gac.isGlobalOwner(msg.sender)) {
-            revert Error.CALLER_NOT_OWNER();
-        }
-        _;
-    }
-
-    /*/////////////////////////////////////////////////////////////////
                          CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
-    constructor(address _gateway, address _gac) {
+    /// @param _gateway is axelar gateway contract address.
+    /// @param _senderChain is the chain id of the sender chain.
+    /// @param _receiverGAC is global access controller.
+    constructor(address _gateway, string memory _senderChain, address _receiverGAC) BaseReceiverAdapter(_receiverGAC) {
+        if (_gateway == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        if (bytes(_senderChain).length == 0) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
         gateway = IAxelarGateway(_gateway);
-        gac = IGAC(_gac);
+        senderChain = _senderChain;
     }
 
     /*/////////////////////////////////////////////////////////////////
                          EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IMessageReceiverAdapter
-    function updateSenderAdapter(address _senderAdapter) external override onlyGlobalOwner {
-        if (_senderAdapter == address(0)) {
-            revert Error.ZERO_ADDRESS_INPUT();
-        }
-
-        address oldAdapter = senderAdapter;
-        senderAdapter = _senderAdapter;
-
-        emit SenderAdapterUpdated(oldAdapter, _senderAdapter);
-    }
 
     /// @dev accepts new cross-chain messages from axelar gateway
     /// @inheritdoc IAxelarExecutable
@@ -105,7 +93,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
         }
 
         /// @dev step-6: validate the destination
-        if (decodedPayload.finalDestination != gac.getMultiMessageReceiver(block.chainid)) {
+        if (decodedPayload.finalDestination != receiverGAC.getMultiBridgeMessageReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 
@@ -114,7 +102,7 @@ contract AxelarReceiverAdapter is IAxelarExecutable, IMessageReceiverAdapter {
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 
-        try IMultiMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data, name) {
+        try IMultiBridgeMessageReceiver(decodedPayload.finalDestination).receiveMessage(_data) {
             emit MessageIdExecuted(_data.srcChainId, msgId);
         } catch (bytes memory lowLevelData) {
             revert MessageFailure(msgId, lowLevelData);
