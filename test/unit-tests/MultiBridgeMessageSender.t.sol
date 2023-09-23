@@ -362,72 +362,16 @@ contract MultiBridgeMessageSenderTest is Setup {
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
             _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
-
-        if (axelarAdapterAddr < wormholeAdapterAddr) {
-            if (failingAdapterAddr < axelarAdapterAddr) {
-                senderAdapters[0] = failingAdapterAddr;
-                senderAdapters[1] = axelarAdapterAddr;
-                senderAdapters[2] = wormholeAdapterAddr;
-                fees[0] = 0.01 ether;
-                fees[1] = 0.01 ether;
-                fees[2] = wormholeFee;
-                adapterSuccess[0] = false;
-                adapterSuccess[1] = true;
-                adapterSuccess[2] = true;
-            } else if (failingAdapterAddr > wormholeAdapterAddr) {
-                senderAdapters[0] = axelarAdapterAddr;
-                senderAdapters[1] = wormholeAdapterAddr;
-                senderAdapters[2] = failingAdapterAddr;
-                fees[0] = 0.01 ether;
-                fees[1] = wormholeFee;
-                fees[2] = 0.01 ether;
-                adapterSuccess[0] = true;
-                adapterSuccess[1] = true;
-                adapterSuccess[2] = false;
-            } else {
-                senderAdapters[0] = axelarAdapterAddr;
-                senderAdapters[1] = failingAdapterAddr;
-                senderAdapters[2] = wormholeAdapterAddr;
-                fees[0] = 0.01 ether;
-                fees[1] = 0.01 ether;
-                fees[2] = wormholeFee;
-                adapterSuccess[0] = true;
-                adapterSuccess[1] = false;
-                adapterSuccess[2] = true;
-            }
-        } else {
-            if (failingAdapterAddr < wormholeAdapterAddr) {
-                senderAdapters[0] = failingAdapterAddr;
-                senderAdapters[1] = wormholeAdapterAddr;
-                senderAdapters[2] = axelarAdapterAddr;
-                fees[0] = 0.01 ether;
-                fees[1] = wormholeFee;
-                fees[2] = 0.01 ether;
-                adapterSuccess[0] = false;
-                adapterSuccess[1] = true;
-                adapterSuccess[2] = true;
-            } else if (failingAdapterAddr > axelarAdapterAddr) {
-                senderAdapters[0] = wormholeAdapterAddr;
-                senderAdapters[1] = axelarAdapterAddr;
-                senderAdapters[2] = failingAdapterAddr;
-                fees[0] = wormholeFee;
-                fees[1] = 0.01 ether;
-                fees[2] = 0.01 ether;
-                adapterSuccess[0] = true;
-                adapterSuccess[1] = true;
-                adapterSuccess[2] = false;
-            } else {
-                senderAdapters[0] = wormholeAdapterAddr;
-                senderAdapters[1] = failingAdapterAddr;
-                senderAdapters[2] = axelarAdapterAddr;
-                fees[0] = wormholeFee;
-                fees[1] = 0.01 ether;
-                fees[2] = 0.01 ether;
-                adapterSuccess[0] = true;
-                adapterSuccess[1] = false;
-                adapterSuccess[2] = true;
-            }
-        }
+        senderAdapters[0] = axelarAdapterAddr;
+        senderAdapters[1] = wormholeAdapterAddr;
+        senderAdapters[2] = failingAdapterAddr;
+        fees[0] = 0.01 ether;
+        fees[1] = wormholeFee;
+        fees[2] = 0.01 ether;
+        adapterSuccess[0] = true;
+        adapterSuccess[1] = true;
+        adapterSuccess[2] = false;
+        (senderAdapters, fees, adapterSuccess) = _sortThreeAdaptersWithFeesAndOps(senderAdapters, fees, adapterSuccess);
 
         uint256 expiration = EXPIRATION_CONSTANT;
 
