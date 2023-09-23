@@ -32,11 +32,14 @@ contract GracePeriodExpiryTest is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        uint256[] memory fees = new uint256[](2);
         (uint256 wormholeFee,) =
             IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
+        (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
+            contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
+            contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
+            0.01 ether,
+            wormholeFee
+        );
         MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
             address(target),

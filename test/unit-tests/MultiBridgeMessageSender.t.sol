@@ -65,10 +65,12 @@ contract MultiBridgeMessageSenderTest is Setup {
     function test_remote_call() public {
         vm.startPrank(caller);
 
-        address[] memory senderAdapters = new address[](2);
-        senderAdapters[0] = axelarAdapterAddr;
-        senderAdapters[1] = wormholeAdapterAddr;
-
+        // Wormhole requires exact fees to be passed in
+        (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+        );
+        (address[] memory senderAdapters, uint256[] memory fees) =
+            _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
         bool[] memory adapterSuccess = new bool[](2);
         adapterSuccess[0] = true;
         adapterSuccess[1] = true;
@@ -85,14 +87,6 @@ contract MultiBridgeMessageSenderTest is Setup {
             expiration: block.timestamp + expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
-
-        uint256[] memory fees = new uint256[](2);
-        // Wormhole requires exact fees to be passed in
-        (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
-        );
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiBridgeMessageSent(
@@ -116,12 +110,11 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         uint256 balanceBefore = refundAddress.balance;
 
-        uint256[] memory fees = new uint256[](2);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
             _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
         );
-        fees[0] = 0.01 ether;
-        fees[1] = wormholeFee;
+        (, uint256[] memory fees) =
+            _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
         sender.remoteCall{value: nativeValue}(
             DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees
         );
@@ -341,9 +334,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
 
         // Remove both adapters
-        address[] memory senderAdapters = new address[](2);
-        senderAdapters[0] = axelarAdapterAddr;
-        senderAdapters[1] = wormholeAdapterAddr;
+        address[] memory senderAdapters = _sortTwoAdapters(axelarAdapterAddr, wormholeAdapterAddr);
 
         sender.removeSenderAdapters(senderAdapters);
 
@@ -366,14 +357,77 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         address[] memory senderAdapters = new address[](3);
-        senderAdapters[0] = failingAdapterAddr;
-        senderAdapters[1] = axelarAdapterAddr;
-        senderAdapters[2] = wormholeAdapterAddr;
-
+        uint256[] memory fees = new uint256[](3);
         bool[] memory adapterSuccess = new bool[](3);
-        adapterSuccess[0] = false;
-        adapterSuccess[1] = true;
-        adapterSuccess[2] = true;
+        (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+        );
+
+        if (axelarAdapterAddr < wormholeAdapterAddr) {
+            if (failingAdapterAddr < axelarAdapterAddr) {
+                senderAdapters[0] = failingAdapterAddr;
+                senderAdapters[1] = axelarAdapterAddr;
+                senderAdapters[2] = wormholeAdapterAddr;
+                fees[0] = 0.01 ether;
+                fees[1] = 0.01 ether;
+                fees[2] = wormholeFee;
+                adapterSuccess[0] = false;
+                adapterSuccess[1] = true;
+                adapterSuccess[2] = true;
+            } else if (failingAdapterAddr > wormholeAdapterAddr) {
+                senderAdapters[0] = axelarAdapterAddr;
+                senderAdapters[1] = wormholeAdapterAddr;
+                senderAdapters[2] = failingAdapterAddr;
+                fees[0] = 0.01 ether;
+                fees[1] = wormholeFee;
+                fees[2] = 0.01 ether;
+                adapterSuccess[0] = true;
+                adapterSuccess[1] = true;
+                adapterSuccess[2] = false;
+            } else {
+                senderAdapters[0] = axelarAdapterAddr;
+                senderAdapters[1] = failingAdapterAddr;
+                senderAdapters[2] = wormholeAdapterAddr;
+                fees[0] = 0.01 ether;
+                fees[1] = 0.01 ether;
+                fees[2] = wormholeFee;
+                adapterSuccess[0] = true;
+                adapterSuccess[1] = false;
+                adapterSuccess[2] = true;
+            }
+        } else {
+            if (failingAdapterAddr < wormholeAdapterAddr) {
+                senderAdapters[0] = failingAdapterAddr;
+                senderAdapters[1] = wormholeAdapterAddr;
+                senderAdapters[2] = axelarAdapterAddr;
+                fees[0] = 0.01 ether;
+                fees[1] = wormholeFee;
+                fees[2] = 0.01 ether;
+                adapterSuccess[0] = false;
+                adapterSuccess[1] = true;
+                adapterSuccess[2] = true;
+            } else if (failingAdapterAddr > axelarAdapterAddr) {
+                senderAdapters[0] = wormholeAdapterAddr;
+                senderAdapters[1] = axelarAdapterAddr;
+                senderAdapters[2] = failingAdapterAddr;
+                fees[0] = wormholeFee;
+                fees[1] = 0.01 ether;
+                fees[2] = 0.01 ether;
+                adapterSuccess[0] = true;
+                adapterSuccess[1] = true;
+                adapterSuccess[2] = false;
+            } else {
+                senderAdapters[0] = wormholeAdapterAddr;
+                senderAdapters[1] = failingAdapterAddr;
+                senderAdapters[2] = axelarAdapterAddr;
+                fees[0] = wormholeFee;
+                fees[1] = 0.01 ether;
+                fees[2] = 0.01 ether;
+                adapterSuccess[0] = true;
+                adapterSuccess[1] = false;
+                adapterSuccess[2] = true;
+            }
+        }
 
         uint256 expiration = EXPIRATION_CONSTANT;
 
@@ -387,14 +441,6 @@ contract MultiBridgeMessageSenderTest is Setup {
             expiration: block.timestamp + expiration
         });
         bytes32 msgId = MessageLibrary.computeMsgId(message);
-
-        uint256[] memory fees = new uint256[](3);
-        (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
-        );
-        fees[0] = 0.01 ether;
-        fees[1] = 0.01 ether;
-        fees[2] = wormholeFee;
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MessageSendFailed(failingAdapterAddr, message);
@@ -443,19 +489,18 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         sender.addSenderAdapters(adapters);
 
+        (address[] memory origAdapters) = _sortTwoAdapters(axelarAdapterAddr, wormholeAdapterAddr);
         assertEq(sender.senderAdapters(0), address(42));
         assertEq(sender.senderAdapters(1), address(43));
-        assertEq(sender.senderAdapters(2), axelarAdapterAddr);
-        assertEq(sender.senderAdapters(3), wormholeAdapterAddr);
+        assertEq(sender.senderAdapters(2), origAdapters[0]);
+        assertEq(sender.senderAdapters(3), origAdapters[1]);
     }
 
     /// @dev add to empty sender adapters
     function test_add_sender_adapters_to_empty() public {
         vm.startPrank(owner);
 
-        address[] memory removals = new address[](2);
-        removals[0] = axelarAdapterAddr;
-        removals[1] = wormholeAdapterAddr;
+        address[] memory removals = _sortTwoAdapters(axelarAdapterAddr, wormholeAdapterAddr);
         sender.removeSenderAdapters(removals);
 
         address[] memory additions = new address[](2);
@@ -549,9 +594,7 @@ contract MultiBridgeMessageSenderTest is Setup {
     function test_remove_sender_adapters() public {
         vm.startPrank(owner);
 
-        address[] memory adapters = new address[](2);
-        adapters[0] = axelarAdapterAddr;
-        adapters[1] = wormholeAdapterAddr;
+        address[] memory adapters = _sortTwoAdapters(axelarAdapterAddr, wormholeAdapterAddr);
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit SenderAdaptersUpdated(adapters, false);

@@ -282,9 +282,10 @@ abstract contract Setup is Test {
         vm.selectFork(fork[SRC_CHAIN_ID]);
         vm.startPrank(owner);
 
-        address[] memory _senderAdapters = new address[](2);
-        _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
-        _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
+        address[] memory _senderAdapters = _sortTwoAdapters(
+            contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
+            contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")]
+        );
 
         MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
 
@@ -453,6 +454,39 @@ abstract contract Setup is Test {
                 encodedArgs = logs[j].data;
                 (value, data, eta) = abi.decode(encodedArgs, (uint256, bytes, uint256));
             }
+        }
+    }
+
+    // @dev sorts two adapters
+    function _sortTwoAdapters(address adapterA, address adapterB) internal pure returns (address[] memory adapters) {
+        adapters = new address[](2);
+        if (adapterA < adapterB) {
+            adapters[0] = adapterA;
+            adapters[1] = adapterB;
+        } else {
+            adapters[0] = adapterB;
+            adapters[1] = adapterA;
+        }
+    }
+
+    // @dev sorts two adapters and fees
+    function _sortTwoAdaptersWithFees(address adapterA, address adapterB, uint256 feeA, uint256 feeB)
+        internal
+        pure
+        returns (address[] memory adapters, uint256[] memory fees)
+    {
+        adapters = new address[](2);
+        fees = new uint256[](2);
+        if (adapterA < adapterB) {
+            adapters[0] = adapterA;
+            adapters[1] = adapterB;
+            fees[0] = feeA;
+            fees[1] = feeB;
+        } else {
+            adapters[0] = adapterB;
+            adapters[1] = adapterA;
+            fees[0] = feeB;
+            fees[1] = feeA;
         }
     }
 }
