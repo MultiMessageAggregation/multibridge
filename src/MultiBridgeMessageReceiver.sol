@@ -21,14 +21,14 @@ import "./libraries/Message.sol";
 /// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
 /// IMessageReceiverAdapter interface.
 contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAware {
+    /// @notice the id of the source chain that this contract can receive messages from
+    uint256 public immutable srcChainId;
+    /// @notice the global access control contract
+    IGAC public immutable gac;
+
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    /// @notice the global access control contract
-    IGAC public gac;
-
-    /// @notice the id of the source chain that this contract can receive messages from
-    uint256 public srcChainId;
 
     /// @notice minimum number of bridges that must deliver a message for it to be considered valid
     uint64 public quorum;
