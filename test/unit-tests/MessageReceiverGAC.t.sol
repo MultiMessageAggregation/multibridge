@@ -18,23 +18,25 @@ contract MessageReceiverGACTest is Setup {
     event MultiBridgeMessageReceiverUpdated(address indexed oldReceiver, address indexed newReceiver);
 
     MessageReceiverGAC receiverGAC;
-
+    address gacOwner;
     /// @dev initializes the setup
+
     function setUp() public override {
         super.setUp();
         vm.selectFork(fork[DST_CHAIN_ID]);
         receiverGAC = MessageReceiverGAC(contractAddress[DST_CHAIN_ID]["GAC"]);
+        gacOwner = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
     /// @dev constructor
     function test_constructor() public {
         // checks existing setup
-        assertEq(address(Ownable(address(receiverGAC)).owner()), owner);
+        assertEq(address(Ownable(address(receiverGAC)).owner()), gacOwner);
     }
 
     /// @dev sets multi message receiver
     function test_set_multi_message_receiver() public {
-        vm.startPrank(owner);
+        vm.startPrank(gacOwner);
 
         vm.expectEmit(true, true, true, true, address(receiverGAC));
         emit MultiBridgeMessageReceiverUpdated(address(receiverGAC.getMultiBridgeMessageReceiver()), address(42));
@@ -54,7 +56,7 @@ contract MessageReceiverGACTest is Setup {
 
     /// @dev cannot set multi message receiver to zero address
     function test_set_multi_message_receiver_zero_address() public {
-        vm.startPrank(owner);
+        vm.startPrank(gacOwner);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
         receiverGAC.setMultiBridgeMessageReceiver(address(0));
@@ -62,12 +64,12 @@ contract MessageReceiverGACTest is Setup {
 
     /// @dev checks if address is the global owner
     function test_is_global_owner() public {
-        assertTrue(receiverGAC.isGlobalOwner(owner));
+        assertTrue(receiverGAC.isGlobalOwner(gacOwner));
         assertFalse(receiverGAC.isGlobalOwner(caller));
     }
 
     /// @dev gets the global owner
     function test_get_global_owner() public {
-        assertEq(receiverGAC.getGlobalOwner(), owner);
+        assertEq(receiverGAC.getGlobalOwner(), gacOwner);
     }
 }
