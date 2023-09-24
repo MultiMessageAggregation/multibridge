@@ -282,9 +282,10 @@ abstract contract Setup is Test {
         vm.selectFork(fork[SRC_CHAIN_ID]);
         vm.startPrank(owner);
 
-        address[] memory _senderAdapters = new address[](2);
-        _senderAdapters[0] = contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")];
-        _senderAdapters[1] = contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")];
+        address[] memory _senderAdapters = _sortTwoAdapters(
+            contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
+            contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")]
+        );
 
         MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).addSenderAdapters(_senderAdapters);
 
@@ -453,6 +454,93 @@ abstract contract Setup is Test {
                 encodedArgs = logs[j].data;
                 (value, data, eta) = abi.decode(encodedArgs, (uint256, bytes, uint256));
             }
+        }
+    }
+
+    // @dev sorts two adapters
+    function _sortTwoAdapters(address adapterA, address adapterB) internal pure returns (address[] memory adapters) {
+        adapters = new address[](2);
+        if (adapterA < adapterB) {
+            adapters[0] = adapterA;
+            adapters[1] = adapterB;
+        } else {
+            adapters[0] = adapterB;
+            adapters[1] = adapterA;
+        }
+    }
+
+    // @dev sorts two adapters with fees
+    function _sortTwoAdaptersWithFees(address adapterA, address adapterB, uint256 feeA, uint256 feeB)
+        internal
+        pure
+        returns (address[] memory adapters, uint256[] memory fees)
+    {
+        adapters = new address[](2);
+        fees = new uint256[](2);
+        if (adapterA < adapterB) {
+            adapters[0] = adapterA;
+            adapters[1] = adapterB;
+            fees[0] = feeA;
+            fees[1] = feeB;
+        } else {
+            adapters[0] = adapterB;
+            adapters[1] = adapterA;
+            fees[0] = feeB;
+            fees[1] = feeA;
+        }
+    }
+
+    // @dev sorts two adapters with fees and ops
+    function _sortTwoAdaptersWithFeesAndOps(
+        address adapterA,
+        address adapterB,
+        uint256 feeA,
+        uint256 feeB,
+        bool opA,
+        bool opB
+    ) internal pure returns (address[] memory adapters, uint256[] memory fees, bool[] memory ops) {
+        adapters = new address[](2);
+        fees = new uint256[](2);
+        ops = new bool[](2);
+        if (adapterA < adapterB) {
+            adapters[0] = adapterA;
+            adapters[1] = adapterB;
+            fees[0] = feeA;
+            fees[1] = feeB;
+            ops[0] = opA;
+            ops[1] = opB;
+        } else {
+            adapters[0] = adapterB;
+            adapters[1] = adapterA;
+            fees[0] = feeB;
+            fees[1] = feeA;
+            ops[0] = opB;
+            ops[1] = opA;
+        }
+    }
+
+    function _sortThreeAdaptersWithFeesAndOps(address[] memory _adapters, uint256[] memory _fees, bool[] memory _ops)
+        internal
+        pure
+        returns (address[] memory sortedAdapters, uint256[] memory sortedFees, bool[] memory sortedOps)
+    {
+        require(_adapters.length == 3 && _fees.length == 3 && _ops.length == 3, "invalid params");
+
+        sortedAdapters = new address[](3);
+        sortedFees = new uint256[](3);
+        sortedOps = new bool[](3);
+        (address[] memory s1Ads, uint256[] memory s1Fees, bool[] memory s1Ops) =
+            _sortTwoAdaptersWithFeesAndOps(_adapters[0], _adapters[1], _fees[0], _fees[1], _ops[0], _ops[1]);
+        if (_adapters[2] > s1Ads[1]) {
+            (sortedAdapters[0], sortedAdapters[1], sortedAdapters[2]) = (s1Ads[0], s1Ads[1], _adapters[2]);
+            (sortedFees[0], sortedFees[1], sortedFees[2]) = (s1Fees[0], s1Fees[1], _fees[2]);
+            (sortedOps[0], sortedOps[1], sortedOps[2]) = (s1Ops[0], s1Ops[1], _ops[2]);
+        } else {
+            (address[] memory s2Ads, uint256[] memory s2Fees, bool[] memory s2Ops) =
+                _sortTwoAdaptersWithFeesAndOps(_adapters[2], s1Ads[0], _fees[2], s1Fees[0], _ops[2], s1Ops[0]);
+            (sortedAdapters[0], sortedAdapters[1], sortedAdapters[2]) = (s2Ads[0], s2Ads[1], s1Ads[1]);
+            (sortedFees[0], sortedFees[1], sortedFees[2]) = (s2Fees[0], s2Fees[1], s1Fees[1]);
+            (sortedOps[0], sortedOps[1], sortedOps[2]) = (s2Ops[0], s2Ops[1], s1Ops[1]);
         }
     }
 }
