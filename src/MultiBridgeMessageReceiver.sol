@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-/// external modules
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-
 /// interfaces
+import "./interfaces/controllers/IGAC.sol";
 import "./interfaces/adapters/IMessageReceiverAdapter.sol";
 import "./interfaces/IMultiBridgeMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
@@ -22,13 +20,15 @@ import "./libraries/Message.sol";
 /// governance timelock contract.
 /// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
 /// IMessageReceiverAdapter interface.
-contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAware, Initializable {
+contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAware {
+    /// @notice the id of the source chain that this contract can receive messages from
+    uint256 public immutable srcChainId;
+    /// @notice the global access control contract
+    IGAC public immutable gac;
+
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-
-    /// @notice the id of the source chain that this contract can receive messages from
-    uint256 public srcChainId;
 
     /// @notice minimum number of bridges that must deliver a message for it to be considered valid
     uint64 public quorum;
@@ -61,39 +61,21 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @notice A modifier used for restricting the caller to just the governance timelock contract
-    modifier onlyGovernanceTimelock() {
-        if (msg.sender != governanceTimelock) {
-            revert Error.CALLER_NOT_GOVERNANCE_TIMELOCK();
+    modifier onlyOwner() {
+        if (!gac.isGlobalOwner(msg.sender)) {
+            revert Error.CALLER_NOT_OWNER();
         }
         _;
     }
 
     /*/////////////////////////////////////////////////////////////////
-                                INITIALIZER
+                                CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sets the initial parameters
-    function initialize(
-        uint256 _srcChainId,
-        address[] calldata _receiverAdapters,
-        bool[] calldata _operations,
-        uint64 _quorum,
-        address _governanceTimelock
-    ) external initializer {
-        if (_governanceTimelock == address(0)) {
-            revert Error.ZERO_GOVERNANCE_TIMELOCK();
-        }
-        governanceTimelock = _governanceTimelock;
-
-        /// @dev adds the new receiver adapters  before setting quorum and validations to account for duplicates
-        _updateReceiverAdapters(_receiverAdapters, _operations);
-
-        if (_quorum > trustedExecutorsCount() || _quorum == 0) {
-            revert Error.INVALID_QUORUM_THRESHOLD();
-        }
-        quorum = _quorum;
-
+    constructor(uint256 _srcChainId, address _gac) {
         srcChainId = _srcChainId;
+        gac = IGAC(_gac);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -175,12 +157,21 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         emit MessageExecuted(msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
     }
 
+    /// @notice update the governance timelock contract.
+    /// @dev called by admin to update the timelock contract
+    function updateGovernanceTimelock(address _governanceTimelock) external onlyOwner {
+        if (_governanceTimelock == address(0)) {
+            revert Error.ZERO_GOVERNANCE_TIMELOCK();
+        }
+        governanceTimelock = _governanceTimelock;
+    }
+
     /// @notice Update bridge receiver adapters.
     /// @dev called by admin to update receiver bridge adapters on all other chains
     function updateReceiverAdapters(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
         override
-        onlyGovernanceTimelock
+        onlyOwner
     {
         _updateReceiverAdapters(_receiverAdapters, _operations);
     }
@@ -191,7 +182,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         uint64 _newQuorum,
         address[] calldata _receiverAdapters,
         bool[] calldata _operations
-    ) external override onlyGovernanceTimelock {
+    ) external override onlyOwner {
         /// @dev updates quorum here
         _updateQuorum(_newQuorum);
 
@@ -200,7 +191,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorum(uint64 _quorum) external override onlyGovernanceTimelock {
+    function updateQuorum(uint64 _quorum) external override onlyOwner {
         _updateQuorum(_quorum);
     }
 

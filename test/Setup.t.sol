@@ -4,6 +4,8 @@ pragma solidity >=0.8.9;
 /// library imports
 import {Test, Vm} from "forge-std/Test.sol";
 
+import "openzeppelin-contracts/contracts/access/Ownable.sol";
+
 /// @dev imports from Pigeon Helper (Facilitate State Transfer Mocks)
 import {WormholeHelper} from "pigeon/wormhole/WormholeHelper.sol";
 import {AxelarHelper} from "pigeon/axelar/AxelarHelper.sol";
@@ -121,6 +123,9 @@ abstract contract Setup is Test {
 
         /// @dev setup adapter contracts
         _setupAdapters();
+
+        /// @dev gives up owner to timelock
+        _setupTimelockAsOwner();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -140,9 +145,10 @@ abstract contract Setup is Test {
                 senderGAC.setAuthorisedCaller(caller);
                 gac = address(senderGAC);
             } else {
-                gac = address(new MessageReceiverGAC{salt: _salt}());
+                MessageReceiverGAC receiverGAC = new MessageReceiverGAC{salt: _salt}();
+                gac = address(receiverGAC);
             }
-            contractAddress[chainId][bytes("GAC")] = gac;
+            contractAddress[chainId][bytes("GAC")] = address(gac);
 
             unchecked {
                 ++i;
@@ -269,7 +275,9 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
-            address mmaReceiver = address(new MultiBridgeMessageReceiver{salt: _salt}());
+            address mmaReceiver = address(
+                new MultiBridgeMessageReceiver{salt: _salt}(SRC_CHAIN_ID, contractAddress[chainId][bytes("GAC")])
+            );
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
                 address(address(new GovernanceTimelock{salt: _salt}(mmaReceiver, 3 days)));
@@ -304,18 +312,19 @@ abstract contract Setup is Test {
             _operations[0] = true;
             _operations[1] = true;
 
-            /// setup receiver adapters
             vm.selectFork(fork[chainId]);
-            address dstMMReceiver = contractAddress[chainId][bytes("MMA_RECEIVER")];
-            MultiBridgeMessageReceiver(dstMMReceiver).initialize(
-                SRC_CHAIN_ID, _receiverAdapters, _operations, 2, contractAddress[chainId]["TIMELOCK"]
-            );
+
+            MultiBridgeMessageReceiver dstMMReceiver =
+                MultiBridgeMessageReceiver(contractAddress[chainId][bytes("MMA_RECEIVER")]);
+            dstMMReceiver.updateReceiverAdapters(_receiverAdapters, _operations);
+            dstMMReceiver.updateGovernanceTimelock(contractAddress[chainId]["TIMELOCK"]);
+            dstMMReceiver.updateQuorum(2);
 
             MessageReceiverGAC receiverGAC = MessageReceiverGAC(contractAddress[chainId][bytes("GAC")]);
-            receiverGAC.setMultiBridgeMessageReceiver(dstMMReceiver);
+            receiverGAC.setMultiBridgeMessageReceiver(address(dstMMReceiver));
 
             vm.selectFork(fork[SRC_CHAIN_ID]);
-            senderGAC.setRemoteMultiBridgeMessageReceiver(chainId, dstMMReceiver);
+            senderGAC.setRemoteMultiBridgeMessageReceiver(chainId, address(dstMMReceiver));
 
             unchecked {
                 ++i;
@@ -338,6 +347,26 @@ abstract contract Setup is Test {
             AxelarReceiverAdapter(contractAddress[chainId]["AXELAR_RECEIVER_ADAPTER"]).updateSenderAdapter(
                 contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"]
             );
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @dev admin gives up ownership to
+    function _setupTimelockAsOwner() internal {
+        /// transfer ownership to timelock finally
+        for (uint256 i; i < ALL_CHAINS.length;) {
+            uint256 chainId = ALL_CHAINS[i];
+
+            vm.selectFork(fork[chainId]);
+
+            if (chainId != SRC_CHAIN_ID) {
+                GAC(contractAddress[chainId][bytes("GAC")]).transferOwnership(
+                    contractAddress[chainId][bytes("TIMELOCK")]
+                );
+            }
 
             unchecked {
                 ++i;
