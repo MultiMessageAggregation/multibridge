@@ -2,25 +2,25 @@
 pragma solidity >=0.8.9;
 
 /// interfaces
-import "./interfaces/IGAC.sol";
-import "./interfaces/IMessageReceiverAdapter.sol";
-import "./interfaces/IMultiMessageReceiver.sol";
+import "./interfaces/controllers/IGAC.sol";
+import "./interfaces/adapters/IMessageReceiverAdapter.sol";
+import "./interfaces/IMultiBridgeMessageReceiver.sol";
 import "./interfaces/EIP5164/ExecutorAware.sol";
-import "./interfaces/IGovernanceTimelock.sol";
+import "./interfaces/controllers/IGovernanceTimelock.sol";
 
 /// libraries
 import "./libraries/Error.sol";
 import "./libraries/Message.sol";
 
 /// @title Multi-bridge message receiver.
-/// @notice This contract is deployed on each destination chain, and receives messages sent by the MultiMessageSender
+/// @notice This contract is deployed on each destination chain, and receives messages sent by the MultiBridgeMessageSender
 /// contract on the source chain, through multiple bridge adapters. A message is considered valid and can be executed
-/// if it has been delivered by enough trusted bridge receiver adapters (i.e. has achieved a quorum threshold),
+/// if it has been delivered by enough trusted bridge receiver adapters (i.e. has achieved a configured quorum threshold),
 /// before the message's expiration. If a message is successfully validated in time, it is queued for execution on the
 /// governance timelock contract.
 /// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
 /// IMessageReceiverAdapter interface.
-contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
+contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAware {
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
@@ -98,7 +98,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
         }
 
         /// this msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
-        /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiMessageReceiver.
+        /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiBridgeMessageReceiver.sol.
         bytes32 msgId = MessageLibrary.computeMsgId(_message);
 
         if (msgDeliveries[msgId][msg.sender]) {
@@ -125,13 +125,11 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
         }
 
         string memory bridgeName = IMessageReceiverAdapter(msg.sender).name();
-        emit SingleBridgeMsgReceived(msgId, bridgeName, _message.nonce, msg.sender);
+        emit BridgeMessageReceived(msgId, bridgeName, _message.nonce, msg.sender);
     }
 
-    /// @notice Execute the message (invoke external call according to the message content) if the message
-    /// @dev has reached the power threshold (the same message has been delivered by enough multiple bridges).
-    /// Param values can be found in the MultiMessageSent event from the source chain MultiMessageSender contract.
-    function executeMessage(bytes32 msgId) external {
+    /// @inheritdoc IMultiBridgeMessageReceiver
+    function executeMessage(bytes32 msgId) external override {
         ExecutionData memory _execData = msgExecData[msgId];
 
         /// @dev validates if msg execution is not beyond expiration
@@ -172,6 +170,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
     /// @dev called by admin to update receiver bridge adapters on all other chains
     function updateReceiverAdapters(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
+        override
         onlyOwner
     {
         _updateReceiverAdapters(_receiverAdapters, _operations);
@@ -183,7 +182,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
         uint64 _newQuorum,
         address[] calldata _receiverAdapters,
         bool[] calldata _operations
-    ) external onlyOwner {
+    ) external override onlyOwner {
         /// @dev updates quorum here
         _updateQuorum(_newQuorum);
 
@@ -192,7 +191,7 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorum(uint64 _quorum) external onlyOwner {
+    function updateQuorum(uint64 _quorum) external override onlyOwner {
         _updateQuorum(_quorum);
     }
 
@@ -272,6 +271,6 @@ contract MultiMessageReceiver is IMultiMessageReceiver, ExecutorAware {
                 revert Error.INVALID_QUORUM_THRESHOLD();
             }
         }
-        emit ReceiverAdapterUpdated(_receiverAdapter, _add);
+        emit BridgeReceiverAdapterUpdated(_receiverAdapter, _add);
     }
 }

@@ -13,7 +13,6 @@ contract GovernanceTimelockTest is Setup {
     event TransactionScheduled(uint256 indexed txId, address indexed target, uint256 value, bytes data, uint256 eta);
     event TransactionExecuted(uint256 indexed txId, address indexed target, uint256 value, bytes data, uint256 eta);
 
-    event ExecutionPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event DelayUpdated(uint256 oldDelay, uint256 newDelay);
     event AdminUpdated(address oldAdmin, address newAdmin);
 
@@ -57,7 +56,7 @@ contract GovernanceTimelockTest is Setup {
 
         assertEq(timelock.txCounter(), 1);
         assertEq(
-            timelock.scheduledTransaction(1), keccak256(abi.encodePacked(address(42), uint256(1), bytes("42"), eta))
+            timelock.scheduledTransaction(1), keccak256(abi.encodePacked(address(42), uint256(1), eta, bytes("42")))
         );
     }
 

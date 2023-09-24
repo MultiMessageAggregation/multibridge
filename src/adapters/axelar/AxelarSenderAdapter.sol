@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.9;
 
-import "forge-std/console.sol";
-
 /// local imports
 import "../BaseSenderAdapter.sol";
-import "../../interfaces/IGAC.sol";
+import "../../interfaces/controllers/IGAC.sol";
 import "../../libraries/Error.sol";
 import "../../libraries/Types.sol";
 
@@ -21,7 +19,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    IAxelarGasService public gasService;
+    IAxelarGasService public immutable gasService;
     mapping(uint256 => string) public chainIdMap;
 
     /*/////////////////////////////////////////////////////////////////
@@ -44,7 +42,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
         external
         payable
         override
-        onlyMultiMessageSender
+        onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
         address receiverAdapter = receiverAdapters[_toChainId];
@@ -82,17 +80,6 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
                 ++i;
             }
         }
-    }
-
-    /*/////////////////////////////////////////////////////////////////
-                            EXTERNAL VIEW FUNCTIONS
-    ////////////////////////////////////////////////////////////////*/
-
-    /// @inheritdoc IMessageSenderAdapter
-    function getMessageFee(uint256 _toChainId, address, bytes calldata) external view override returns (uint256) {
-        /// FIXME: axelar has no on-chain message fee estimate. should have to overpay and get refund
-        return 1 ether;
-        // return axelarChainRegistry.getFee(_toChainId, uint32(gac.getGlobalMsgDeliveryGasLimit()));
     }
 
     /*/////////////////////////////////////////////////////////////////

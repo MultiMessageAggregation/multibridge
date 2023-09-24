@@ -30,7 +30,7 @@ contract WormholeSenderAdapterTest is Setup {
     /// @dev constructor
     function test_constructor() public {
         // checks existing setup
-        assertEq(address(adapter.gac()), contractAddress[SRC_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
     /// @dev dispatches message
@@ -40,7 +40,10 @@ contract WormholeSenderAdapterTest is Setup {
 
         bytes32 msgId =
             keccak256(abi.encodePacked(SRC_CHAIN_ID, DST_CHAIN_ID, uint256(0), address(adapter), address(42)));
-        uint256 fee = adapter.getMessageFee(DST_CHAIN_ID, address(42), bytes("42"));
+        (uint256 fee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
+            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().getGlobalMsgDeliveryGasLimit()
+        );
+
         vm.expectEmit(true, true, true, true, address(adapter));
         emit MessageDispatched(msgId, senderAddr, DST_CHAIN_ID, address(42), bytes("42"));
 
@@ -109,13 +112,5 @@ contract WormholeSenderAdapterTest is Setup {
 
         vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
         adapter.setChainIdMap(new uint256[](0), new uint16[](1));
-    }
-
-    /// @dev gets message fee
-    function test_get_message_fee() public {
-        (uint256 fee,) = IWormholeRelayer(ETH_RELAYER).quoteEVMDeliveryPrice(
-            adapter.chainIdMap(DST_CHAIN_ID), 0, adapter.gac().getGlobalMsgDeliveryGasLimit()
-        );
-        assertEq(adapter.getMessageFee(DST_CHAIN_ID, address(42), bytes("42")), fee);
     }
 }

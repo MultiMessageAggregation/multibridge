@@ -38,6 +38,12 @@ library Error {
     /// @dev is thrown if sender adapter array has duplicates
     error DUPLICATE_SENDER_ADAPTER();
 
+    /// @dev is thrown if the sender adapter does not exist
+    error SENDER_ADAPTER_NOT_EXIST();
+
+    /// @dev is thrown if sender adapter array is not in ascending order or has duplicates
+    error INVALID_SENDER_ADAPTER_ORDER();
+
     /// @dev is thrown if deadline is lapsed
     error MSG_EXECUTION_PASSED_DEADLINE();
 
@@ -68,6 +74,9 @@ library Error {
 
     /// @dev is thrown if sender adapter is not allowed on receiver adapter
     error INVALID_SENDER_ADAPTER();
+
+    /// @dev is thrown if the sender adapter fee array is invalid
+    error INVALID_SENDER_ADAPTER_FEES();
 
     /// @dev is thrown if final destination is not mma receiver on receiver adapter
     error INVALID_FINAL_DESTINATION();

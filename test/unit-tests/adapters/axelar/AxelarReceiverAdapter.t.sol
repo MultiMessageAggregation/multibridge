@@ -8,7 +8,7 @@ import {Vm} from "forge-std/Test.sol";
 import "../../../Setup.t.sol";
 import "../../../contracts-mock/adapters/axelar/MockAxelarGateway.sol";
 import "src/adapters/axelar/libraries/StringAddressConversion.sol";
-import "src/MultiMessageReceiver.sol";
+import "src/MultiBridgeMessageReceiver.sol";
 import "src/interfaces/EIP5164/MessageExecutor.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
@@ -37,26 +37,26 @@ contract AxelarReceiverAdapterTest is Setup {
     function test_constructor() public {
         // checks existing setup
         assertEq(address(adapter.gateway()), POLYGON_GATEWAY);
-        assertEq(address(adapter.gac()), contractAddress[DST_CHAIN_ID]["GAC"]);
+        assertEq(address(adapter.receiverGAC()), contractAddress[DST_CHAIN_ID]["GAC"]);
         assertEq(adapter.senderChain(), "ethereum");
     }
 
     /// @dev constructor with invalid parameters should fail
     function test_constructor_zero_gateway_address() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new AxelarReceiverAdapter(address(0), address(42), "");
+        new AxelarReceiverAdapter(address(0), "", address(42));
     }
 
     /// @dev constructor with invalid parameters should fail
     function test_constructor_zero_gac_address() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new AxelarReceiverAdapter(address(32), address(0), "");
+        new AxelarReceiverAdapter(address(32), "", address(0));
     }
 
     /// @dev constructor cannot be called with zero chain id
     function test_constructor_zero_chain_id() public {
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
-        new AxelarReceiverAdapter(address(42), address(42), "");
+        new AxelarReceiverAdapter(address(42), "", address(42));
     }
 
     /// @dev gets the name
@@ -327,7 +327,7 @@ contract AxelarReceiverAdapterTest is Setup {
 
         senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
         dummyAdapter =
-        new AxelarReceiverAdapter(address(new MockAxelarGateway(_validateCall)), contractAddress[DST_CHAIN_ID]["GAC"], "ethereum");
+        new AxelarReceiverAdapter(address(new MockAxelarGateway(_validateCall)), "ethereum", contractAddress[DST_CHAIN_ID]["GAC"]);
         dummyAdapter.updateSenderAdapter(senderAdapter);
 
         vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
@@ -336,7 +336,7 @@ contract AxelarReceiverAdapterTest is Setup {
         receiverAdapters[0] = address(dummyAdapter);
         bool[] memory operations = new bool[](1);
         operations[0] = true;
-        MultiMessageReceiver(receiverAddr).updateReceiverAdapters(receiverAdapters, operations);
+        MultiBridgeMessageReceiver(receiverAddr).updateReceiverAdapters(receiverAdapters, operations);
 
         vm.startPrank(caller);
     }

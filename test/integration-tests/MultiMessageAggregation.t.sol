@@ -3,17 +3,18 @@ pragma solidity >=0.8.9;
 
 /// library imports
 import {Vm} from "forge-std/Test.sol";
+import "wormhole-solidity-sdk/interfaces/IWormholeRelayer.sol";
 
 /// local imports
 import "test/Setup.t.sol";
 import "test/contracts-mock/MockUniswapReceiver.sol";
 
-import {MultiMessageSender} from "src/MultiMessageSender.sol";
-import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
+import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
-contract MultiMessageAggregationTest is Setup {
+contract MultiBridgeMessageAggregationTest is Setup {
     MockUniswapReceiver target;
 
     /// @dev initializes the setup
@@ -31,13 +32,22 @@ contract MultiMessageAggregationTest is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        MultiMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
+            contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
+            contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
+            0.01 ether,
+            wormholeFee
+        );
+        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
             address(target),
             abi.encode(MockUniswapReceiver.setValue.selector, ""),
             0,
             EXPIRATION_CONSTANT,
-            refundAddress
+            refundAddress,
+            fees
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
@@ -51,7 +61,7 @@ contract MultiMessageAggregationTest is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// execute the message and move it to governance timelock contract
-        MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 

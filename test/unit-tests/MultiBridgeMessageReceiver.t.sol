@@ -9,21 +9,21 @@ import "test/Setup.t.sol";
 import "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
-import {MultiMessageReceiver} from "src/MultiMessageReceiver.sol";
+import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 
-contract MultiMessageReceiverTest is Setup {
-    event ReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
+contract MultiBridgeMessageReceiverTest is Setup {
+    event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
     event QuorumUpdated(uint64 oldValue, uint64 newValue);
-    event SingleBridgeMsgReceived(
+    event BridgeMessageReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
     event MessageExecuted(
         bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
     );
 
-    MultiMessageReceiver receiver;
-    address wormholeAdapterAddr;
+    MultiBridgeMessageReceiver receiver;
     address axelarAdapterAddr;
+    address wormholeAdapterAddr;
     address timelockAddr;
 
     /// @dev initializes the setup
@@ -31,9 +31,9 @@ contract MultiMessageReceiverTest is Setup {
         super.setUp();
 
         vm.selectFork(fork[DST_CHAIN_ID]);
-        receiver = MultiMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]);
-        wormholeAdapterAddr = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
+        receiver = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]);
         axelarAdapterAddr = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
+        wormholeAdapterAddr = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
@@ -53,7 +53,7 @@ contract MultiMessageReceiverTest is Setup {
         bytes32 msgId = MessageLibrary.computeMsgId(message);
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit SingleBridgeMsgReceived(msgId, "WORMHOLE", 42, wormholeAdapterAddr);
+        emit BridgeMessageReceived(msgId, "WORMHOLE", 42, wormholeAdapterAddr);
 
         receiver.receiveMessage(message);
 
@@ -322,7 +322,7 @@ contract MultiMessageReceiverTest is Setup {
         assertFalse(receiver.isTrustedExecutor(address(42)));
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit ReceiverAdapterUpdated(address(42), true);
+        emit BridgeReceiverAdapterUpdated(address(42), true);
         receiver.updateReceiverAdapters(updatedAdapters, operations);
 
         assertTrue(receiver.isTrustedExecutor(wormholeAdapterAddr));
@@ -343,7 +343,7 @@ contract MultiMessageReceiverTest is Setup {
         operations[0] = false;
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit ReceiverAdapterUpdated(wormholeAdapterAddr, false);
+        emit BridgeReceiverAdapterUpdated(wormholeAdapterAddr, false);
 
         receiver.updateReceiverAdapters(updatedAdapters, operations);
         assertFalse(receiver.isTrustedExecutor(wormholeAdapterAddr));
