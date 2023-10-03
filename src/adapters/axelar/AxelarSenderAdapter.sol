@@ -12,7 +12,7 @@ import "./interfaces/IAxelarGasService.sol";
 import "./libraries/StringAddressConversion.sol";
 
 contract AxelarSenderAdapter is BaseSenderAdapter {
-    string public constant name = "axelar";
+    string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
 
