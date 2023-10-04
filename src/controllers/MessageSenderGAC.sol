@@ -14,9 +14,9 @@ contract MessageSenderGAC is GAC {
     //////////////////////////////////////////////////////////////*/
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
 
-    event MultiBridgeMessageCallerUpdated(address indexed mmaCaller);
+    event MultiBridgeMessageCallerUpdated(address indexed oldAuthCaller, address indexed newAuthCaller);
 
-    event MultiBridgeMessageSenderUpdated(address indexed mmaSender);
+    event MultiBridgeMessageSenderUpdated(address indexed oldMMS, address indexed newMMS);
 
     event MultiBridgeMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
@@ -43,24 +43,26 @@ contract MessageSenderGAC is GAC {
                           EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function setMultiBridgeMessageSender(address _mmaSender) external onlyOwner {
-        if (_mmaSender == address(0)) {
+    function setMultiBridgeMessageSender(address _newMMS) external onlyOwner {
+        if (_newMMS == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        multiBridgeMessageSender = _mmaSender;
+        address oldMMS = multiBridgeMessageSender;
+        multiBridgeMessageSender = _newMMS;
 
-        emit MultiBridgeMessageSenderUpdated(_mmaSender);
+        emit MultiBridgeMessageSenderUpdated(oldMMS, _newMMS);
     }
 
-    function setAuthorisedCaller(address _newMMSCaller) external onlyOwner {
-        if (_newMMSCaller == address(0)) {
+    function setAuthorisedCaller(address _newAuthCaller) external onlyOwner {
+        if (_newAuthCaller == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        authorisedCaller = _newMMSCaller;
+        address oldAuthCaller = authorisedCaller;
+        authorisedCaller = _newAuthCaller;
 
-        emit MultiBridgeMessageCallerUpdated(_newMMSCaller);
+        emit MultiBridgeMessageCallerUpdated(oldAuthCaller, _newAuthCaller);
     }
 
     function setRemoteMultiBridgeMessageReceiver(uint256 _chainId, address _remoteMMR) external onlyOwner {

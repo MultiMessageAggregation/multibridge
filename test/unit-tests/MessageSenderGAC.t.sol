@@ -19,8 +19,8 @@ import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
 contract MessageSenderGACTest is Setup {
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
-    event MultiBridgeMessageCallerUpdated(address indexed mmaCaller);
-    event MultiBridgeMessageSenderUpdated(address indexed mmaSender);
+    event MultiBridgeMessageCallerUpdated(address indexed oldAuthCaller, address indexed newAuthCaller);
+    event MultiBridgeMessageSenderUpdated(address indexed oldMMS, address indexed newMMS);
     event MultiBridgeMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
     address senderAddr;
@@ -48,7 +48,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiBridgeMessageSenderUpdated(address(42));
+        emit MultiBridgeMessageSenderUpdated(senderGAC.multiBridgeMessageSender(), address(42));
 
         senderGAC.setMultiBridgeMessageSender(address(42));
 
@@ -76,7 +76,7 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiBridgeMessageCallerUpdated(address(42));
+        emit MultiBridgeMessageCallerUpdated(senderGAC.authorisedCaller(), address(42));
 
         senderGAC.setAuthorisedCaller(address(42));
 
