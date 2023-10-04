@@ -53,14 +53,14 @@ contract MessageSenderGAC is GAC {
         emit MultiBridgeMessageSenderUpdated(_mmaSender);
     }
 
-    function setAuthorisedCaller(address newMMSCaller) external onlyOwner {
-        if (newMMSCaller == address(0)) {
+    function setAuthorisedCaller(address _newMMSCaller) external onlyOwner {
+        if (_newMMSCaller == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        authorisedCaller = newMMSCaller;
+        authorisedCaller = _newMMSCaller;
 
-        emit MultiBridgeMessageCallerUpdated(newMMSCaller);
+        emit MultiBridgeMessageCallerUpdated(_newMMSCaller);
     }
 
     function setRemoteMultiBridgeMessageReceiver(uint256 _chainId, address _remoteMMR) external onlyOwner {

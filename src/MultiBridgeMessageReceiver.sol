@@ -129,8 +129,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @inheritdoc IMultiBridgeMessageReceiver
-    function executeMessage(bytes32 msgId) external override {
-        ExecutionData memory _execData = msgExecData[msgId];
+    function executeMessage(bytes32 _msgId) external override {
+        ExecutionData memory _execData = msgExecData[_msgId];
 
         /// @dev validates if msg execution is not beyond expiration
         if (block.timestamp > _execData.expiration) {
@@ -138,14 +138,14 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         }
 
         /// @dev validates if msgId is already executed
-        if (isExecuted[msgId]) {
+        if (isExecuted[_msgId]) {
             revert Error.MSG_ID_ALREADY_EXECUTED();
         }
 
-        isExecuted[msgId] = true;
+        isExecuted[_msgId] = true;
 
         /// @dev validates message quorum
-        if (msgDeliveryCount[msgId] < quorum) {
+        if (msgDeliveryCount[_msgId] < quorum) {
             revert Error.QUORUM_NOT_ACHIEVED();
         }
 
@@ -154,7 +154,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             _execData.target, _execData.value, _execData.callData
         );
 
-        emit MessageExecuted(msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
+        emit MessageExecuted(_msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
     }
 
     /// @notice update the governance timelock contract.
@@ -200,15 +200,15 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
-    function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
-        uint256 msgCurrentVotes = msgDeliveryCount[msgId];
+    function getMessageInfo(bytes32 _msgId) public view returns (bool, uint256, string[] memory) {
+        uint256 msgCurrentVotes = msgDeliveryCount[_msgId];
         string[] memory successfulBridge = new string[](msgCurrentVotes);
 
         if (msgCurrentVotes != 0) {
             uint256 currIndex;
             address[] memory executors = getTrustedExecutors();
             for (uint256 i; i < executors.length;) {
-                if (msgDeliveries[msgId][executors[i]]) {
+                if (msgDeliveries[_msgId][executors[i]]) {
                     successfulBridge[currIndex] = IMessageReceiverAdapter(executors[i]).name();
                     ++currIndex;
                 }
@@ -219,7 +219,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             }
         }
 
-        return (isExecuted[msgId], msgCurrentVotes, successfulBridge);
+        return (isExecuted[_msgId], msgCurrentVotes, successfulBridge);
     }
 
     /*/////////////////////////////////////////////////////////////////
