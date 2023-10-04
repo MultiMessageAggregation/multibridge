@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 import "./interfaces/controllers/IGAC.sol";
 import "./interfaces/adapters/IMessageReceiverAdapter.sol";
 import "./interfaces/IMultiBridgeMessageReceiver.sol";
-import "./interfaces/EIP5164/ExecutorAware.sol";
+import "./libraries/EIP5164/ExecutorAware.sol";
 import "./interfaces/controllers/IGovernanceTimelock.sol";
 
 /// libraries
