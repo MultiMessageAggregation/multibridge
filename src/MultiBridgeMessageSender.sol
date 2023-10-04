@@ -95,8 +95,8 @@ contract MultiBridgeMessageSender {
                                 MODIFIERS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @dev checks if msg.sender is the owner configured in GAC
-    modifier onlyOwner() {
+    /// @notice Restricts the caller to the owner configured in GAC.
+    modifier onlyGlobalOwner() {
         if (msg.sender != senderGAC.getGlobalOwner()) {
             revert Error.CALLER_NOT_OWNER();
         }
@@ -165,7 +165,7 @@ contract MultiBridgeMessageSender {
 
     /// @notice Add bridge sender adapters
     /// @param _additions are the adapter address to add, in ascending order with no duplicates
-    function addSenderAdapters(address[] calldata _additions) external onlyOwner {
+    function addSenderAdapters(address[] calldata _additions) external onlyGlobalOwner {
         _checkAdaptersOrder(_additions);
 
         address[] memory existings = senderAdapters;
@@ -221,7 +221,7 @@ contract MultiBridgeMessageSender {
 
     /// @notice Remove bridge sender adapters
     /// @param _removals are the adapter addresses to remove
-    function removeSenderAdapters(address[] calldata _removals) external onlyOwner {
+    function removeSenderAdapters(address[] calldata _removals) external onlyGlobalOwner {
         _checkAdaptersOrder(_removals);
 
         address[] memory existings = senderAdapters;

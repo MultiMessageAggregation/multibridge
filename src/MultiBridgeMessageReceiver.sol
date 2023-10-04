@@ -60,8 +60,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         _;
     }
 
-    /// @notice A modifier used for restricting the caller to just the governance timelock contract
-    modifier onlyOwner() {
+    /// @notice Restricts the caller to the owner configured in GAC.
+    modifier onlyGlobalOwner() {
         if (!gac.isGlobalOwner(msg.sender)) {
             revert Error.CALLER_NOT_OWNER();
         }
@@ -159,7 +159,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
     /// @notice update the governance timelock contract.
     /// @dev called by admin to update the timelock contract
-    function updateGovernanceTimelock(address _governanceTimelock) external onlyOwner {
+    function updateGovernanceTimelock(address _governanceTimelock) external onlyGlobalOwner {
         if (_governanceTimelock == address(0)) {
             revert Error.ZERO_GOVERNANCE_TIMELOCK();
         }
@@ -171,7 +171,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     function updateReceiverAdapters(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
         override
-        onlyOwner
+        onlyGlobalOwner
     {
         _updateReceiverAdapters(_receiverAdapters, _operations);
     }
@@ -182,7 +182,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         uint64 _newQuorum,
         address[] calldata _receiverAdapters,
         bool[] calldata _operations
-    ) external override onlyOwner {
+    ) external override onlyGlobalOwner {
         /// @dev updates quorum here
         _updateQuorum(_newQuorum);
 
@@ -191,7 +191,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorum(uint64 _quorum) external override onlyOwner {
+    function updateQuorum(uint64 _quorum) external override onlyGlobalOwner {
         _updateQuorum(_quorum);
     }
 
