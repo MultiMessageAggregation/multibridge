@@ -53,7 +53,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
 
         string memory destinationChain = chainIdMap[_toChainId];
 
-        if (bytes(destinationChain).length <= 0) {
+        if (bytes(destinationChain).length == 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
