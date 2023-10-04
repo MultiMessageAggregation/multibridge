@@ -37,6 +37,18 @@ contract MultiBridgeMessageReceiverTest is Setup {
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
+    /// @dev cannot be called with zero source chain id
+    function test_constructor_zero_chain_id_input() public {
+        vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
+        new MultiBridgeMessageReceiver(0, address(42));
+    }
+
+    /// @dev cannot be called with zero address GAC
+    function test_constructor_zero_gac_address_input() public {
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new MultiBridgeMessageReceiver(1, address(0));
+    }
+
     /// @dev receives message from one adapter
     function test_receive_message() public {
         vm.startPrank(wormholeAdapterAddr);
