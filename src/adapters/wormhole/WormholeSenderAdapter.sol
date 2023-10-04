@@ -24,6 +24,9 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
     constructor(address _wormholeRelayer, address _gac) BaseSenderAdapter(_gac) {
+        if (_wormholeRelayer == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
         relayer = IWormholeRelayer(_wormholeRelayer);
     }
 
