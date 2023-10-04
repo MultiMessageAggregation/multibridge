@@ -102,6 +102,9 @@ library Error {
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
 
+    /// @dev is thrown if all message bridges fail
+    error MESSAGE_BRIDGE_FAILURE();
+
     /*/////////////////////////////////////////////////////////////////
                             TIMELOCK ERRORS
     ////////////////////////////////////////////////////////////////*/

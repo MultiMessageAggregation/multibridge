@@ -281,7 +281,12 @@ contract MultiBridgeMessageSender {
             block.timestamp + _args.expiration
         );
         bytes32 msgId = MessageLibrary.computeMsgId(message);
-        bool[] memory adapterSuccess = _dispatchMessages(adapters, mmaReceiver, _args.dstChainId, message, _args.fees);
+        (bool[] memory adapterSuccess, uint256 successCount) =
+            _dispatchMessages(adapters, mmaReceiver, _args.dstChainId, message, _args.fees);
+
+        if (successCount == 0) {
+            revert Error.MESSAGE_BRIDGE_FAILURE();
+        }
 
         emit MultiBridgeMessageSent(
             msgId,
@@ -356,15 +361,18 @@ contract MultiBridgeMessageSender {
         uint256 _dstChainId,
         MessageLibrary.Message memory _message,
         uint256[] memory _fees
-    ) private returns (bool[] memory) {
+    ) private returns (bool[] memory, uint256) {
         uint256 len = _adapters.length;
         bool[] memory successes = new bool[](len);
+        uint256 successCount;
+
         for (uint256 i; i < len;) {
             /// @dev if one bridge is paused, the flow shouldn't be broken
             try IMessageSenderAdapter(_adapters[i]).dispatchMessage{value: _fees[i]}(
                 _dstChainId, _mmaReceiver, abi.encode(_message)
             ) {
                 successes[i] = true;
+                ++successCount;
             } catch {
                 successes[i] = false;
                 emit MessageSendFailed(_adapters[i], _message);
@@ -374,7 +382,7 @@ contract MultiBridgeMessageSender {
                 ++i;
             }
         }
-        return successes;
+        return (successes, successCount);
     }
 
     function _filterAdapters(address[] memory _existings, address[] memory _removals)
