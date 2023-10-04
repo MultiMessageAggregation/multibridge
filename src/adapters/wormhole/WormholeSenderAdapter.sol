@@ -13,7 +13,7 @@ import "../../libraries/Types.sol";
 /// @notice sender adapter for wormhole bridge
 contract WormholeSenderAdapter is BaseSenderAdapter {
     string public constant name = "WORMHOLE";
-    IWormholeRelayer private immutable relayer;
+    IWormholeRelayer public immutable relayer;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
