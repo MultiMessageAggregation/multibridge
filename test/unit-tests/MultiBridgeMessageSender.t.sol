@@ -94,7 +94,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
 
         sender.remoteCall{value: fees[0] + fees[1]}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, new address[](0)
         );
 
         assertEq(sender.nonce(), 1);
@@ -116,7 +116,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         (, uint256[] memory fees) =
             _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
         sender.remoteCall{value: nativeValue}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, new address[](0)
         );
 
         uint256 balanceAfter = refundAddress.balance;
@@ -198,11 +198,14 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
 
         vm.expectRevert(Error.INVALID_PRIVILEGED_CALLER.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev message expiration has to be within allowed range
     function test_remote_call_invalid_expiration() public {
+        address[] memory excludedAdapters = new address[](0);
         uint256 invalidExpMin = sender.MIN_MESSAGE_EXPIRATION() - 1 days;
         uint256 invalidExpMax = sender.MAX_MESSAGE_EXPIRATION() + 1 days;
 
@@ -213,13 +216,16 @@ contract MultiBridgeMessageSenderTest is Setup {
         // test expiration validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, refundAddress, fees, excludedAdapters
+        );
 
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, refundAddress, fees, excludedAdapters
+        );
 
         // test expiration validation in remoteCall() which accepts excluded adapters
-        address[] memory excludedAdapters = new address[](0);
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(
@@ -236,12 +242,15 @@ contract MultiBridgeMessageSenderTest is Setup {
     function test_remote_call_invalid_refundAddress() public {
         // test refund address validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
+        address[] memory excludedAdapters = new address[](0);
 
         uint256[] memory fees = new uint256[](2);
         fees[0] = 0.01 ether;
         fees[1] = 0.01 ether;
         vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, address(0), fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, address(0), fees, excludedAdapters
+        );
 
         vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
         sender.remoteCall(
@@ -251,11 +260,11 @@ contract MultiBridgeMessageSenderTest is Setup {
             0,
             EXPIRATION_CONSTANT,
             contractAddress[SRC_CHAIN_ID]["MMA_SENDER"],
-            fees
+            fees,
+            excludedAdapters
         );
 
         // test refund address validation in remoteCall() which accepts excluded adapters
-        address[] memory excludedAdapters = new address[](0);
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
         sender.remoteCall(
@@ -284,7 +293,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
 
         vm.expectRevert(Error.INVALID_DST_CHAIN.selector);
-        sender.remoteCall(block.chainid, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(
+            block.chainid, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev cannot call with dst chain ID of 0
@@ -296,7 +307,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
-        sender.remoteCall(0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0));
     }
 
     /// @dev cannot call with target address of 0
@@ -308,7 +319,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
 
         vm.expectRevert(Error.INVALID_TARGET.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(0), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(0), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev cannot call with receiver address of 0
@@ -322,7 +335,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         MultiBridgeMessageSender dummySender = new MultiBridgeMessageSender(address(new ZeroAddressReceiverGAC(caller)));
 
         vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
-        dummySender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        dummySender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev cannot call with no sender adapter
@@ -341,7 +356,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(caller);
 
         vm.expectRevert(Error.NO_SENDER_ADAPTER_FOUND.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev should proceed with the call despite one failing adapter, emitting an error message
@@ -394,7 +411,9 @@ contract MultiBridgeMessageSenderTest is Setup {
             msgId, 1, DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, senderAdapters, adapterSuccess
         );
 
-        sender.remoteCall{value: 0.1 ether}(DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees);
+        sender.remoteCall{value: 0.1 ether}(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev cannot call with invalid fee array
@@ -405,7 +424,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[0] = 0.01 ether;
 
         vm.expectRevert(Error.INVALID_SENDER_ADAPTER_FEES.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev cannot call with msg.value less than total fees
@@ -417,7 +438,9 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
 
         vm.expectRevert(Error.INVALID_MSG_VALUE.selector);
-        sender.remoteCall(DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees);
+        sender.remoteCall(
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, new address[](0)
+        );
     }
 
     /// @dev adds two sender adapters
