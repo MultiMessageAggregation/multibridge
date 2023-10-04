@@ -32,26 +32,26 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sends a message via wormhole relayer
-    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+    function dispatchMessage(uint256 _receiverChainId, address _to, bytes calldata _data)
         external
         payable
         override
         onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
-        address receiverAdapter = receiverAdapters[_toChainId];
+        address receiverAdapter = receiverAdapters[_receiverChainId];
 
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();
         }
 
-        uint16 wormChainId = chainIdMap[_toChainId];
+        uint16 wormChainId = chainIdMap[_receiverChainId];
 
         if (wormChainId == 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
-        msgId = _getNewMessageId(_toChainId, _to);
+        msgId = _getNewMessageId(_receiverChainId, _to);
         bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
 
         relayer.sendPayloadToEvm{value: msg.value}(
@@ -63,7 +63,7 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
             senderGAC.msgDeliveryGasLimit()
         );
 
-        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+        emit MessageDispatched(msgId, msg.sender, _receiverChainId, _to, _data);
     }
 
     /// @dev maps the MMA chain id to bridge specific chain id

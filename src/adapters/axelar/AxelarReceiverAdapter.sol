@@ -27,7 +27,7 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
     /*/////////////////////////////////////////////////////////////////
                         STATE VARIABLES
     ////////////////////////////////////////////////////////////////*/
-    string public senderChain;
+    string public senderChainId;
 
     mapping(bytes32 => bool) public isMessageExecuted;
     mapping(bytes32 => bool) public commandIdStatus;
@@ -36,19 +36,21 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
                          CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
     /// @param _gateway is axelar gateway contract address.
-    /// @param _senderChain is the chain id of the sender chain.
+    /// @param _senderChainId is the chain id of the sender chain.
     /// @param _receiverGAC is global access controller.
-    constructor(address _gateway, string memory _senderChain, address _receiverGAC) BaseReceiverAdapter(_receiverGAC) {
+    constructor(address _gateway, string memory _senderChainId, address _receiverGAC)
+        BaseReceiverAdapter(_receiverGAC)
+    {
         if (_gateway == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
 
-        if (bytes(_senderChain).length == 0) {
+        if (bytes(_senderChainId).length == 0) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
         gateway = IAxelarGateway(_gateway);
-        senderChain = _senderChain;
+        senderChainId = _senderChainId;
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -58,32 +60,32 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
     /// @dev accepts new cross-chain messages from axelar gateway
     /// @inheritdoc IAxelarExecutable
     function execute(
-        bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        bytes calldata payload
+        bytes32 _commandId,
+        string calldata _sourceChainId,
+        string calldata _sourceAddress,
+        bytes calldata _payload
     ) external override {
         /// @dev step-1: validate incoming chain id
-        if (keccak256(bytes(sourceChain)) != keccak256(bytes(senderChain))) {
+        if (keccak256(bytes(_sourceChainId)) != keccak256(bytes(senderChainId))) {
             revert Error.INVALID_SENDER_CHAIN_ID();
         }
 
         /// @dev step-2: validate the source address
-        if (sourceAddress.toAddress() != senderAdapter) {
+        if (_sourceAddress.toAddress() != senderAdapter) {
             revert Error.INVALID_SENDER_ADAPTER();
         }
 
         /// @dev step-3: validate the contract call
-        if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, keccak256(payload))) {
+        if (!gateway.validateContractCall(_commandId, _sourceChainId, _sourceAddress, keccak256(_payload))) {
             revert Error.NOT_APPROVED_BY_GATEWAY();
         }
 
         /// decode the cross-chain payload
-        AdapterPayload memory decodedPayload = abi.decode(payload, (AdapterPayload));
+        AdapterPayload memory decodedPayload = abi.decode(_payload, (AdapterPayload));
         bytes32 msgId = decodedPayload.msgId;
 
         /// @dev step-4: check for duplicate message
-        if (commandIdStatus[commandId] || isMessageExecuted[msgId]) {
+        if (commandIdStatus[_commandId] || isMessageExecuted[msgId]) {
             revert MessageIdAlreadyExecuted(msgId);
         }
 
@@ -98,7 +100,7 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
         }
 
         isMessageExecuted[msgId] = true;
-        commandIdStatus[commandId] = true;
+        commandIdStatus[_commandId] = true;
 
         MessageLibrary.Message memory _data = abi.decode(decodedPayload.data, (MessageLibrary.Message));
 

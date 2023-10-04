@@ -77,10 +77,10 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice generates a new message id by incrementing nonce
-    /// @param _toChainId is the destination chainId.
+    /// @param _receiverChainId is the destination chainId.
     /// @param _to is the contract address on the destination chain.
-    function _getNewMessageId(uint256 _toChainId, address _to) internal returns (bytes32 messageId) {
-        messageId = keccak256(abi.encodePacked(block.chainid, _toChainId, nonce, address(this), _to));
+    function _getNewMessageId(uint256 _receiverChainId, address _to) internal returns (bytes32 messageId) {
+        messageId = keccak256(abi.encodePacked(block.chainid, _receiverChainId, nonce, address(this), _to));
         ++nonce;
     }
 }

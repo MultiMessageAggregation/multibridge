@@ -12,7 +12,7 @@ import {IWormholeRelayer} from "lib/wormhole-solidity-sdk/src/interfaces/IWormho
 
 contract WormholeSenderAdapterTest is Setup {
     event MessageDispatched(
-        bytes32 indexed messageId, address indexed from, uint256 indexed toChainId, address to, bytes data
+        bytes32 indexed messageId, address indexed from, uint256 indexed receiverChainId, address to, bytes data
     );
 
     address senderAddr;

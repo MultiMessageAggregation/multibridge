@@ -2,21 +2,21 @@
 pragma solidity >=0.8.9;
 
 interface IAxelarGateway {
-    function callContract(string calldata destinationChain, string calldata contractAddress, bytes calldata payload)
+    function callContract(string calldata _destinationChain, string calldata _contractAddress, bytes calldata _payload)
         external;
 
     function isContractCallApproved(
-        bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash
+        bytes32 _commandId,
+        string calldata _sourceChain,
+        string calldata _sourceAddress,
+        address _contractAddress,
+        bytes32 _payloadHash
     ) external view returns (bool);
 
     function validateContractCall(
-        bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        bytes32 payloadHash
+        bytes32 _commandId,
+        string calldata _sourceChain,
+        string calldata _sourceAddress,
+        bytes32 _payloadHash
     ) external returns (bool);
 }
