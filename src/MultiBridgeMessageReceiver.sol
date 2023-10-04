@@ -5,7 +5,7 @@ pragma solidity >=0.8.9;
 import "./interfaces/controllers/IGAC.sol";
 import "./interfaces/adapters/IMessageReceiverAdapter.sol";
 import "./interfaces/IMultiBridgeMessageReceiver.sol";
-import "./interfaces/EIP5164/ExecutorAware.sol";
+import "./libraries/EIP5164/ExecutorAware.sol";
 import "./interfaces/controllers/IGovernanceTimelock.sol";
 
 /// libraries
@@ -60,8 +60,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         _;
     }
 
-    /// @notice A modifier used for restricting the caller to just the governance timelock contract
-    modifier onlyOwner() {
+    /// @notice Restricts the caller to the owner configured in GAC.
+    modifier onlyGlobalOwner() {
         if (!gac.isGlobalOwner(msg.sender)) {
             revert Error.CALLER_NOT_OWNER();
         }
@@ -129,8 +129,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @inheritdoc IMultiBridgeMessageReceiver
-    function executeMessage(bytes32 msgId) external override {
-        ExecutionData memory _execData = msgExecData[msgId];
+    function executeMessage(bytes32 _msgId) external override {
+        ExecutionData memory _execData = msgExecData[_msgId];
 
         /// @dev validates if msg execution is not beyond expiration
         if (block.timestamp > _execData.expiration) {
@@ -138,14 +138,14 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         }
 
         /// @dev validates if msgId is already executed
-        if (isExecuted[msgId]) {
+        if (isExecuted[_msgId]) {
             revert Error.MSG_ID_ALREADY_EXECUTED();
         }
 
-        isExecuted[msgId] = true;
+        isExecuted[_msgId] = true;
 
         /// @dev validates message quorum
-        if (msgDeliveryCount[msgId] < quorum) {
+        if (msgDeliveryCount[_msgId] < quorum) {
             revert Error.QUORUM_NOT_ACHIEVED();
         }
 
@@ -154,12 +154,12 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             _execData.target, _execData.value, _execData.callData
         );
 
-        emit MessageExecuted(msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
+        emit MessageExecuted(_msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
     }
 
     /// @notice update the governance timelock contract.
     /// @dev called by admin to update the timelock contract
-    function updateGovernanceTimelock(address _governanceTimelock) external onlyOwner {
+    function updateGovernanceTimelock(address _governanceTimelock) external onlyGlobalOwner {
         if (_governanceTimelock == address(0)) {
             revert Error.ZERO_GOVERNANCE_TIMELOCK();
         }
@@ -171,7 +171,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     function updateReceiverAdapters(address[] calldata _receiverAdapters, bool[] calldata _operations)
         external
         override
-        onlyOwner
+        onlyGlobalOwner
     {
         _updateReceiverAdapters(_receiverAdapters, _operations);
     }
@@ -182,7 +182,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         uint64 _newQuorum,
         address[] calldata _receiverAdapters,
         bool[] calldata _operations
-    ) external override onlyOwner {
+    ) external override onlyGlobalOwner {
         /// @dev updates quorum here
         _updateQuorum(_newQuorum);
 
@@ -191,7 +191,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @notice Update power quorum threshold of message execution.
-    function updateQuorum(uint64 _quorum) external override onlyOwner {
+    function updateQuorum(uint64 _quorum) external override onlyGlobalOwner {
         _updateQuorum(_quorum);
     }
 
@@ -200,15 +200,15 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice view message info, return (executed, msgPower, delivered adapters)
-    function getMessageInfo(bytes32 msgId) public view returns (bool, uint256, string[] memory) {
-        uint256 msgCurrentVotes = msgDeliveryCount[msgId];
+    function getMessageInfo(bytes32 _msgId) public view returns (bool, uint256, string[] memory) {
+        uint256 msgCurrentVotes = msgDeliveryCount[_msgId];
         string[] memory successfulBridge = new string[](msgCurrentVotes);
 
         if (msgCurrentVotes != 0) {
             uint256 currIndex;
             address[] memory executors = getTrustedExecutors();
             for (uint256 i; i < executors.length;) {
-                if (msgDeliveries[msgId][executors[i]]) {
+                if (msgDeliveries[_msgId][executors[i]]) {
                     successfulBridge[currIndex] = IMessageReceiverAdapter(executors[i]).name();
                     ++currIndex;
                 }
@@ -219,7 +219,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             }
         }
 
-        return (isExecuted[msgId], msgCurrentVotes, successfulBridge);
+        return (isExecuted[_msgId], msgCurrentVotes, successfulBridge);
     }
 
     /*/////////////////////////////////////////////////////////////////

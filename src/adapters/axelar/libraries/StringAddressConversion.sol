@@ -4,8 +4,8 @@ pragma solidity >=0.8.9;
 library StringAddressConversion {
     error InvalidAddressString();
 
-    function toString(address addr) internal pure returns (string memory) {
-        bytes memory addressBytes = abi.encodePacked(addr);
+    function toString(address _addr) internal pure returns (string memory) {
+        bytes memory addressBytes = abi.encodePacked(_addr);
         uint256 length = addressBytes.length;
         bytes memory characters = "0123456789abcdef";
         bytes memory stringBytes = new bytes(2 + addressBytes.length * 2);
@@ -20,8 +20,8 @@ library StringAddressConversion {
         return string(stringBytes);
     }
 
-    function toAddress(string memory addressString) internal pure returns (address) {
-        bytes memory stringBytes = bytes(addressString);
+    function toAddress(string memory _addressString) internal pure returns (address) {
+        bytes memory stringBytes = bytes(_addressString);
         uint160 addressNumber = 0;
         uint8 stringByte;
 

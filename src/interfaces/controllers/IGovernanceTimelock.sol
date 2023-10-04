@@ -61,5 +61,5 @@ interface IGovernanceTimelock {
     /// @notice Changes the admin.
     /// This function can only be invoked by the timelock contract itself, thus requiring that this change go
     /// through the process and time delays as other governance actions.
-    function setAdmin(address newAdmin) external;
+    function setAdmin(address _newAdmin) external;
 }

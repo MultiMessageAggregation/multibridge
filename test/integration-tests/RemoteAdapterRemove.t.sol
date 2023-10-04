@@ -82,7 +82,8 @@ contract RemoteAdapterRemove is Setup {
             0,
             EXPIRATION_CONSTANT,
             refundAddress,
-            fees
+            fees,
+            new address[](0)
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

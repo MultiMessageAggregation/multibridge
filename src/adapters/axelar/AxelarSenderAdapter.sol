@@ -12,7 +12,7 @@ import "./interfaces/IAxelarGasService.sol";
 import "./libraries/StringAddressConversion.sol";
 
 contract AxelarSenderAdapter is BaseSenderAdapter {
-    string public constant name = "axelar";
+    string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
 
@@ -35,32 +35,32 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @dev sendMessage sends a message to Axelar.
-    /// @param _toChainId The ID of the destination chain.
+    /// @param _receiverChainId The ID of the destination chain.
     /// @param _to The address of the contract on the destination chain that will receive the message.
     /// @param _data The data to be included in the message.
-    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+    function dispatchMessage(uint256 _receiverChainId, address _to, bytes calldata _data)
         external
         payable
         override
         onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
-        address receiverAdapter = receiverAdapters[_toChainId];
+        address receiverAdapter = receiverAdapters[_receiverChainId];
 
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();
         }
 
-        string memory destinationChain = chainIdMap[_toChainId];
+        string memory destinationChain = chainIdMap[_receiverChainId];
 
-        if (bytes(destinationChain).length <= 0) {
+        if (bytes(destinationChain).length == 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
-        msgId = _getNewMessageId(_toChainId, _to);
+        msgId = _getNewMessageId(_receiverChainId, _to);
         _callContract(destinationChain, receiverAdapter, msgId, _to, _data);
 
-        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+        emit MessageDispatched(msgId, msg.sender, _receiverChainId, _to, _data);
     }
 
     /// @dev maps the MMA chain id to bridge specific chain id
@@ -87,26 +87,26 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @dev Sends a message to the IAxelarRelayer contract for relaying to the Axelar Network.
-    /// @param destinationChain The name of the destination chain.
-    /// @param receiverAdapter The address of the adapter on the destination chain that will receive the message.
-    /// @param msgId The ID of the message to be relayed.
-    /// @param multibridgeReceiver The address of the MultibridgeReceiver contract on the destination chain that will receive the message.
-    /// @param data The bytes data to pass to the contract on the destination chain.
+    /// @param _destinationChain The name of the destination chain.
+    /// @param _receiverAdapter The address of the adapter on the destination chain that will receive the message.
+    /// @param _msgId The ID of the message to be relayed.
+    /// @param _multibridgeReceiver The address of the MultibridgeReceiver contract on the destination chain that will receive the message.
+    /// @param _data The bytes data to pass to the contract on the destination chain.
     function _callContract(
-        string memory destinationChain,
-        address receiverAdapter,
-        bytes32 msgId,
-        address multibridgeReceiver,
-        bytes calldata data
+        string memory _destinationChain,
+        address _receiverAdapter,
+        bytes32 _msgId,
+        address _multibridgeReceiver,
+        bytes calldata _data
     ) internal {
-        string memory receiverAdapterInString = StringAddressConversion.toString(receiverAdapter);
+        string memory receiverAdapterInString = StringAddressConversion.toString(_receiverAdapter);
         bytes memory payload =
-            abi.encode(AdapterPayload(msgId, address(msg.sender), receiverAdapter, multibridgeReceiver, data));
+            abi.encode(AdapterPayload(_msgId, address(msg.sender), _receiverAdapter, _multibridgeReceiver, _data));
 
         gasService.payNativeGasForContractCall{value: msg.value}(
-            msg.sender, destinationChain, receiverAdapterInString, payload, msg.sender
+            msg.sender, _destinationChain, receiverAdapterInString, payload, msg.sender
         );
 
-        gateway.callContract(destinationChain, receiverAdapterInString, payload);
+        gateway.callContract(_destinationChain, receiverAdapterInString, payload);
     }
 }

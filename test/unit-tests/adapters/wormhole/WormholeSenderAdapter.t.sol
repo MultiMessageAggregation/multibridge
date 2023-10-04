@@ -12,7 +12,7 @@ import {IWormholeRelayer} from "lib/wormhole-solidity-sdk/src/interfaces/IWormho
 
 contract WormholeSenderAdapterTest is Setup {
     event MessageDispatched(
-        bytes32 indexed messageId, address indexed from, uint256 indexed toChainId, address to, bytes data
+        bytes32 indexed messageId, address indexed from, uint256 indexed receiverChainId, address to, bytes data
     );
 
     address senderAddr;
@@ -41,7 +41,7 @@ contract WormholeSenderAdapterTest is Setup {
         bytes32 msgId =
             keccak256(abi.encodePacked(SRC_CHAIN_ID, DST_CHAIN_ID, uint256(0), address(adapter), address(42)));
         (uint256 fee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().msgDeliveryGasLimit()
         );
 
         vm.expectEmit(true, true, true, true, address(adapter));

@@ -65,6 +65,7 @@ contract GovernanceTimelock is IGovernanceTimelock {
         emit AdminUpdated(address(0), _admin);
 
         delay = _delay;
+        emit DelayUpdated(0, _delay);
     }
 
     /*/////////////////////////////////////////////////////////////////

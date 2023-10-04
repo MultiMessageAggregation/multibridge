@@ -38,7 +38,7 @@ contract AxelarReceiverAdapterTest is Setup {
         // checks existing setup
         assertEq(address(adapter.gateway()), POLYGON_GATEWAY);
         assertEq(address(adapter.receiverGAC()), contractAddress[DST_CHAIN_ID]["GAC"]);
-        assertEq(adapter.senderChain(), "ethereum");
+        assertEq(adapter.senderChainId(), "ethereum");
     }
 
     /// @dev constructor with invalid parameters should fail
