@@ -19,7 +19,7 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyMultiBridgeMessageSender() {
-        if (msg.sender != senderGAC.getMultiBridgeMessageSender()) {
+        if (msg.sender != senderGAC.multiBridgeMessageSender()) {
             revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
         }
         _;
@@ -70,11 +70,6 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
                 ++i;
             }
         }
-    }
-
-    /// @inheritdoc IMessageSenderAdapter
-    function getReceiverAdapter(uint256 _dstChainId) external view override returns (address) {
-        return receiverAdapters[_dstChainId];
     }
 
     /*/////////////////////////////////////////////////////////////////

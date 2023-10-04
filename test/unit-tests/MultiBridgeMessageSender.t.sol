@@ -67,7 +67,7 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         // Wormhole requires exact fees to be passed in
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         (address[] memory senderAdapters, uint256[] memory fees) =
             _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
@@ -111,7 +111,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         uint256 balanceBefore = refundAddress.balance;
 
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         (, uint256[] memory fees) =
             _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
@@ -151,7 +151,7 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         uint256[] memory fees = new uint256[](1);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         fees[0] = wormholeFee;
 
@@ -377,7 +377,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         uint256[] memory fees = new uint256[](3);
         bool[] memory adapterSuccess = new bool[](3);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         senderAdapters[0] = axelarAdapterAddr;
         senderAdapters[1] = wormholeAdapterAddr;

@@ -39,11 +39,11 @@ contract MessageReceiverGACTest is Setup {
         vm.startPrank(gacOwner);
 
         vm.expectEmit(true, true, true, true, address(receiverGAC));
-        emit MultiBridgeMessageReceiverUpdated(address(receiverGAC.getMultiBridgeMessageReceiver()), address(42));
+        emit MultiBridgeMessageReceiverUpdated(address(receiverGAC.multiBridgeMsgReceiver()), address(42));
 
         receiverGAC.setMultiBridgeMessageReceiver(address(42));
 
-        assertEq(receiverGAC.getMultiBridgeMessageReceiver(), address(42));
+        assertEq(receiverGAC.multiBridgeMsgReceiver(), address(42));
     }
 
     /// @dev only owner can set multi message receiver

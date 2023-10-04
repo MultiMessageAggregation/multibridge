@@ -93,7 +93,7 @@ contract AxelarReceiverAdapter is BaseReceiverAdapter, IAxelarExecutable {
         }
 
         /// @dev step-6: validate the destination
-        if (decodedPayload.finalDestination != receiverGAC.getMultiBridgeMessageReceiver()) {
+        if (decodedPayload.finalDestination != receiverGAC.multiBridgeMsgReceiver()) {
             revert Error.INVALID_FINAL_DESTINATION();
         }
 

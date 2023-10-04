@@ -21,11 +21,7 @@ contract GAC is IGAC, Ownable {
 
     /// @inheritdoc IGAC
     function isGlobalOwner(address _caller) external view override returns (bool) {
-        if (_caller == owner()) {
-            return true;
-        }
-
-        return false;
+        return _caller == owner();
     }
 
     /// @inheritdoc IGAC

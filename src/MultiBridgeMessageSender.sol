@@ -105,7 +105,7 @@ contract MultiBridgeMessageSender {
 
     /// @dev checks if msg.sender is the authorised caller configured in GAC
     modifier onlyCaller() {
-        if (msg.sender != senderGAC.getAuthorisedCaller()) {
+        if (msg.sender != senderGAC.authorisedCaller()) {
             revert Error.INVALID_PRIVILEGED_CALLER();
         }
         _;
@@ -296,7 +296,7 @@ contract MultiBridgeMessageSender {
             revert Error.INVALID_REFUND_ADDRESS();
         }
 
-        mmaReceiver = senderGAC.getRemoteMultiBridgeMessageReceiver(_dstChainId);
+        mmaReceiver = senderGAC.remoteMultiBridgeMessageReceiver(_dstChainId);
 
         if (mmaReceiver == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();

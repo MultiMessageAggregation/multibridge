@@ -58,9 +58,9 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
             wormChainId,
             receiverAdapter,
             payload,
-            0,
             /// @dev no receiver value since just passing message
-            senderGAC.getGlobalMsgDeliveryGasLimit()
+            0,
+            senderGAC.msgDeliveryGasLimit()
         );
 
         emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);

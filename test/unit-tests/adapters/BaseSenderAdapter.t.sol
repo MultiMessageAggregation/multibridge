@@ -33,14 +33,14 @@ contract AxelarSenderAdapterTest is Setup {
         receiverAdapters[1] = address(43);
 
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ReceiverAdapterUpdated(BSC_CHAIN_ID, adapter.getReceiverAdapter(BSC_CHAIN_ID), address(42));
+        emit ReceiverAdapterUpdated(BSC_CHAIN_ID, adapter.receiverAdapters(BSC_CHAIN_ID), address(42));
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ReceiverAdapterUpdated(POLYGON_CHAIN_ID, adapter.getReceiverAdapter(POLYGON_CHAIN_ID), address(43));
+        emit ReceiverAdapterUpdated(POLYGON_CHAIN_ID, adapter.receiverAdapters(POLYGON_CHAIN_ID), address(43));
 
         adapter.updateReceiverAdapter(DST_CHAINS, receiverAdapters);
 
-        assertEq(adapter.getReceiverAdapter(BSC_CHAIN_ID), address(42));
-        assertEq(adapter.getReceiverAdapter(POLYGON_CHAIN_ID), address(43));
+        assertEq(adapter.receiverAdapters(BSC_CHAIN_ID), address(42));
+        assertEq(adapter.receiverAdapters(POLYGON_CHAIN_ID), address(43));
     }
 
     /// @dev only global owner can update receiver adapter

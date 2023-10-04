@@ -27,5 +27,5 @@ interface IMessageSenderAdapter is SingleMessageDispatcher {
 
     /// @notice returns the bridge receiver adapter address for a given destination chain id
     /// @param _chainId is the destination chain whose receiver adapter address is to be returned
-    function getReceiverAdapter(uint256 _chainId) external view returns (address);
+    function receiverAdapters(uint256 _chainId) external view returns (address);
 }

@@ -41,7 +41,7 @@ contract WormholeSenderAdapterTest is Setup {
         bytes32 msgId =
             keccak256(abi.encodePacked(SRC_CHAIN_ID, DST_CHAIN_ID, uint256(0), address(adapter), address(42)));
         (uint256 fee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().msgDeliveryGasLimit()
         );
 
         vm.expectEmit(true, true, true, true, address(adapter));
