@@ -74,8 +74,16 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
     /// @notice sets the initial parameters
     constructor(uint256 _srcChainId, address _gac) {
-        srcChainId = _srcChainId;
+        if (_gac == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
+        if (_srcChainId == 0) {
+            revert Error.INVALID_SENDER_CHAIN_ID();
+        }
+
         gac = IGAC(_gac);
+        srcChainId = _srcChainId;
     }
 
     /*/////////////////////////////////////////////////////////////////

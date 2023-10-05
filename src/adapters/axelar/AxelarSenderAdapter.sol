@@ -26,6 +26,10 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
                                 CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
     constructor(address _gasService, address _gateway, address _gac) BaseSenderAdapter(_gac) {
+        if (_gasService == address(0) || _gateway == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
+
         gasService = IAxelarGasService(_gasService);
         gateway = IAxelarGateway(_gateway);
     }

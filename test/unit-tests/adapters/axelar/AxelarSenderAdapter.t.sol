@@ -34,6 +34,24 @@ contract AxelarSenderAdapterTest is Setup {
         assertEq(address(adapter.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
+    /// @dev constructor cannot be called with zero address gas service
+    function test_constructor_zero_address_relayer() public {
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new AxelarSenderAdapter(address(0), address(42), address(42));
+    }
+
+    /// @dev constructor cannot be called with zero address gateway
+    function test_constructor_zero_address_gateway() public {
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new AxelarSenderAdapter(address(42), address(0), address(42));
+    }
+
+    /// @dev constructor cannot be called with zero address GAC
+    function test_constructor_zero_address_gac() public {
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new AxelarSenderAdapter(address(42), address(42), address(0));
+    }
+
     /// @dev dispatches message
     function test_dispatch_message() public {
         vm.startPrank(senderAddr);
