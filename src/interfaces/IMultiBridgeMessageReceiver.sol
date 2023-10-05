@@ -34,7 +34,7 @@ interface IMultiBridgeMessageReceiver {
     /// @param nativeValue is the value that will be passed to the target address through low-level call
     /// @param nonce is the nonce of the message
     /// @param callData is the data that will be passed to the target address through low-level call
-    event MessageExecuted(
+    event MessageExecutionScheduled(
         bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
     );
 
@@ -55,7 +55,7 @@ interface IMultiBridgeMessageReceiver {
 
     /// @notice Sends a message, that has achieved quorum and has not yet expired, to the governance timelock for eventual execution.
     /// @param _msgId is the unique identifier of the message
-    function executeMessage(bytes32 _msgId) external;
+    function scheduleMessageExecution(bytes32 _msgId) external;
 
     /// @notice adds or removes bridge receiver adapters.
     /// @param _receiverAdapters the list of receiver adapters to add or remove

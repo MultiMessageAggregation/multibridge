@@ -17,7 +17,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
     event BridgeMessageReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
-    event MessageExecuted(
+    event MessageExecutionScheduled(
         bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
     );
 
@@ -69,7 +69,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         receiver.receiveMessage(message);
 
-        assertFalse(receiver.isExecuted(msgId));
+        assertFalse(receiver.isExecutionScheduled(msgId));
 
         assertTrue(receiver.msgDeliveries(msgId, wormholeAdapterAddr));
 
@@ -199,8 +199,8 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.receiveMessage(message);
     }
 
-    /// @dev executed message should be rejected
-    function test_receiver_message_msg_id_already_executed() public {
+    /// @dev scheduled message should be rejected
+    function test_receiver_message_msg_id_already_scheduled() public {
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: SRC_CHAIN_ID,
             dstChainId: DST_CHAIN_ID,
@@ -219,15 +219,15 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
         receiver.receiveMessage(message);
 
-        receiver.executeMessage(msgId);
+        receiver.scheduleMessageExecution(msgId);
 
         vm.startPrank(axelarAdapterAddr);
-        vm.expectRevert(Error.MSG_ID_ALREADY_EXECUTED.selector);
+        vm.expectRevert(Error.MSG_ID_ALREADY_SCHEDULED.selector);
         receiver.receiveMessage(message);
     }
 
-    /// @dev executes message delivered by two adapters
-    function test_execute_message() public {
+    /// @dev schedules message delivered by two adapters
+    function test_schedule_message_execution() public {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
@@ -247,15 +247,15 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.receiveMessage(message);
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit MessageExecuted(msgId, address(42), 0, 42, bytes("42"));
+        emit MessageExecutionScheduled(msgId, address(42), 0, 42, bytes("42"));
 
-        receiver.executeMessage(msgId);
+        receiver.scheduleMessageExecution(msgId);
 
-        assertTrue(receiver.isExecuted(msgId));
+        assertTrue(receiver.isExecutionScheduled(msgId));
     }
 
-    /// @dev cannot execute message past deadline
-    function test_execute_message_passed_deadline() public {
+    /// @dev cannot schedule execution of message past deadline
+    function test_schedule_message_execution_passed_deadline() public {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
@@ -272,11 +272,11 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.receiveMessage(message);
 
         vm.expectRevert(Error.MSG_EXECUTION_PASSED_DEADLINE.selector);
-        receiver.executeMessage(msgId);
+        receiver.scheduleMessageExecution(msgId);
     }
 
-    /// @dev cannot executed message that has already been executed
-    function test_execute_message_msg_id_already_executed() public {
+    /// @dev cannot schedule execution of message that has already been scheduled
+    function test_schedule_message_execution_already_scheduled() public {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
@@ -295,14 +295,14 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.startPrank(axelarAdapterAddr);
         receiver.receiveMessage(message);
 
-        receiver.executeMessage(msgId);
+        receiver.scheduleMessageExecution(msgId);
 
-        vm.expectRevert(Error.MSG_ID_ALREADY_EXECUTED.selector);
-        receiver.executeMessage(msgId);
+        vm.expectRevert(Error.MSG_ID_ALREADY_SCHEDULED.selector);
+        receiver.scheduleMessageExecution(msgId);
     }
 
-    /// @dev cannot execute message without quorum
-    function test_execute_message_quorum_not_met_for_exec() public {
+    /// @dev cannot schedule message execution without quorum
+    function test_schedule_message_execution_quorum_not_met() public {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
@@ -319,7 +319,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.receiveMessage(message);
 
         vm.expectRevert(Error.QUORUM_NOT_ACHIEVED.selector);
-        receiver.executeMessage(msgId);
+        receiver.scheduleMessageExecution(msgId);
     }
 
     /// @dev adds one receiver adapter
@@ -486,8 +486,8 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         receiver.receiveMessage(message);
 
-        (bool isExecuted, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
-        assertFalse(isExecuted);
+        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
+        assertFalse(isScheduled);
         assertEq(msgCurrentVotes, 1);
         assertEq(successfulBridge.length, 1);
         assertEq(successfulBridge[0], WormholeReceiverAdapter(wormholeAdapterAddr).name());
