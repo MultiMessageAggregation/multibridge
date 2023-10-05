@@ -174,6 +174,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         onlyGlobalOwner
     {
         _updateReceiverAdapters(_receiverAdapters, _operations);
+        _validateQuorum(quorum);
     }
 
     /// @notice Update bridge receiver adapters after quorum update
@@ -183,18 +184,13 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         address[] calldata _receiverAdapters,
         bool[] calldata _operations
     ) external override onlyGlobalOwner {
-        if (_newQuorum > quorum) {
-            _updateReceiverAdapters(_receiverAdapters, _operations);
-            _updateQuorum(_newQuorum);
-        } else {
-            _updateQuorum(_newQuorum);
-            _updateReceiverAdapters(_receiverAdapters, _operations);
-        }
+        _updateReceiverAdapters(_receiverAdapters, _operations);
+        _validateAndUpdateQuorum(_newQuorum);
     }
 
     /// @notice Update power quorum threshold of message execution.
     function updateQuorum(uint64 _quorum) external override onlyGlobalOwner {
-        _updateQuorum(_quorum);
+        _validateAndUpdateQuorum(_quorum);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -228,10 +224,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function _updateQuorum(uint64 _quorum) internal {
-        if (_quorum > trustedExecutorsCount() || _quorum == 0) {
-            revert Error.INVALID_QUORUM_THRESHOLD();
-        }
+    function _validateAndUpdateQuorum(uint64 _quorum) internal {
+        _validateQuorum(_quorum);
 
         uint64 oldValue = quorum;
 
@@ -268,11 +262,13 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             _addTrustedExecutor(_receiverAdapter);
         } else {
             _removeTrustedExecutor(_receiverAdapter);
-
-            if (quorum > trustedExecutorsCount()) {
-                revert Error.INVALID_QUORUM_THRESHOLD();
-            }
         }
         emit BridgeReceiverAdapterUpdated(_receiverAdapter, _add);
+    }
+
+    function _validateQuorum(uint256 _quorum) private view {
+        if (_quorum > trustedExecutorsCount() || _quorum == 0) {
+            revert Error.INVALID_QUORUM_THRESHOLD();
+        }
     }
 }

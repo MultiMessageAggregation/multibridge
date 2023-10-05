@@ -504,6 +504,32 @@ contract MultiBridgeMessageReceiverTest is Setup {
         assertEq(receiver.isTrustedExecutor(axelarAdapterAddr), false);
     }
 
+    /// @dev valid quorum and receiver updater in one single call, removing one, adding two and increasing quorum
+    function test_quorum_and_receiver_updater_remove_add_increase() public {
+        vm.startPrank(timelockAddr);
+
+        // Remove one adapter and update quorum to 1
+        address[] memory removeAddAdapters = new address[](3);
+        removeAddAdapters[0] = axelarAdapterAddr;
+        removeAddAdapters[1] = address(42);
+        removeAddAdapters[2] = address(43);
+        bool[] memory removeAddOps = new bool[](3);
+        removeAddOps[0] = false;
+        removeAddOps[1] = true;
+        removeAddOps[2] = true;
+
+        uint64 newQuorum = 3;
+
+        receiver.updateQuorumAndReceiverAdapter(newQuorum, removeAddAdapters, removeAddOps);
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(wormholeAdapterAddr), true);
+        assertEq(receiver.isTrustedExecutor(axelarAdapterAddr), false);
+        assertEq(receiver.isTrustedExecutor(removeAddAdapters[1]), true);
+        assertEq(receiver.isTrustedExecutor(removeAddAdapters[2]), true);
+    }
+
     /// @dev should get message info
     function test_get_message_info() public {
         vm.startPrank(wormholeAdapterAddr);

@@ -316,9 +316,8 @@ abstract contract Setup is Test {
 
             MultiBridgeMessageReceiver dstMMReceiver =
                 MultiBridgeMessageReceiver(contractAddress[chainId][bytes("MMA_RECEIVER")]);
-            dstMMReceiver.updateReceiverAdapters(_receiverAdapters, _operations);
+            dstMMReceiver.updateQuorumAndReceiverAdapter(2, _receiverAdapters, _operations);
             dstMMReceiver.updateGovernanceTimelock(contractAddress[chainId]["TIMELOCK"]);
-            dstMMReceiver.updateQuorum(2);
 
             MessageReceiverGAC receiverGAC = MessageReceiverGAC(contractAddress[chainId][bytes("GAC")]);
             receiverGAC.setMultiBridgeMessageReceiver(address(dstMMReceiver));
