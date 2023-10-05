@@ -183,11 +183,13 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         address[] calldata _receiverAdapters,
         bool[] calldata _operations
     ) external override onlyGlobalOwner {
-        /// @dev updates quorum here
-        _updateQuorum(_newQuorum);
-
-        /// @dev updates receiver adapter here
-        _updateReceiverAdapters(_receiverAdapters, _operations);
+        if (_newQuorum > quorum) {
+            _updateReceiverAdapters(_receiverAdapters, _operations);
+            _updateQuorum(_newQuorum);
+        } else {
+            _updateQuorum(_newQuorum);
+            _updateReceiverAdapters(_receiverAdapters, _operations);
+        }
     }
 
     /// @notice Update power quorum threshold of message execution.

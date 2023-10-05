@@ -457,6 +457,53 @@ contract MultiBridgeMessageReceiverTest is Setup {
         assertEq(receiver.isTrustedExecutor(adapters[0]), false);
     }
 
+    /// @dev valid quorum and receiver updater in one single call, adding adapters and increasing quorum
+    function test_quorum_and_receiver_updater_add_increase() public {
+        vm.startPrank(timelockAddr);
+
+        // First, add one adapter
+        address[] memory addOneAdapter = new address[](1);
+        addOneAdapter[0] = address(42);
+        bool[] memory addOneOps = new bool[](1);
+        addOneOps[0] = true;
+
+        // Add two more and update quorum to 4
+        address[] memory addTwoAdapters = new address[](2);
+        addTwoAdapters[0] = address(420);
+        addTwoAdapters[1] = address(421);
+
+        bool[] memory addTwoOps = new bool[](2);
+        addTwoOps[0] = true;
+        addTwoOps[1] = true;
+
+        uint64 newQuorum = 4;
+
+        receiver.updateQuorumAndReceiverAdapter(newQuorum, addTwoAdapters, addTwoOps);
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(addTwoAdapters[0]), true);
+        assertEq(receiver.isTrustedExecutor(addTwoAdapters[1]), true);
+    }
+
+    /// @dev valid quorum and receiver updater in one single call, removing adapter and decreasing quorum
+    function test_quorum_and_receiver_updater_remove_decrease() public {
+        vm.startPrank(timelockAddr);
+
+        // Remove one adapter and update quorum to 1
+        address[] memory removeOneAdapter = new address[](1);
+        removeOneAdapter[0] = axelarAdapterAddr;
+
+        uint64 newQuorum = 1;
+
+        receiver.updateQuorumAndReceiverAdapter(newQuorum, removeOneAdapter, new bool[](1));
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(wormholeAdapterAddr), true);
+        assertEq(receiver.isTrustedExecutor(axelarAdapterAddr), false);
+    }
+
     /// @dev should get message info
     function test_get_message_info() public {
         vm.startPrank(wormholeAdapterAddr);
