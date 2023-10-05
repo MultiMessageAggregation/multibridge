@@ -285,7 +285,7 @@ contract MultiBridgeMessageSender {
             _dispatchMessages(adapters, mmaReceiver, _args.dstChainId, message, _args.fees);
 
         if (successCount == 0) {
-            revert Error.MESSAGE_BRIDGE_FAILURE();
+            revert Error.MULTI_MESSAGE_SEND_FAILED();
         }
 
         emit MultiBridgeMessageSent(

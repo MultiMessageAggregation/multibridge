@@ -103,7 +103,7 @@ library Error {
     error NOT_APPROVED_BY_GATEWAY();
 
     /// @dev is thrown if all message bridges fail
-    error MESSAGE_BRIDGE_FAILURE();
+    error MULTI_MESSAGE_SEND_FAILED();
 
     /*/////////////////////////////////////////////////////////////////
                             TIMELOCK ERRORS

@@ -611,10 +611,10 @@ contract MultiBridgeMessageSenderTest is Setup {
     }
 
     /// @dev if all message bridges fail (not pay enough fees)
-    function test_all_message_bridge_failure() public {
+    function test_all_MULTI_MESSAGE_SEND_FAILED() public {
         vm.startPrank(caller);
 
-        vm.expectRevert(Error.MESSAGE_BRIDGE_FAILURE.selector);
+        vm.expectRevert(Error.MULTI_MESSAGE_SEND_FAILED.selector);
         sender.remoteCall(
             DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, new uint256[](2)
         );
