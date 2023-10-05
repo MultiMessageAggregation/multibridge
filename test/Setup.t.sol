@@ -46,6 +46,7 @@ abstract contract Setup is Test {
     address constant owner = address(420);
     address constant refundAddress = address(420420);
     uint256 constant EXPIRATION_CONSTANT = 5 days;
+    uint256 constant DEFAULT_SUCCESS_THRESHOLD = 2;
 
     /// @dev constants for axelar
     address constant ETH_GATEWAY = 0x4F4495243837681061C4743b74B3eEdf548D56A5;

@@ -49,7 +49,8 @@ contract TimelockCheckTest is Setup {
             0,
             EXPIRATION_CONSTANT,
             refundAddress,
-            fees
+            fees,
+            DEFAULT_SUCCESS_THRESHOLD
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();

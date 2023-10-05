@@ -28,6 +28,7 @@ contract MultiBridgeMessageSender {
         uint256 expiration;
         address refundAddress;
         uint256[] fees;
+        uint256 successThreshold;
         address[] excludedAdapters;
     }
 
@@ -149,18 +150,28 @@ contract MultiBridgeMessageSender {
     /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
     /// @param _fees refers to the fees to pay to each adapter
+    /// @param _successThreshold refers to minimum number of bridges required to relay the message
     function remoteCall(
         uint256 _dstChainId,
         address _target,
-        bytes calldata _callData,
+        bytes memory _callData,
         uint256 _nativeValue,
         uint256 _expiration,
         address _refundAddress,
-        uint256[] calldata _fees
+        uint256[] memory _fees,
+        uint256 _successThreshold
     ) external payable onlyCaller validateExpiration(_expiration) {
         _remoteCall(
             RemoteCallArgs(
-                _dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, _fees, new address[](0)
+                _dstChainId,
+                _target,
+                _callData,
+                _nativeValue,
+                _expiration,
+                _refundAddress,
+                _fees,
+                _successThreshold,
+                new address[](0)
             )
         );
     }
@@ -173,20 +184,30 @@ contract MultiBridgeMessageSender {
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
     /// @param _fees refers to the fees to pay to each sender adapter that is not in the exclusion list specified by _excludedAdapters.
     ///         The fees are in the same order as the sender adapters in the senderAdapters list, after the exclusion list is applied.
+    /// @param _successThreshold refers to minimum number of bridges required to relay the message
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message, in ascending order by address
     function remoteCall(
         uint256 _dstChainId,
         address _target,
-        bytes calldata _callData,
+        bytes memory _callData,
         uint256 _nativeValue,
         uint256 _expiration,
         address _refundAddress,
-        uint256[] calldata _fees,
-        address[] calldata _excludedAdapters
+        uint256[] memory _fees,
+        uint256 _successThreshold,
+        address[] memory _excludedAdapters
     ) external payable onlyCaller validateExpiration(_expiration) {
         _remoteCall(
             RemoteCallArgs(
-                _dstChainId, _target, _callData, _nativeValue, _expiration, _refundAddress, _fees, _excludedAdapters
+                _dstChainId,
+                _target,
+                _callData,
+                _nativeValue,
+                _expiration,
+                _refundAddress,
+                _fees,
+                _successThreshold,
+                _excludedAdapters
             )
         );
     }
@@ -284,7 +305,7 @@ contract MultiBridgeMessageSender {
         (bool[] memory adapterSuccess, uint256 successCount) =
             _dispatchMessages(adapters, mmaReceiver, _args.dstChainId, message, _args.fees);
 
-        if (successCount == 0) {
+        if (successCount < _args.successThreshold) {
             revert Error.MULTI_MESSAGE_SEND_FAILED();
         }
 
