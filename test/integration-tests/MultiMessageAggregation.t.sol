@@ -61,8 +61,8 @@ contract MultiBridgeMessageAggregationTest is Setup {
 
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
-        /// execute the message and move it to governance timelock contract
-        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).executeMessage(msgId);
+        /// schedule the message for execution by moving it to governance timelock contract
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(msgId);
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 

@@ -27,7 +27,7 @@ library Error {
     error NO_SENDER_ADAPTER_FOUND();
 
     /// @dev is thrown if msg id is already executed
-    error MSG_ID_ALREADY_EXECUTED();
+    error MSG_ID_ALREADY_SCHEDULED();
 
     /// @dev is thrown if bridge adapter already delivered the message to multi message receiver
     error DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
