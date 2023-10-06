@@ -37,6 +37,16 @@ contract GovernanceTimelockTest is Setup {
         assertEq(timelock.txCounter(), 0);
     }
 
+    /// @dev constructor emits events for updating admin and delay period
+    function test_constructor_emits_events() public {
+        vm.expectEmit(true, true, true, true);
+        emit AdminUpdated(address(0), address(42));
+        vm.expectEmit(true, true, true, true);
+        emit DelayUpdated(0, 3 days);
+
+        new GovernanceTimelock(address(42), 3 days);
+    }
+
     /// @dev cannot be called with zero address admin
     function test_constructor_zero_address_input() public {
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);

@@ -70,7 +70,7 @@ contract WormholeReceiverAdapterTest is Setup {
         adapter.updateSenderAdapter(address(42));
 
         assertEq(adapter.senderAdapter(), address(42));
-        assertEq(adapter.senderChain(), uint16(2));
+        assertEq(adapter.senderChainId(), uint16(2));
     }
 
     /// @dev only global owner can update sender adapter

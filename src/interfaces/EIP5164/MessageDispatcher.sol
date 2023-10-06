@@ -11,6 +11,6 @@ interface MessageDispatcher {
      * @dev The MessageDispatched event MUST be emitted by the MessageDispatcher when an individual message is dispatched.
      */
     event MessageDispatched(
-        bytes32 indexed messageId, address indexed from, uint256 indexed toChainId, address to, bytes data
+        bytes32 indexed messageId, address indexed from, uint256 indexed receiverChainId, address to, bytes data
     );
 }

@@ -11,7 +11,7 @@ library MessageLibrary {
     /// @param target is the contract to be called on dst chain
     /// @param callData is the data to be sent to target by low-level call(eg. address(target).call(callData))
     /// @param nativeValue is the native token value to be sent to target in the low-level call(eg. address(target).call{value: nativeValue}(callData))
-    /// @param expiration is the unix time when the message expires, zero means never expire
+    /// @param expiration is the unix time when the message expires.
     struct Message {
         uint256 srcChainId;
         uint256 dstChainId;

@@ -8,7 +8,7 @@ import "../interfaces/IMultiBridgeMessageReceiver.sol";
 contract MessageReceiverGAC is GAC {
     event MultiBridgeMessageReceiverUpdated(address indexed oldMMR, address indexed newMMR);
 
-    address private multiBridgeMsgReceiver;
+    address public multiBridgeMsgReceiver;
 
     function setMultiBridgeMessageReceiver(address _mmaReceiver) external onlyOwner {
         if (_mmaReceiver == address(0)) {
@@ -18,9 +18,5 @@ contract MessageReceiverGAC is GAC {
         multiBridgeMsgReceiver = _mmaReceiver;
 
         emit MultiBridgeMessageReceiverUpdated(oldMMR, _mmaReceiver);
-    }
-
-    function getMultiBridgeMessageReceiver() external view returns (address) {
-        return multiBridgeMsgReceiver;
     }
 }

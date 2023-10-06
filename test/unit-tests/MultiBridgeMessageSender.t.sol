@@ -67,7 +67,7 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         // Wormhole requires exact fees to be passed in
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         (address[] memory senderAdapters, uint256[] memory fees) =
             _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
@@ -111,7 +111,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         uint256 balanceBefore = refundAddress.balance;
 
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         (, uint256[] memory fees) =
             _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
@@ -149,7 +149,7 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         uint256[] memory fees = new uint256[](1);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         fees[0] = wormholeFee;
 
@@ -234,6 +234,7 @@ contract MultiBridgeMessageSenderTest is Setup {
 
     /// @dev message expiration has to be within allowed range
     function test_remote_call_invalid_expiration() public {
+        address[] memory excludedAdapters = new address[](0);
         uint256 invalidExpMin = sender.MIN_MESSAGE_EXPIRATION() - 1 days;
         uint256 invalidExpMax = sender.MAX_MESSAGE_EXPIRATION() + 1 days;
 
@@ -254,7 +255,6 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
 
         // test expiration validation in remoteCall() which accepts excluded adapters
-        address[] memory excludedAdapters = new address[](0);
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(
@@ -287,6 +287,7 @@ contract MultiBridgeMessageSenderTest is Setup {
     function test_remote_call_invalid_refundAddress() public {
         // test refund address validation in remoteCall() which does not accept excluded adapters
         vm.startPrank(caller);
+        address[] memory excludedAdapters = new address[](0);
 
         uint256[] memory fees = new uint256[](2);
         fees[0] = 0.01 ether;
@@ -309,7 +310,6 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
 
         // test refund address validation in remoteCall() which accepts excluded adapters
-        address[] memory excludedAdapters = new address[](0);
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
         sender.remoteCall(
@@ -461,7 +461,7 @@ contract MultiBridgeMessageSenderTest is Setup {
         uint256[] memory fees = new uint256[](3);
         bool[] memory adapterSuccess = new bool[](3);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
         );
         senderAdapters[0] = axelarAdapterAddr;
         senderAdapters[1] = wormholeAdapterAddr;

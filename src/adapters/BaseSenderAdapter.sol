@@ -19,7 +19,7 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
                                  MODIFIER
     ////////////////////////////////////////////////////////////////*/
     modifier onlyMultiBridgeMessageSender() {
-        if (msg.sender != senderGAC.getMultiBridgeMessageSender()) {
+        if (msg.sender != senderGAC.multiBridgeMessageSender()) {
             revert Error.CALLER_NOT_MULTI_MESSAGE_SENDER();
         }
         _;
@@ -72,20 +72,15 @@ abstract contract BaseSenderAdapter is IMessageSenderAdapter {
         }
     }
 
-    /// @inheritdoc IMessageSenderAdapter
-    function getReceiverAdapter(uint256 _dstChainId) external view override returns (address) {
-        return receiverAdapters[_dstChainId];
-    }
-
     /*/////////////////////////////////////////////////////////////////
                             HELPER FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice generates a new message id by incrementing nonce
-    /// @param _toChainId is the destination chainId.
+    /// @param _receiverChainId is the destination chainId.
     /// @param _to is the contract address on the destination chain.
-    function _getNewMessageId(uint256 _toChainId, address _to) internal returns (bytes32 messageId) {
-        messageId = keccak256(abi.encodePacked(block.chainid, _toChainId, nonce, address(this), _to));
+    function _getNewMessageId(uint256 _receiverChainId, address _to) internal returns (bytes32 messageId) {
+        messageId = keccak256(abi.encodePacked(block.chainid, _receiverChainId, nonce, address(this), _to));
         ++nonce;
     }
 }

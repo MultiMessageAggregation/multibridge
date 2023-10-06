@@ -12,7 +12,7 @@ import {IWormholeRelayer} from "lib/wormhole-solidity-sdk/src/interfaces/IWormho
 
 contract WormholeSenderAdapterTest is Setup {
     event MessageDispatched(
-        bytes32 indexed messageId, address indexed from, uint256 indexed toChainId, address to, bytes data
+        bytes32 indexed messageId, address indexed from, uint256 indexed receiverChainId, address to, bytes data
     );
 
     address senderAddr;
@@ -33,6 +33,18 @@ contract WormholeSenderAdapterTest is Setup {
         assertEq(address(adapter.senderGAC()), contractAddress[SRC_CHAIN_ID]["GAC"]);
     }
 
+    /// @dev constructor cannot be called with zero address relayer
+    function test_constructor_zero_address_relayer() public {
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new WormholeSenderAdapter(address(0), address(42));
+    }
+
+    /// @dev constructor cannot be called with zero address GAC
+    function test_constructor_zero_address_gac() public {
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new WormholeSenderAdapter(address(42), address(0));
+    }
+
     /// @dev dispatches message
     function test_dispatch_message() public {
         vm.startPrank(senderAddr);
@@ -41,7 +53,7 @@ contract WormholeSenderAdapterTest is Setup {
         bytes32 msgId =
             keccak256(abi.encodePacked(SRC_CHAIN_ID, DST_CHAIN_ID, uint256(0), address(adapter), address(42)));
         (uint256 fee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
-            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().getGlobalMsgDeliveryGasLimit()
+            _wormholeChainId(DST_CHAIN_ID), 0, adapter.senderGAC().msgDeliveryGasLimit()
         );
 
         vm.expectEmit(true, true, true, true, address(adapter));

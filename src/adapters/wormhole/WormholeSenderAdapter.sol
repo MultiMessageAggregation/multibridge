@@ -12,8 +12,8 @@ import "../../libraries/Types.sol";
 
 /// @notice sender adapter for wormhole bridge
 contract WormholeSenderAdapter is BaseSenderAdapter {
-    string public constant name = "wormhole";
-    IWormholeRelayer private immutable relayer;
+    string public constant name = "WORMHOLE";
+    IWormholeRelayer public immutable relayer;
 
     /*/////////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -24,6 +24,9 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////////*/
     constructor(address _wormholeRelayer, address _gac) BaseSenderAdapter(_gac) {
+        if (_wormholeRelayer == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
         relayer = IWormholeRelayer(_wormholeRelayer);
     }
 
@@ -32,38 +35,38 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sends a message via wormhole relayer
-    function dispatchMessage(uint256 _toChainId, address _to, bytes calldata _data)
+    function dispatchMessage(uint256 _receiverChainId, address _to, bytes calldata _data)
         external
         payable
         override
         onlyMultiBridgeMessageSender
         returns (bytes32 msgId)
     {
-        address receiverAdapter = receiverAdapters[_toChainId];
+        address receiverAdapter = receiverAdapters[_receiverChainId];
 
         if (receiverAdapter == address(0)) {
             revert Error.ZERO_RECEIVER_ADAPTER();
         }
 
-        uint16 wormChainId = chainIdMap[_toChainId];
+        uint16 wormChainId = chainIdMap[_receiverChainId];
 
         if (wormChainId == 0) {
             revert Error.INVALID_DST_CHAIN();
         }
 
-        msgId = _getNewMessageId(_toChainId, _to);
+        msgId = _getNewMessageId(_receiverChainId, _to);
         bytes memory payload = abi.encode(AdapterPayload(msgId, msg.sender, receiverAdapter, _to, _data));
 
         relayer.sendPayloadToEvm{value: msg.value}(
             wormChainId,
             receiverAdapter,
             payload,
-            0,
             /// @dev no receiver value since just passing message
-            senderGAC.getGlobalMsgDeliveryGasLimit()
+            0,
+            senderGAC.msgDeliveryGasLimit()
         );
 
-        emit MessageDispatched(msgId, msg.sender, _toChainId, _to, _data);
+        emit MessageDispatched(msgId, msg.sender, _receiverChainId, _to, _data);
     }
 
     /// @dev maps the MMA chain id to bridge specific chain id

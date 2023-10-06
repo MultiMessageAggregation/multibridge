@@ -19,8 +19,8 @@ import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
 contract MessageSenderGACTest is Setup {
     event DstGasLimitUpdated(uint256 oldLimit, uint256 newLimit);
-    event MultiBridgeMessageCallerUpdated(address indexed mmaCaller);
-    event MultiBridgeMessageSenderUpdated(address indexed mmaSender);
+    event MultiBridgeMessageCallerUpdated(address indexed oldAuthCaller, address indexed newAuthCaller);
+    event MultiBridgeMessageSenderUpdated(address indexed oldMMS, address indexed newMMS);
     event MultiBridgeMessageReceiverUpdated(uint256 indexed chainId, address indexed oldMMR, address indexed newMMR);
 
     address senderAddr;
@@ -48,11 +48,11 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiBridgeMessageSenderUpdated(address(42));
+        emit MultiBridgeMessageSenderUpdated(senderGAC.multiBridgeMessageSender(), address(42));
 
         senderGAC.setMultiBridgeMessageSender(address(42));
 
-        assertEq(senderGAC.getMultiBridgeMessageSender(), address(42));
+        assertEq(senderGAC.multiBridgeMessageSender(), address(42));
     }
 
     /// @dev only owner can set multi message sender
@@ -76,11 +76,11 @@ contract MessageSenderGACTest is Setup {
         vm.startPrank(owner);
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
-        emit MultiBridgeMessageCallerUpdated(address(42));
+        emit MultiBridgeMessageCallerUpdated(senderGAC.authorisedCaller(), address(42));
 
         senderGAC.setAuthorisedCaller(address(42));
 
-        assertEq(senderGAC.getAuthorisedCaller(), address(42));
+        assertEq(senderGAC.authorisedCaller(), address(42));
     }
 
     /// @dev only owner can set multi message caller
@@ -105,12 +105,12 @@ contract MessageSenderGACTest is Setup {
 
         vm.expectEmit(true, true, true, true, address(senderGAC));
         emit MultiBridgeMessageReceiverUpdated(
-            DST_CHAIN_ID, senderGAC.getRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID), address(42)
+            DST_CHAIN_ID, senderGAC.remoteMultiBridgeMessageReceiver(DST_CHAIN_ID), address(42)
         );
 
         senderGAC.setRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID, address(42));
 
-        assertEq(senderGAC.getRemoteMultiBridgeMessageReceiver(DST_CHAIN_ID), address(42));
+        assertEq(senderGAC.remoteMultiBridgeMessageReceiver(DST_CHAIN_ID), address(42));
     }
 
     /// @dev only owner can set multi message receiver
@@ -141,13 +141,13 @@ contract MessageSenderGACTest is Setup {
     function test_set_global_msg_delivery_gas_limit() public {
         vm.startPrank(owner);
 
-        uint256 oldLimit = senderGAC.getGlobalMsgDeliveryGasLimit();
+        uint256 oldLimit = senderGAC.msgDeliveryGasLimit();
         vm.expectEmit(true, true, true, true, address(senderGAC));
         emit DstGasLimitUpdated(oldLimit, 420000);
 
         senderGAC.setGlobalMsgDeliveryGasLimit(420000);
 
-        assertEq(senderGAC.getGlobalMsgDeliveryGasLimit(), 420000);
+        assertEq(senderGAC.msgDeliveryGasLimit(), 420000);
     }
 
     /// @dev only owner can set global message delivery gas limit
