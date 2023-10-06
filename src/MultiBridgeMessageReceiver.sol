@@ -45,8 +45,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     /// @notice the data required for executing a message
     mapping(bytes32 msgId => ExecutionData execData) public msgExecData;
 
-    /// @notice whether a message has been validated and sent to the governance timelock for execution
-    mapping(bytes32 msgId => bool executed) public isExecuted;
+    /// @notice whether a message has been sent to the governance timelock for execution
+    mapping(bytes32 msgId => bool scheduled) public isExecutionScheduled;
 
     /*/////////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -113,8 +113,9 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
         }
 
-        if (isExecuted[msgId]) {
-            revert Error.MSG_ID_ALREADY_EXECUTED();
+        /// @dev checks if msgId was already sent to the timelock for eventual execution
+        if (isExecutionScheduled[msgId]) {
+            revert Error.MSG_ID_ALREADY_SCHEDULED();
         }
 
         msgDeliveries[msgId][msg.sender] = true;
@@ -137,7 +138,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @inheritdoc IMultiBridgeMessageReceiver
-    function executeMessage(bytes32 _msgId) external override {
+    function scheduleMessageExecution(bytes32 _msgId) external override {
         ExecutionData memory _execData = msgExecData[_msgId];
 
         /// @dev validates if msg execution is not beyond expiration
@@ -145,12 +146,12 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             revert Error.MSG_EXECUTION_PASSED_DEADLINE();
         }
 
-        /// @dev validates if msgId is already executed
-        if (isExecuted[_msgId]) {
-            revert Error.MSG_ID_ALREADY_EXECUTED();
+        /// @dev checks if msgId was already sent to the timelock for eventual execution
+        if (isExecutionScheduled[_msgId]) {
+            revert Error.MSG_ID_ALREADY_SCHEDULED();
         }
 
-        isExecuted[_msgId] = true;
+        isExecutionScheduled[_msgId] = true;
 
         /// @dev validates message quorum
         if (msgDeliveryCount[_msgId] < quorum) {
@@ -162,7 +163,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             _execData.target, _execData.value, _execData.callData
         );
 
-        emit MessageExecuted(_msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
+        emit MessageExecutionScheduled(_msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
     }
 
     /// @notice update the governance timelock contract.
@@ -207,7 +208,10 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
                             VIEW/READ-ONLY FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice view message info, return (executed, msgPower, delivered adapters)
+    /// @notice View message info
+    /// @return isExecutionScheduled is true if the message has been sent to the timelock for execution
+    /// @return msgCurrentVotes is the number of bridges that have delivered the message
+    /// @return successfulBridge is the list of bridges that have delivered the message
     function getMessageInfo(bytes32 _msgId) public view returns (bool, uint256, string[] memory) {
         uint256 msgCurrentVotes = msgDeliveryCount[_msgId];
         string[] memory successfulBridge = new string[](msgCurrentVotes);
@@ -227,7 +231,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
             }
         }
 
-        return (isExecuted[_msgId], msgCurrentVotes, successfulBridge);
+        return (isExecutionScheduled[_msgId], msgCurrentVotes, successfulBridge);
     }
 
     /*/////////////////////////////////////////////////////////////////
