@@ -94,7 +94,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
 
         sender.remoteCall{value: fees[0] + fees[1]}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
 
         assertEq(sender.nonce(), 1);
@@ -116,7 +117,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         (, uint256[] memory fees) =
             _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
         sender.remoteCall{value: nativeValue}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
 
         uint256 balanceAfter = refundAddress.balance;
@@ -228,7 +230,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -246,12 +249,14 @@ contract MultiBridgeMessageSenderTest is Setup {
         vm.startPrank(caller);
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD
+            DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMin, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
 
         vm.expectRevert(Error.INVALID_EXPIRATION_DURATION.selector);
         sender.remoteCall(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD
+            DST_CHAIN_ID, address(42), bytes("42"), 0, invalidExpMax, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
 
         // test expiration validation in remoteCall() which accepts excluded adapters
@@ -294,7 +299,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         fees[1] = 0.01 ether;
         vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
         sender.remoteCall(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, address(0), fees, DEFAULT_SUCCESS_THRESHOLD
+            DST_CHAIN_ID, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, address(0), fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
 
         vm.expectRevert(Error.INVALID_REFUND_ADDRESS.selector);
@@ -306,7 +312,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             contractAddress[SRC_CHAIN_ID]["MMA_SENDER"],
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
 
         // test refund address validation in remoteCall() which accepts excluded adapters
@@ -355,7 +362,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -369,7 +377,8 @@ contract MultiBridgeMessageSenderTest is Setup {
 
         vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
         sender.remoteCall(
-            0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD
+            0, address(42), bytes("42"), 0, EXPIRATION_CONSTANT, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -390,7 +399,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -413,7 +423,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -441,7 +452,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -496,7 +508,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
 
         sender.remoteCall{value: 0.1 ether}(
-            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD
+            DST_CHAIN_ID, address(42), bytes("42"), 0, expiration, refundAddress, fees, DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -516,7 +529,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -537,7 +551,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 
@@ -744,7 +759,8 @@ contract MultiBridgeMessageSenderTest is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             new uint256[](2),
-            DEFAULT_SUCCESS_THRESHOLD
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
         );
     }
 }

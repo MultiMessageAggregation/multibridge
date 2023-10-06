@@ -138,44 +138,6 @@ contract MultiBridgeMessageSender {
                                 EXTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    /// @notice Call a remote function on a destination chain by sending multiple copies of a cross-chain message
-    /// via all available bridges. This function can only be called by the authorised called configured in the GAC.
-    /// @dev a fee in native token may be required by each message bridge to send messages. Any native token fee remained
-    /// will be refunded back to a refund address defined in the _refundAddress parameter.
-    /// Caller needs to specify fees for each adapter when calling this function.
-    /// @param _dstChainId is the destination chainId
-    /// @param _target is the target execution point on the destination chain
-    /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
-    /// @param _nativeValue is the value to be sent to _target by low-level call (eg. address(_target).call{value: _nativeValue}(_callData))
-    /// @param _expiration refers to the number of seconds that a message remains valid before it is considered stale and can no longer be executed.
-    /// @param _refundAddress refers to the refund address for any extra native tokens paid
-    /// @param _fees refers to the fees to pay to each adapter
-    /// @param _successThreshold refers to minimum number of bridges required to relay the message
-    function remoteCall(
-        uint256 _dstChainId,
-        address _target,
-        bytes memory _callData,
-        uint256 _nativeValue,
-        uint256 _expiration,
-        address _refundAddress,
-        uint256[] memory _fees,
-        uint256 _successThreshold
-    ) external payable onlyCaller validateExpiration(_expiration) {
-        _remoteCall(
-            RemoteCallArgs(
-                _dstChainId,
-                _target,
-                _callData,
-                _nativeValue,
-                _expiration,
-                _refundAddress,
-                _fees,
-                _successThreshold,
-                new address[](0)
-            )
-        );
-    }
-
     /// @param _dstChainId is the destination chainId
     /// @param _target is the target execution point on the destination chain
     /// @param _callData is the data to be sent to _target by low-level call(eg. address(_target).call(_callData))
