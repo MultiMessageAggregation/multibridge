@@ -67,12 +67,12 @@ interface IMultiBridgeMessageReceiver {
     function updateQuorum(uint64 _quorum) external;
 
     /// @notice updates the the list of receiver adapters and the quorum for message validity.
-    /// @param _newQuorum is the new quorum value
     /// @param _receiverAdapters the list of receiver adapters to add or remove
     /// @param _operations the list of operations to perform for corresponding receiver adapters, true for add, false for remove
-    function updateQuorumAndReceiverAdapter(
-        uint64 _newQuorum,
+    /// @param _newQuorum is the new quorum value
+    function updateReceiverAdaptersAndQuorum(
         address[] calldata _receiverAdapters,
-        bool[] calldata _operations
+        bool[] calldata _operations,
+        uint64 _newQuorum
     ) external;
 }

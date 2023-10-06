@@ -73,9 +73,20 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     ////////////////////////////////////////////////////////////////*/
 
     /// @notice sets the initial parameters
-    constructor(uint256 _srcChainId, address _gac) {
+    constructor(uint256 _srcChainId, address _gac, address[] memory _receiverAdapters, uint64 _quorum) {
         srcChainId = _srcChainId;
         gac = IGAC(_gac);
+
+        uint256 numAdapters = _receiverAdapters.length;
+        bool[] memory operations = new bool[](numAdapters);
+        for (uint256 i; i < numAdapters;) {
+            operations[i] = true;
+            unchecked {
+                ++i;
+            }
+        }
+        _updateReceiverAdapters(_receiverAdapters, operations);
+        _validateAndUpdateQuorum(_quorum);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -177,12 +188,12 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         _validateQuorum(quorum);
     }
 
-    /// @notice Update bridge receiver adapters after quorum update
-    /// @dev called by admin to update receiver bridge adapters on all other chains
-    function updateQuorumAndReceiverAdapter(
-        uint64 _newQuorum,
+    /// @notice Update bridge receiver adapters and quorum
+    /// @dev called by admin to update receiver bridge adapters on all other chains along with quorum
+    function updateReceiverAdaptersAndQuorum(
         address[] calldata _receiverAdapters,
-        bool[] calldata _operations
+        bool[] calldata _operations,
+        uint64 _newQuorum
     ) external override onlyGlobalOwner {
         _updateReceiverAdapters(_receiverAdapters, _operations);
         _validateAndUpdateQuorum(_newQuorum);
@@ -224,7 +235,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function _validateAndUpdateQuorum(uint64 _quorum) internal {
+    function _validateAndUpdateQuorum(uint64 _quorum) private {
         _validateQuorum(_quorum);
 
         uint64 oldValue = quorum;
@@ -233,7 +244,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         emit QuorumUpdated(oldValue, _quorum);
     }
 
-    function _updateReceiverAdapters(address[] memory _receiverAdapters, bool[] memory _operations) internal {
+    function _updateReceiverAdapters(address[] memory _receiverAdapters, bool[] memory _operations) private {
         uint256 len = _receiverAdapters.length;
 
         if (len == 0) {

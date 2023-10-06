@@ -450,7 +450,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         uint64 newQuorum = 1;
 
         /// @dev removes the newly updated adapter by reducing quorum by one
-        receiver.updateQuorumAndReceiverAdapter(newQuorum, adapters, new bool[](1));
+        receiver.updateReceiverAdaptersAndQuorum(adapters, new bool[](1), newQuorum);
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -478,7 +478,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         uint64 newQuorum = 4;
 
-        receiver.updateQuorumAndReceiverAdapter(newQuorum, addTwoAdapters, addTwoOps);
+        receiver.updateReceiverAdaptersAndQuorum(addTwoAdapters, addTwoOps, newQuorum);
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -496,7 +496,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         uint64 newQuorum = 1;
 
-        receiver.updateQuorumAndReceiverAdapter(newQuorum, removeOneAdapter, new bool[](1));
+        receiver.updateReceiverAdaptersAndQuorum(removeOneAdapter, new bool[](1), newQuorum);
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -520,7 +520,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         uint64 newQuorum = 3;
 
-        receiver.updateQuorumAndReceiverAdapter(newQuorum, removeAddAdapters, removeAddOps);
+        receiver.updateReceiverAdaptersAndQuorum(removeAddAdapters, removeAddOps, newQuorum);
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
