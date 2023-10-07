@@ -275,8 +275,13 @@ abstract contract Setup is Test {
             uint256 chainId = DST_CHAINS[i];
 
             vm.selectFork(fork[chainId]);
+
+            address[] memory _receiverAdapters = new address[](2);
+            _receiverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
+            _receiverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
+
             address mmaReceiver = address(
-                new MultiBridgeMessageReceiver{salt: _salt}(SRC_CHAIN_ID, contractAddress[chainId][bytes("GAC")])
+                new MultiBridgeMessageReceiver{salt: _salt}(SRC_CHAIN_ID, contractAddress[chainId][bytes("GAC")], _receiverAdapters, 2)
             );
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
@@ -304,21 +309,11 @@ abstract contract Setup is Test {
         for (uint256 i; i < DST_CHAINS.length;) {
             uint256 chainId = DST_CHAINS[i];
 
-            address[] memory _receiverAdapters = new address[](2);
-            _receiverAdapters[0] = contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")];
-            _receiverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
-
-            bool[] memory _operations = new bool[](2);
-            _operations[0] = true;
-            _operations[1] = true;
-
             vm.selectFork(fork[chainId]);
 
             MultiBridgeMessageReceiver dstMMReceiver =
                 MultiBridgeMessageReceiver(contractAddress[chainId][bytes("MMA_RECEIVER")]);
-            dstMMReceiver.updateReceiverAdapters(_receiverAdapters, _operations);
             dstMMReceiver.updateGovernanceTimelock(contractAddress[chainId]["TIMELOCK"]);
-            dstMMReceiver.updateQuorum(2);
 
             MessageReceiverGAC receiverGAC = MessageReceiverGAC(contractAddress[chainId][bytes("GAC")]);
             receiverGAC.setMultiBridgeMessageReceiver(address(dstMMReceiver));

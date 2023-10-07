@@ -37,16 +37,58 @@ contract MultiBridgeMessageReceiverTest is Setup {
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
+    /// @dev verifies default setup
+    function test_constructor() public {
+        assertEq(receiver.srcChainId(), SRC_CHAIN_ID);
+        assertEq(address(receiver.gac()), contractAddress[DST_CHAIN_ID]["GAC"]);
+        assertEq(receiver.quorum(), 2);
+        assertTrue(receiver.isTrustedExecutor(wormholeAdapterAddr));
+        assertTrue(receiver.isTrustedExecutor(axelarAdapterAddr));
+    }
+
     /// @dev cannot be called with zero source chain id
     function test_constructor_zero_chain_id_input() public {
+        address[] memory receiverAdapters = new address[](1);
+        receiverAdapters[0] = address(43);
+
         vm.expectRevert(Error.INVALID_SENDER_CHAIN_ID.selector);
-        new MultiBridgeMessageReceiver(0, address(42));
+        new MultiBridgeMessageReceiver(0, address(42), receiverAdapters, 1);
     }
 
     /// @dev cannot be called with zero address GAC
     function test_constructor_zero_gac_address_input() public {
+        address[] memory receiverAdapters = new address[](1);
+        receiverAdapters[0] = address(43);
+
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiBridgeMessageReceiver(1, address(0));
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(0), receiverAdapters, 1);
+    }
+
+    /// @dev cannot be called with receiver adapters containing zero address
+    function test_constructor_zero_address_adapter() public {
+        address[] memory receiverAdapters = new address[](1);
+        receiverAdapters[0] = address(0);
+
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(42), receiverAdapters, 1);
+    }
+
+    /// @dev cannot be called with zero quorum
+    function test_constructor_zero_quorum() public {
+        address[] memory receiverAdapters = new address[](1);
+        receiverAdapters[0] = address(42);
+
+        vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(43), receiverAdapters, 0);
+    }
+
+    /// @dev cannot be called with quorum too large
+    function test_constructor_quorum_too_large() public {
+        address[] memory receiverAdapters = new address[](1);
+        receiverAdapters[0] = address(42);
+
+        vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(43), receiverAdapters, 2);
     }
 
     /// @dev receives message from one adapter
@@ -322,6 +364,22 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.scheduleMessageExecution(msgId);
     }
 
+    /// @dev updates governance timelock
+    function test_update_governance_timelock() public {
+        vm.startPrank(timelockAddr);
+
+        receiver.updateGovernanceTimelock(address(42));
+        assertEq(receiver.governanceTimelock(), address(42));
+    }
+
+    /// @dev cannot update governance timelock with zero address
+    function test_update_governance_timelock_zero_address() public {
+        vm.startPrank(timelockAddr);
+
+        vm.expectRevert(Error.ZERO_GOVERNANCE_TIMELOCK.selector);
+        receiver.updateGovernanceTimelock(address(0));
+    }
+
     /// @dev adds one receiver adapter
     function test_update_receiver_adapter_add() public {
         vm.startPrank(timelockAddr);
@@ -381,6 +439,27 @@ contract MultiBridgeMessageReceiverTest is Setup {
         bool[] memory operations = new bool[](2);
 
         receiver.updateReceiverAdapters(adapters, operations);
+    }
+
+    /// @dev cannot update with empty adapters list
+    function test_update_receiver_adapter_empty_lst() public {
+        vm.startPrank(timelockAddr);
+
+        vm.expectRevert(Error.ZERO_RECEIVER_ADAPTER.selector);
+
+        receiver.updateReceiverAdapters(new address[](0), new bool[](0));
+    }
+
+    /// @dev cannot update with zero adapter address
+    function test_update_receiver_adapter_zero_address() public {
+        vm.startPrank(timelockAddr);
+
+        address[] memory adapters = new address[](1);
+        adapters[0] = address(0);
+
+        vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
+
+        receiver.updateReceiverAdapters(adapters, new bool[](1));
     }
 
     /// @dev cannot remove one receiver adapter without reducing quorum first
@@ -462,11 +541,84 @@ contract MultiBridgeMessageReceiverTest is Setup {
         uint64 newQuorum = 1;
 
         /// @dev removes the newly updated adapter by reducing quorum by one
-        receiver.updateQuorumAndReceiverAdapter(newQuorum, adapters, new bool[](1));
+        receiver.updateReceiverAdaptersAndQuorum(adapters, new bool[](1), newQuorum);
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
         assertEq(receiver.isTrustedExecutor(adapters[0]), false);
+    }
+
+    /// @dev valid quorum and receiver updater in one single call, adding adapters and increasing quorum
+    function test_quorum_and_receiver_updater_add_increase() public {
+        vm.startPrank(timelockAddr);
+
+        // First, add one adapter
+        address[] memory addOneAdapter = new address[](1);
+        addOneAdapter[0] = address(42);
+        bool[] memory addOneOps = new bool[](1);
+        addOneOps[0] = true;
+
+        // Add two more and update quorum to 4
+        address[] memory addTwoAdapters = new address[](2);
+        addTwoAdapters[0] = address(420);
+        addTwoAdapters[1] = address(421);
+
+        bool[] memory addTwoOps = new bool[](2);
+        addTwoOps[0] = true;
+        addTwoOps[1] = true;
+
+        uint64 newQuorum = 4;
+
+        receiver.updateReceiverAdaptersAndQuorum(addTwoAdapters, addTwoOps, newQuorum);
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(addTwoAdapters[0]), true);
+        assertEq(receiver.isTrustedExecutor(addTwoAdapters[1]), true);
+    }
+
+    /// @dev valid quorum and receiver updater in one single call, removing adapter and decreasing quorum
+    function test_quorum_and_receiver_updater_remove_decrease() public {
+        vm.startPrank(timelockAddr);
+
+        // Remove one adapter and update quorum to 1
+        address[] memory removeOneAdapter = new address[](1);
+        removeOneAdapter[0] = axelarAdapterAddr;
+
+        uint64 newQuorum = 1;
+
+        receiver.updateReceiverAdaptersAndQuorum(removeOneAdapter, new bool[](1), newQuorum);
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(wormholeAdapterAddr), true);
+        assertEq(receiver.isTrustedExecutor(axelarAdapterAddr), false);
+    }
+
+    /// @dev valid quorum and receiver updater in one single call, removing one, adding two and increasing quorum
+    function test_quorum_and_receiver_updater_remove_add_increase() public {
+        vm.startPrank(timelockAddr);
+
+        // Remove one adapter and update quorum to 1
+        address[] memory removeAddAdapters = new address[](3);
+        removeAddAdapters[0] = axelarAdapterAddr;
+        removeAddAdapters[1] = address(42);
+        removeAddAdapters[2] = address(43);
+        bool[] memory removeAddOps = new bool[](3);
+        removeAddOps[0] = false;
+        removeAddOps[1] = true;
+        removeAddOps[2] = true;
+
+        uint64 newQuorum = 3;
+
+        receiver.updateReceiverAdaptersAndQuorum(removeAddAdapters, removeAddOps, newQuorum);
+
+        /// @dev asserts the quorum and adapter lengths
+        assertEq(receiver.quorum(), newQuorum);
+        assertEq(receiver.isTrustedExecutor(wormholeAdapterAddr), true);
+        assertEq(receiver.isTrustedExecutor(axelarAdapterAddr), false);
+        assertEq(receiver.isTrustedExecutor(removeAddAdapters[1]), true);
+        assertEq(receiver.isTrustedExecutor(removeAddAdapters[2]), true);
     }
 
     /// @dev should get message info

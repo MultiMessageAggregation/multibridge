@@ -74,10 +74,10 @@ contract RemoteAdapterRemove is Setup {
             DST_CHAIN_ID,
             address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
             abi.encodeWithSelector(
-                MultiBridgeMessageReceiver.updateQuorumAndReceiverAdapter.selector,
-                newQuorum,
+                MultiBridgeMessageReceiver.updateReceiverAdaptersAndQuorum.selector,
                 adaptersToRemove,
-                operation
+                operation,
+                newQuorum
             ),
             0,
             EXPIRATION_CONSTANT,
