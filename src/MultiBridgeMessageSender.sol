@@ -146,7 +146,7 @@ contract MultiBridgeMessageSender {
     /// @param _refundAddress refers to the refund address for any extra native tokens paid
     /// @param _fees refers to the fees to pay to each sender adapter that is not in the exclusion list specified by _excludedAdapters.
     ///         The fees are in the same order as the sender adapters in the senderAdapters list, after the exclusion list is applied.
-    /// @param _successThreshold refers to minimum number of bridges required to relay the message
+    /// @param _successThreshold specifies the minimum number of bridges that must successfully dispatch the message for this call to succeed.
     /// @param _excludedAdapters are the sender adapters to be excluded from relaying the message, in ascending order by address
     function remoteCall(
         uint256 _dstChainId,
@@ -248,7 +248,12 @@ contract MultiBridgeMessageSender {
 
     function _remoteCall(RemoteCallArgs memory _args) private {
         (address mmaReceiver, address[] memory adapters) = _checkAndProcessArgs(
-            _args.dstChainId, _args.target, _args.refundAddress, _args.fees, _args.excludedAdapters
+            _args.dstChainId,
+            _args.target,
+            _args.refundAddress,
+            _args.successThreshold,
+            _args.fees,
+            _args.excludedAdapters
         );
 
         /// @dev increments nonce
@@ -293,6 +298,7 @@ contract MultiBridgeMessageSender {
         uint256 _dstChainId,
         address _target,
         address _refundAddress,
+        uint256 _successThreshold,
         uint256[] memory _fees,
         address[] memory _excludedAdapters
     ) private view returns (address mmaReceiver, address[] memory adapters) {
@@ -323,6 +329,11 @@ contract MultiBridgeMessageSender {
         if (adapters.length == 0) {
             revert Error.NO_SENDER_ADAPTER_FOUND();
         }
+
+        if (_successThreshold > adapters.length) {
+            revert Error.MULTI_MESSAGE_SEND_FAILED();
+        }
+
         if (adapters.length != _fees.length) {
             revert Error.INVALID_SENDER_ADAPTER_FEES();
         }
