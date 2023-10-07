@@ -84,16 +84,13 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         srcChainId = _srcChainId;
         gac = IGAC(_gac);
 
-        uint256 numAdapters = _receiverAdapters.length;
-        bool[] memory operations = new bool[](numAdapters);
-        for (uint256 i; i < numAdapters;) {
-            operations[i] = true;
+        for (uint256 i; i < _receiverAdapters.length;) {
+            _updateReceiverAdapter(_receiverAdapters[i], true);
             unchecked {
                 ++i;
             }
         }
-        _updateReceiverAdapters(_receiverAdapters, operations);
-        _validateAndUpdateQuorum(_quorum);
+        _updateQuorum(_quorum);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -204,12 +201,12 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         uint64 _newQuorum
     ) external override onlyGlobalOwner {
         _updateReceiverAdapters(_receiverAdapters, _operations);
-        _validateAndUpdateQuorum(_newQuorum);
+        _updateQuorum(_newQuorum);
     }
 
     /// @notice Update power quorum threshold of message execution.
     function updateQuorum(uint64 _quorum) external override onlyGlobalOwner {
-        _validateAndUpdateQuorum(_quorum);
+        _updateQuorum(_quorum);
     }
 
     /*/////////////////////////////////////////////////////////////////
@@ -246,7 +243,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
                             PRIVATE/INTERNAL FUNCTIONS
     ////////////////////////////////////////////////////////////////*/
 
-    function _validateAndUpdateQuorum(uint64 _quorum) private {
+    function _updateQuorum(uint64 _quorum) private {
         _validateQuorum(_quorum);
 
         uint64 oldValue = quorum;
@@ -267,10 +264,6 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         }
 
         for (uint256 i; i < len;) {
-            if (_receiverAdapters[i] == address(0)) {
-                revert Error.ZERO_ADDRESS_INPUT();
-            }
-
             _updateReceiverAdapter(_receiverAdapters[i], _operations[i]);
 
             unchecked {
@@ -280,6 +273,9 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     function _updateReceiverAdapter(address _receiverAdapter, bool _add) private {
+        if (_receiverAdapter == address(0)) {
+            revert Error.ZERO_ADDRESS_INPUT();
+        }
         if (_add) {
             _addTrustedExecutor(_receiverAdapter);
         } else {
