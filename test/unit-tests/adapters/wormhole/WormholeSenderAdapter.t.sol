@@ -130,4 +130,12 @@ contract WormholeSenderAdapterTest is Setup {
         vm.expectRevert(Error.ARRAY_LENGTH_MISMATCHED.selector);
         adapter.setChainIdMap(new uint256[](0), new uint16[](1));
     }
+
+    /// @dev cannot set chain ID map with invalid chain ID
+    function test_set_chain_id_map_zero_chain_id() public {
+        vm.startPrank(owner);
+
+        vm.expectRevert(Error.ZERO_CHAIN_ID.selector);
+        adapter.setChainIdMap(new uint256[](1), new uint16[](1));
+    }
 }

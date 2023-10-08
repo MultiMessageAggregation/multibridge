@@ -81,6 +81,10 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
         }
 
         for (uint256 i; i < arrLength;) {
+            if (_origIds[i] == 0) {
+                revert Error.ZERO_CHAIN_ID();
+            }
+
             chainIdMap[_origIds[i]] = _axlIds[i];
 
             unchecked {
