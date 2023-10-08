@@ -14,6 +14,7 @@ import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 contract MultiBridgeMessageReceiverTest is Setup {
     event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
     event QuorumUpdated(uint64 oldValue, uint64 newValue);
+    event GovernanceTimelockUpdated(address oldTimelock, address newTimelock);
     event BridgeMessageReceived(
         bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
@@ -367,6 +368,9 @@ contract MultiBridgeMessageReceiverTest is Setup {
     /// @dev updates governance timelock
     function test_update_governance_timelock() public {
         vm.startPrank(timelockAddr);
+
+        vm.expectEmit(true, true, true, true, address(receiver));
+        emit GovernanceTimelockUpdated(receiver.governanceTimelock(), address(42));
 
         receiver.updateGovernanceTimelock(address(42));
         assertEq(receiver.governanceTimelock(), address(42));
