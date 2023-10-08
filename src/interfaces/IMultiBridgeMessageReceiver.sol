@@ -48,6 +48,11 @@ interface IMultiBridgeMessageReceiver {
     /// @param newQuorum is the new quorum value
     event QuorumUpdated(uint64 oldQuorum, uint64 newQuorum);
 
+    /// @notice emitted when the governance timelock address is updated.
+    /// @param oldTimelock is the previous governance timelock contract address
+    /// @param newTimelock is the new governance timelock contract address
+    event GovernanceTimelockUpdated(address oldTimelock, address newTimelock);
+
     /// @notice Receive messages from allowed bridge receiver adapters.
     /// @dev Every receiver adapter should call this function with decoded MessageLibrary.Message
     /// @param _message is the message to be received
@@ -75,4 +80,8 @@ interface IMultiBridgeMessageReceiver {
         bool[] calldata _operations,
         uint64 _newQuorum
     ) external;
+
+    /// @notice updates the governance timelock address, which is the contract that ultimately executes valid messages.
+    /// @param  _newGovernanceTimelock is the new governance timelock contract address
+    function updateGovernanceTimelock(address _newGovernanceTimelock) external;
 }
