@@ -14,6 +14,7 @@ contract WormholeSenderAdapterTest is Setup {
     event MessageDispatched(
         bytes32 indexed messageId, address indexed from, uint256 indexed receiverChainId, address to, bytes data
     );
+    event ChainIDMappingUpdated(uint256[] origIds, uint16[] whIds);
 
     address senderAddr;
     WormholeSenderAdapter adapter;
@@ -105,6 +106,10 @@ contract WormholeSenderAdapterTest is Setup {
         origIds[0] = DST_CHAIN_ID;
         uint16[] memory whIds = new uint16[](1);
         whIds[0] = 42;
+
+        vm.expectEmit(true, true, true, true, address(adapter));
+        emit ChainIDMappingUpdated(origIds, whIds);
+
         adapter.setChainIdMap(origIds, whIds);
 
         assertEq(adapter.chainIdMap(DST_CHAIN_ID), 42);

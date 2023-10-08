@@ -12,6 +12,7 @@ import "./interfaces/IAxelarGasService.sol";
 import "./libraries/StringAddressConversion.sol";
 
 contract AxelarSenderAdapter is BaseSenderAdapter {
+    /// @notice event emitted when chain id mapping is updated
     event ChainIDMappingUpdated(uint256[] origIds, string[] axlIds);
 
     string public constant name = "AXELAR";
