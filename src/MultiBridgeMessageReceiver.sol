@@ -276,11 +276,13 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         if (_receiverAdapter == address(0)) {
             revert Error.ZERO_ADDRESS_INPUT();
         }
-        if (_add) {
-            _addTrustedExecutor(_receiverAdapter);
-        } else {
-            _removeTrustedExecutor(_receiverAdapter);
+        bool success = _add ? _addTrustedExecutor(_receiverAdapter) : _removeTrustedExecutor(_receiverAdapter);
+
+        if (!success) {
+            // only fails because we are either attempting to add an existing adapter, or remove a non-existing adapter
+            revert Error.UPDATE_RECEIVER_ADAPTER_FAILED(_add ? "adapter already added" : "adapter not found");
         }
+
         emit BridgeReceiverAdapterUpdated(_receiverAdapter, _add);
     }
 
