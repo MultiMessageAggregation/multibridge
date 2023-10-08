@@ -12,6 +12,8 @@ import "./interfaces/IAxelarGasService.sol";
 import "./libraries/StringAddressConversion.sol";
 
 contract AxelarSenderAdapter is BaseSenderAdapter {
+    event ChainIDMappingUpdated(uint256[] origIds, string[] axlIds);
+
     string public constant name = "AXELAR";
 
     IAxelarGateway public immutable gateway;
@@ -84,6 +86,7 @@ contract AxelarSenderAdapter is BaseSenderAdapter {
                 ++i;
             }
         }
+        emit ChainIDMappingUpdated(_origIds, _axlIds);
     }
 
     /*/////////////////////////////////////////////////////////////////
