@@ -181,7 +181,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         }
         address oldGovernanceTimelock = governanceTimelock;
         governanceTimelock = _governanceTimelock;
-        emit GovernanceTimelockUpdated(oldGovernanceTimelock, governanceTimelock);
+        emit GovernanceTimelockUpdated(oldGovernanceTimelock, _governanceTimelock);
     }
 
     /// @notice Update bridge receiver adapters.

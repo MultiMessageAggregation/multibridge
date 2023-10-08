@@ -12,8 +12,8 @@ import "../../libraries/Types.sol";
 
 /// @notice sender adapter for wormhole bridge
 contract WormholeSenderAdapter is BaseSenderAdapter {
-    /// @notice event emitted when chain id mapping is updated
-    event ChainIDMappingUpdated(uint256[] origIds, uint16[] whIds);
+    /// @notice event emitted when a chain id mapping is updated
+    event ChainIDMappingUpdated(uint256 indexed origId, uint16 oldWhId, uint16 newWhId);
 
     string public constant name = "WORMHOLE";
     IWormholeRelayer public immutable relayer;
@@ -87,12 +87,14 @@ contract WormholeSenderAdapter is BaseSenderAdapter {
                 revert Error.ZERO_CHAIN_ID();
             }
 
+            uint16 oldWhId = chainIdMap[_origIds[i]];
             chainIdMap[_origIds[i]] = _whIds[i];
+
+            emit ChainIDMappingUpdated(_origIds[i], oldWhId, _whIds[i]);
 
             unchecked {
                 ++i;
             }
         }
-        emit ChainIDMappingUpdated(_origIds, _whIds);
     }
 }

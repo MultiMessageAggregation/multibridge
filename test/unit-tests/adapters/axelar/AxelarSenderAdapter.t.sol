@@ -13,7 +13,7 @@ contract AxelarSenderAdapterTest is Setup {
     event MessageDispatched(
         bytes32 indexed messageId, address indexed from, uint256 indexed receiverChainId, address to, bytes data
     );
-    event ChainIDMappingUpdated(uint256[] origIds, string[] axlIds);
+    event ChainIDMappingUpdated(uint256 indexed origId, string oldAxlId, string newAxlId);
 
     address senderAddr;
     AxelarSenderAdapter adapter;
@@ -111,7 +111,7 @@ contract AxelarSenderAdapterTest is Setup {
         axlIds[0] = "42";
 
         vm.expectEmit(true, true, true, true, address(adapter));
-        emit ChainIDMappingUpdated(origIds, axlIds);
+        emit ChainIDMappingUpdated(origIds[0], adapter.chainIdMap(DST_CHAIN_ID), axlIds[0]);
 
         adapter.setChainIdMap(origIds, axlIds);
 
