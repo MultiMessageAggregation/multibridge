@@ -20,6 +20,10 @@ library Error {
     /// @dev is thrown if caller is invalid receiver adapter
     error INVALID_RECEIVER_ADAPTER();
 
+    /// @dev is thrown if updating a receiver adapter fails
+    /// @param reason is the reason for failure
+    error UPDATE_RECEIVER_ADAPTER_FAILED(string reason);
+
     /// @dev is thrown if caller is not self
     error INVALID_SELF_CALLER();
 

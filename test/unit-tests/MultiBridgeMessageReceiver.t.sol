@@ -404,6 +404,19 @@ contract MultiBridgeMessageReceiverTest is Setup {
         assertTrue(receiver.isTrustedExecutor(address(42)));
     }
 
+    /// @dev adding a receiver adapter that already exists should fail
+    function test_update_receiver_adapter_add_existing() public {
+        vm.startPrank(timelockAddr);
+
+        address[] memory updatedAdapters = new address[](1);
+        updatedAdapters[0] = wormholeAdapterAddr;
+        bool[] memory operations = new bool[](1);
+        operations[0] = true;
+
+        vm.expectRevert(abi.encodeWithSelector(Error.UPDATE_RECEIVER_ADAPTER_FAILED.selector, "adapter already added"));
+        receiver.updateReceiverAdapters(updatedAdapters, operations);
+    }
+
     /// @dev removes one receiver adapter
     function test_update_receiver_adapter_remove() public {
         vm.startPrank(timelockAddr);
@@ -422,6 +435,21 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.updateReceiverAdapters(updatedAdapters, operations);
         assertFalse(receiver.isTrustedExecutor(wormholeAdapterAddr));
         assertTrue(receiver.isTrustedExecutor(axelarAdapterAddr));
+    }
+
+    /// @dev removing a receiver adapter that does not exist should fail
+    function test_update_receiver_adapter_remove_non_existing() public {
+        vm.startPrank(timelockAddr);
+
+        address[] memory updatedAdapters = new address[](1);
+        updatedAdapters[0] = address(42);
+        bool[] memory operations = new bool[](1);
+        operations[0] = false;
+
+        assertFalse(receiver.isTrustedExecutor(address(42)));
+
+        vm.expectRevert(abi.encodeWithSelector(Error.UPDATE_RECEIVER_ADAPTER_FAILED.selector, "adapter not found"));
+        receiver.updateReceiverAdapters(updatedAdapters, operations);
     }
 
     /// @dev only governance timelock can call
