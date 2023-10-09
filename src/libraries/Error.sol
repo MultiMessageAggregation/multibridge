@@ -106,6 +106,9 @@ library Error {
     /// @dev is thrown if contract call is invalid (for axelar)
     error NOT_APPROVED_BY_GATEWAY();
 
+    /// @dev is thrown if a message could not be sent through a sufficient number of bridges
+    error MULTI_MESSAGE_SEND_FAILED();
+
     /*/////////////////////////////////////////////////////////////////
                             TIMELOCK ERRORS
     ////////////////////////////////////////////////////////////////*/

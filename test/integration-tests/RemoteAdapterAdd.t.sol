@@ -73,6 +73,7 @@ contract RemoteAdapterAdd is Setup {
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
+            DEFAULT_SUCCESS_THRESHOLD,
             new address[](0)
         );
 
