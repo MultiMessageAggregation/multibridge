@@ -11,6 +11,7 @@ import "test/contracts-mock/MockUniswapReceiver.sol";
 
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
+import {IMultiBridgeMessageReceiver} from "src/interfaces/IMultiBridgeMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
@@ -40,11 +41,17 @@ contract GracePeriodExpiryTest is Setup {
             0.01 ether,
             wormholeFee
         );
-        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+
+        bytes memory callData = abi.encode(MockUniswapReceiver.setValue.selector, "");
+        uint256 nativeValue = 0;
+        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
+        uint256 nonce = sender.nonce() + 1;
+        sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
             address(target),
-            abi.encode(MockUniswapReceiver.setValue.selector, ""),
-            0,
+            callData,
+            nativeValue,
             EXPIRATION_CONSTANT,
             refundAddress,
             fees,
@@ -63,7 +70,16 @@ contract GracePeriodExpiryTest is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(msgId);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: address(target),
+                callData: callData,
+                value: nativeValue,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 

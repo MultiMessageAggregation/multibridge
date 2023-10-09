@@ -10,6 +10,7 @@ import "test/Setup.t.sol";
 
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
+import {IMultiBridgeMessageReceiver} from "src/interfaces/IMultiBridgeMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
@@ -51,7 +52,7 @@ contract RemoteAdapterAdd is Setup {
         _adapterAdd(adaptersToAdd, operation);
     }
 
-    function _adapterAdd(address[] memory adaptersToAdd, bool[] memory operation) internal {
+    function _adapterAdd(address[] memory adaptersToAdd, bool[] memory operation) private {
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         vm.startPrank(caller);
 
@@ -65,10 +66,28 @@ contract RemoteAdapterAdd is Setup {
             0.01 ether,
             wormholeFee
         );
-        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+
+        _sendAndExecuteMessage(adaptersToAdd, operation, fees);
+
+        for (uint256 j; j < adaptersToAdd.length; ++j) {
+            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
+                .isTrustedExecutor(adaptersToAdd[j]);
+            assert(isTrusted);
+        }
+    }
+
+    function _sendAndExecuteMessage(address[] memory adaptersToAdd, bool[] memory operation, uint256[] memory fees)
+        private
+    {
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
+        uint256 nonce = sender.nonce() + 1;
+        bytes memory callData =
+            abi.encodeWithSelector(MultiBridgeMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation);
+        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
-            address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
-            abi.encodeWithSelector(MultiBridgeMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation),
+            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")],
+            callData,
             0,
             EXPIRATION_CONSTANT,
             refundAddress,
@@ -88,7 +107,16 @@ contract RemoteAdapterAdd is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(msgId);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")],
+                callData: callData,
+                value: 0,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
@@ -97,11 +125,5 @@ contract RemoteAdapterAdd is Setup {
         GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
-
-        for (uint256 j; j < adaptersToAdd.length; ++j) {
-            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
-                .isTrustedExecutor(adaptersToAdd[j]);
-            assert(isTrusted);
-        }
     }
 }

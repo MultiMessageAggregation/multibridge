@@ -10,6 +10,7 @@ import "test/Setup.t.sol";
 
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
+import {IMultiBridgeMessageReceiver} from "src/interfaces/IMultiBridgeMessageReceiver.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
@@ -70,15 +71,52 @@ contract RemoteAdapterRemove is Setup {
             0.01 ether,
             wormholeFee
         );
-        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+
+        _sendAndExecuteMessage(newQuorum, adaptersToRemove, operation, fees);
+
+        /// @dev validates quorum post update
+        assertEq(MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum(), newQuorum);
+
+        /// @dev validates adapters post update
+        for (uint256 j; j < adaptersToRemove.length; ++j) {
+            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
+                .isTrustedExecutor(adaptersToRemove[j]);
+            assert(!isTrusted);
+        }
+    }
+
+    function _updateDummy() private {
+        address[] memory newDummyAdapter = new address[](1);
+        newDummyAdapter[0] = address(420);
+
+        /// true = add
+        /// false = remove
+        bool[] memory operation = new bool[](1);
+        operation[0] = true;
+
+        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"]).updateReceiverAdapters(
+            newDummyAdapter, operation
+        );
+        vm.stopPrank();
+    }
+
+    function _sendAndExecuteMessage(
+        uint256 newQuorum,
+        address[] memory adaptersToRemove,
+        bool[] memory operation,
+        uint256[] memory fees
+    ) private {
+        bytes memory callData = abi.encodeWithSelector(
+            MultiBridgeMessageReceiver.updateReceiverAdaptersAndQuorum.selector, adaptersToRemove, operation, newQuorum
+        );
+        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
+        uint256 nonce = sender.nonce() + 1;
+        sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
-            address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
-            abi.encodeWithSelector(
-                MultiBridgeMessageReceiver.updateReceiverAdaptersAndQuorum.selector,
-                adaptersToRemove,
-                operation,
-                newQuorum
-            ),
+            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")],
+            callData,
             0,
             EXPIRATION_CONSTANT,
             refundAddress,
@@ -98,7 +136,16 @@ contract RemoteAdapterRemove is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(msgId);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")],
+                callData: callData,
+                value: 0,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
@@ -107,32 +154,5 @@ contract RemoteAdapterRemove is Setup {
         GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
-
-        /// @dev validates quorum post update
-        uint256 currQuorum = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum();
-        assertEq(currQuorum, newQuorum);
-
-        /// @dev validates adapters post update
-        for (uint256 j; j < adaptersToRemove.length; ++j) {
-            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
-                .isTrustedExecutor(adaptersToRemove[j]);
-            assert(!isTrusted);
-        }
-    }
-
-    function _updateDummy() internal {
-        address[] memory newDummyAdapter = new address[](1);
-        newDummyAdapter[0] = address(420);
-
-        /// true = add
-        /// false = remove
-        bool[] memory operation = new bool[](1);
-        operation[0] = true;
-
-        vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"]).updateReceiverAdapters(
-            newDummyAdapter, operation
-        );
-        vm.stopPrank();
     }
 }

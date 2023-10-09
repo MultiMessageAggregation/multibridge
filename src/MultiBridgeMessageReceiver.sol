@@ -42,8 +42,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     /// @notice count of bridge adapters that have delivered each message
     mapping(bytes32 msgId => uint256 deliveryCount) public msgDeliveryCount;
 
-    /// @notice the data required for executing a message
-    mapping(bytes32 msgId => ExecutionData execData) public msgExecData;
+    /// @notice the hash of the data required for executing a message
+    mapping(bytes32 msgId => bytes32 execDataHash) public msgExecDataHash;
 
     /// @notice whether a message has been sent to the governance timelock for execution
     mapping(bytes32 msgId => bool scheduled) public isExecutionScheduled;
@@ -130,13 +130,15 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         /// increment quorum
         ++msgDeliveryCount[msgId];
 
-        /// stores the execution data required
-        ExecutionData memory prevStored = msgExecData[msgId];
+        /// stores the hash of the execution data required
+        bytes32 prevStoredHash = msgExecDataHash[msgId];
 
         /// stores the message if the amb is the first one delivering the message
-        if (prevStored.target == address(0)) {
-            msgExecData[msgId] = ExecutionData(
-                _message.target, _message.callData, _message.nativeValue, _message.nonce, _message.expiration
+        if (prevStoredHash == bytes32(0)) {
+            msgExecDataHash[msgId] = keccak256(
+                abi.encodePacked(
+                    _message.target, _message.callData, _message.nativeValue, _message.nonce, _message.expiration
+                )
             );
         }
 
@@ -145,8 +147,17 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @inheritdoc IMultiBridgeMessageReceiver
-    function scheduleMessageExecution(bytes32 _msgId) external override {
-        ExecutionData memory _execData = msgExecData[_msgId];
+    function scheduleMessageExecution(bytes32 _msgId, ExecutionData calldata _execData) external override {
+        bytes32 execDataHash = msgExecDataHash[_msgId];
+        if (
+            keccak256(
+                abi.encodePacked(
+                    _execData.target, _execData.callData, _execData.value, _execData.nonce, _execData.expiration
+                )
+            ) != execDataHash
+        ) {
+            revert Error.EXEC_DATA_HASH_MISMATCH();
+        }
 
         /// @dev validates if msg execution is not beyond expiration
         if (block.timestamp > _execData.expiration) {

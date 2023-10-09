@@ -60,7 +60,7 @@ interface IMultiBridgeMessageReceiver {
 
     /// @notice Sends a message, that has achieved quorum and has not yet expired, to the governance timelock for eventual execution.
     /// @param _msgId is the unique identifier of the message
-    function scheduleMessageExecution(bytes32 _msgId) external;
+    function scheduleMessageExecution(bytes32 _msgId, ExecutionData calldata _execData) external;
 
     /// @notice adds or removes bridge receiver adapters.
     /// @param _receiverAdapters the list of receiver adapters to add or remove

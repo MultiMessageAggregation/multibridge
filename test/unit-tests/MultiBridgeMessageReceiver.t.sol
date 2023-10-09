@@ -10,6 +10,7 @@ import "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
+import {IMultiBridgeMessageReceiver} from "src/interfaces/IMultiBridgeMessageReceiver.sol";
 
 contract MultiBridgeMessageReceiverTest is Setup {
     event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
@@ -62,7 +63,12 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(43);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(0), receiverAdapters, 1);
+        new MultiBridgeMessageReceiver(
+            SRC_CHAIN_ID,
+            address(0),
+            receiverAdapters,
+            1
+        );
     }
 
     /// @dev cannot be called with receiver adapters containing zero address
@@ -71,7 +77,12 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(0);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(42), receiverAdapters, 1);
+        new MultiBridgeMessageReceiver(
+            SRC_CHAIN_ID,
+            address(42),
+            receiverAdapters,
+            1
+        );
     }
 
     /// @dev cannot be called with zero quorum
@@ -80,7 +91,12 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(42);
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(43), receiverAdapters, 0);
+        new MultiBridgeMessageReceiver(
+            SRC_CHAIN_ID,
+            address(43),
+            receiverAdapters,
+            0
+        );
     }
 
     /// @dev cannot be called with quorum too large
@@ -89,7 +105,12 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(42);
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(43), receiverAdapters, 2);
+        new MultiBridgeMessageReceiver(
+            SRC_CHAIN_ID,
+            address(43),
+            receiverAdapters,
+            2
+        );
     }
 
     /// @dev receives message from one adapter
@@ -118,13 +139,14 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         assertEq(receiver.msgDeliveryCount(msgId), 1);
 
-        (address target, bytes memory callData, uint256 nativeValue, uint256 nonce, uint256 expiration) =
-            receiver.msgExecData(msgId);
-        assertEq(target, message.target);
-        assertEq(callData, message.callData);
-        assertEq(nativeValue, message.nativeValue);
-        assertEq(nonce, message.nonce);
-        assertEq(expiration, message.expiration);
+        assertEq(
+            receiver.msgExecDataHash(msgId),
+            keccak256(
+                abi.encodePacked(
+                    message.target, message.callData, message.nativeValue, message.nonce, message.expiration
+                )
+            )
+        );
     }
 
     /// @dev receives message from two adapters
@@ -262,7 +284,16 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.startPrank(wormholeAdapterAddr);
         receiver.receiveMessage(message);
 
-        receiver.scheduleMessageExecution(msgId);
+        receiver.scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: message.target,
+                callData: message.callData,
+                value: message.nativeValue,
+                nonce: message.nonce,
+                expiration: message.expiration
+            })
+        );
 
         vm.startPrank(axelarAdapterAddr);
         vm.expectRevert(Error.MSG_ID_ALREADY_SCHEDULED.selector);
@@ -292,7 +323,16 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.expectEmit(true, true, true, true, address(receiver));
         emit MessageExecutionScheduled(msgId, address(42), 0, 42, bytes("42"));
 
-        receiver.scheduleMessageExecution(msgId);
+        receiver.scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: message.target,
+                callData: message.callData,
+                value: message.nativeValue,
+                nonce: message.nonce,
+                expiration: message.expiration
+            })
+        );
 
         assertTrue(receiver.isExecutionScheduled(msgId));
     }
@@ -315,7 +355,16 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.receiveMessage(message);
 
         vm.expectRevert(Error.MSG_EXECUTION_PASSED_DEADLINE.selector);
-        receiver.scheduleMessageExecution(msgId);
+        receiver.scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: message.target,
+                callData: message.callData,
+                value: message.nativeValue,
+                nonce: message.nonce,
+                expiration: message.expiration
+            })
+        );
     }
 
     /// @dev cannot schedule execution of message that has already been scheduled
@@ -338,10 +387,28 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.startPrank(axelarAdapterAddr);
         receiver.receiveMessage(message);
 
-        receiver.scheduleMessageExecution(msgId);
+        receiver.scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: message.target,
+                callData: message.callData,
+                value: message.nativeValue,
+                nonce: message.nonce,
+                expiration: message.expiration
+            })
+        );
 
         vm.expectRevert(Error.MSG_ID_ALREADY_SCHEDULED.selector);
-        receiver.scheduleMessageExecution(msgId);
+        receiver.scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: message.target,
+                callData: message.callData,
+                value: message.nativeValue,
+                nonce: message.nonce,
+                expiration: message.expiration
+            })
+        );
     }
 
     /// @dev cannot schedule message execution without quorum
@@ -362,7 +429,16 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiver.receiveMessage(message);
 
         vm.expectRevert(Error.QUORUM_NOT_ACHIEVED.selector);
-        receiver.scheduleMessageExecution(msgId);
+        receiver.scheduleMessageExecution(
+            msgId,
+            IMultiBridgeMessageReceiver.ExecutionData({
+                target: message.target,
+                callData: message.callData,
+                value: message.nativeValue,
+                nonce: message.nonce,
+                expiration: message.expiration
+            })
+        );
     }
 
     /// @dev updates governance timelock
