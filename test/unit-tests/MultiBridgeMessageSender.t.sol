@@ -812,4 +812,24 @@ contract MultiBridgeMessageSenderTest is Setup {
             new address[](0)
         );
     }
+
+        function test_revert_for_invalid_success_threshold() public {
+        vm.startPrank(caller);
+
+        uint256 nativeValue = 2 ether;
+        uint256 invalidSuccessThrehsold = 10;
+        
+        vm.expectRevert(Error.MULTI_MESSAGE_SEND_FAILED.selector);
+        sender.remoteCall{value: nativeValue}(
+            DST_CHAIN_ID,
+            address(42),
+            bytes("42"),
+            0,
+            EXPIRATION_CONSTANT,
+            refundAddress,
+            new uint256[](2),
+            invalidSuccessThrehsold,
+            new address[](0)
+        );
+    }
 }

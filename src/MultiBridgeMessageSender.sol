@@ -151,11 +151,11 @@ contract MultiBridgeMessageSender {
     function remoteCall(
         uint256 _dstChainId,
         address _target,
-        bytes memory _callData,
+        bytes calldata _callData,
         uint256 _nativeValue,
         uint256 _expiration,
         address _refundAddress,
-        uint256[] memory _fees,
+        uint256[] calldata _fees,
         uint256 _successThreshold,
         address[] memory _excludedAdapters
     ) external payable onlyCaller validateExpiration(_expiration) {
