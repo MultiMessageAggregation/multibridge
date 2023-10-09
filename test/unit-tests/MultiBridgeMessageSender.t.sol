@@ -813,12 +813,12 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
     }
 
-        function test_revert_for_invalid_success_threshold() public {
+    function test_revert_for_invalid_success_threshold() public {
         vm.startPrank(caller);
 
         uint256 nativeValue = 2 ether;
         uint256 invalidSuccessThrehsold = 10;
-        
+
         vm.expectRevert(Error.MULTI_MESSAGE_SEND_FAILED.selector);
         sender.remoteCall{value: nativeValue}(
             DST_CHAIN_ID,
