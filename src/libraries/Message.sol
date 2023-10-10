@@ -38,54 +38,37 @@ library MessageLibrary {
 
     /// @notice computes the message id (32 byte hash of the encoded message parameters)
     /// @param _message is the cross-chain message
-    function computeMsgId(
-        Message memory _message
-    ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    _message.srcChainId,
-                    _message.dstChainId,
-                    _message.nonce,
-                    _message.target,
-                    _message.nativeValue,
-                    _message.expiration,
-                    _message.callData
-                )
-            );
+    function computeMsgId(Message memory _message) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                _message.srcChainId,
+                _message.dstChainId,
+                _message.nonce,
+                _message.target,
+                _message.nativeValue,
+                _message.expiration,
+                _message.callData
+            )
+        );
     }
 
-    function extractExecutionParams(
-        Message memory _message
-    ) internal pure returns (MessageExecutionParams memory) {
-        return
-            MessageExecutionParams({
-                target: _message.target,
-                callData: _message.callData,
-                value: _message.nativeValue,
-                nonce: _message.nonce,
-                expiration: _message.expiration
-            });
+    function extractExecutionParams(Message memory _message) internal pure returns (MessageExecutionParams memory) {
+        return MessageExecutionParams({
+            target: _message.target,
+            callData: _message.callData,
+            value: _message.nativeValue,
+            nonce: _message.nonce,
+            expiration: _message.expiration
+        });
     }
 
-    function computeExecutionParamsHash(
-        MessageExecutionParams memory _params
-    ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    _params.target,
-                    _params.callData,
-                    _params.value,
-                    _params.nonce,
-                    _params.expiration
-                )
-            );
+    function computeExecutionParamsHash(MessageExecutionParams memory _params) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(_params.target, _params.callData, _params.value, _params.nonce, _params.expiration)
+        );
     }
 
-    function computeExecutionParamsHash(
-        Message memory _message
-    ) internal pure returns (bytes32) {
+    function computeExecutionParamsHash(Message memory _message) internal pure returns (bytes32) {
         return computeExecutionParamsHash(extractExecutionParams(_message));
     }
 }

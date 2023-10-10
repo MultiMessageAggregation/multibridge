@@ -30,8 +30,8 @@ contract RemoteQuorumUpdate is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        (uint256 wormholeFee, ) = IWormholeRelayer(POLYGON_RELAYER)
-            .quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
         (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
             contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
             contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
@@ -41,27 +41,15 @@ contract RemoteQuorumUpdate is Setup {
 
         _sendAndExecuteMessage(newQuorum, fees);
 
-        uint256 currQuorum = MultiBridgeMessageReceiver(
-            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-        ).quorum();
+        uint256 currQuorum = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum();
         assertEq(currQuorum, newQuorum);
     }
 
-    function _sendAndExecuteMessage(
-        uint256 newQuorum,
-        uint256[] memory fees
-    ) private {
-        address receiverAddr = contractAddress[DST_CHAIN_ID][
-            bytes("MMA_RECEIVER")
-        ];
-        bytes memory callData = abi.encodeWithSelector(
-            MultiBridgeMessageReceiver.updateQuorum.selector,
-            newQuorum
-        );
+    function _sendAndExecuteMessage(uint256 newQuorum, uint256[] memory fees) private {
+        address receiverAddr = contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")];
+        bytes memory callData = abi.encodeWithSelector(MultiBridgeMessageReceiver.updateQuorum.selector, newQuorum);
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
-        MultiBridgeMessageSender sender = MultiBridgeMessageSender(
-            contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]
-        );
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
         uint256 nonce = sender.nonce() + 1;
         sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
@@ -97,22 +85,16 @@ contract RemoteQuorumUpdate is Setup {
                 expiration: expiration
             })
         );
-        (
-            uint256 txId,
-            address finalTarget,
-            uint256 value,
-            bytes memory data,
-            uint256 eta
-        ) = _getExecParams(vm.getRecordedLogs());
+        (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
+            _getExecParams(vm.getRecordedLogs());
 
-        uint256 oldQuorum = MultiBridgeMessageReceiver(
-            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-        ).quorum();
+        uint256 oldQuorum = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum();
         assertEq(oldQuorum, 2);
 
         /// increment the time by 3 days (delay time)
         vm.warp(block.timestamp + 3 days);
-        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")])
-            .executeTransaction(txId, finalTarget, value, data, eta);
+        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+            txId, finalTarget, value, data, eta
+        );
     }
 }

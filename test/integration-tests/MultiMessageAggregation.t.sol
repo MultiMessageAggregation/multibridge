@@ -33,8 +33,8 @@ contract MultiBridgeMessageAggregationTest is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        (uint256 wormholeFee, ) = IWormholeRelayer(POLYGON_RELAYER)
-            .quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
         (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
             contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
             contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
@@ -42,15 +42,10 @@ contract MultiBridgeMessageAggregationTest is Setup {
             wormholeFee
         );
 
-        bytes memory callData = abi.encode(
-            MockUniswapReceiver.setValue.selector,
-            ""
-        );
+        bytes memory callData = abi.encode(MockUniswapReceiver.setValue.selector, "");
         uint256 nativeValue = 0;
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
-        MultiBridgeMessageSender sender = MultiBridgeMessageSender(
-            contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]
-        );
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
         uint256 nonce = sender.nonce() + 1;
         sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
@@ -75,30 +70,24 @@ contract MultiBridgeMessageAggregationTest is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(
-            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-        ).scheduleMessageExecution(
-                msgId,
-                MessageLibrary.MessageExecutionParams({
-                    target: address(target),
-                    callData: callData,
-                    value: nativeValue,
-                    nonce: nonce,
-                    expiration: expiration
-                })
-            );
-        (
-            uint256 txId,
-            address finalTarget,
-            uint256 value,
-            bytes memory data,
-            uint256 eta
-        ) = _getExecParams(vm.getRecordedLogs());
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            MessageLibrary.MessageExecutionParams({
+                target: address(target),
+                callData: callData,
+                value: nativeValue,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
+        (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
+            _getExecParams(vm.getRecordedLogs());
 
         /// increment the time by 7 days (delay time)
         vm.warp(block.timestamp + 7 days);
-        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")])
-            .executeTransaction(txId, finalTarget, value, data, eta);
+        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+            txId, finalTarget, value, data, eta
+        );
         assertEq(target.i(), type(uint256).max);
     }
 }

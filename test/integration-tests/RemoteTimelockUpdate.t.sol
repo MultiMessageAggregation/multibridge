@@ -30,8 +30,8 @@ contract RemoteTimelockUpdate is Setup {
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        (uint256 wormholeFee, ) = IWormholeRelayer(POLYGON_RELAYER)
-            .quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
         (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
             contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
             contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
@@ -41,28 +41,16 @@ contract RemoteTimelockUpdate is Setup {
 
         _sendAndExecuteMessage(newDelay, fees);
 
-        uint256 currDelay = GovernanceTimelock(
-            contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]
-        ).delay();
+        uint256 currDelay = GovernanceTimelock(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]).delay();
         assertEq(currDelay, newDelay);
     }
 
-    function _sendAndExecuteMessage(
-        uint256 newDelay,
-        uint256[] memory fees
-    ) private {
-        address timelockAddr = contractAddress[POLYGON_CHAIN_ID][
-            bytes("TIMELOCK")
-        ];
-        bytes memory callData = abi.encodeWithSelector(
-            GovernanceTimelock.setDelay.selector,
-            newDelay
-        );
+    function _sendAndExecuteMessage(uint256 newDelay, uint256[] memory fees) private {
+        address timelockAddr = contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")];
+        bytes memory callData = abi.encodeWithSelector(GovernanceTimelock.setDelay.selector, newDelay);
         uint256 nativeValue = 0;
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
-        MultiBridgeMessageSender sender = MultiBridgeMessageSender(
-            contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]
-        );
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
         uint256 nonce = sender.nonce() + 1;
         sender.remoteCall{value: 2 ether}(
             POLYGON_CHAIN_ID,
@@ -88,34 +76,26 @@ contract RemoteTimelockUpdate is Setup {
         vm.selectFork(fork[POLYGON_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(
-            contractAddress[POLYGON_CHAIN_ID][bytes("MMA_RECEIVER")]
-        ).scheduleMessageExecution(
-                msgId,
-                MessageLibrary.MessageExecutionParams({
-                    target: timelockAddr,
-                    callData: callData,
-                    value: nativeValue,
-                    nonce: nonce,
-                    expiration: expiration
-                })
-            );
-        (
-            uint256 txId,
-            address finalTarget,
-            uint256 value,
-            bytes memory data,
-            uint256 eta
-        ) = _getExecParams(vm.getRecordedLogs());
+        MultiBridgeMessageReceiver(contractAddress[POLYGON_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            MessageLibrary.MessageExecutionParams({
+                target: timelockAddr,
+                callData: callData,
+                value: nativeValue,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
+        (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
+            _getExecParams(vm.getRecordedLogs());
 
-        uint256 oldDelay = GovernanceTimelock(
-            contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]
-        ).delay();
+        uint256 oldDelay = GovernanceTimelock(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]).delay();
         assertEq(oldDelay, 3 days);
 
         /// increment the time by 3 days (delay time)
         vm.warp(block.timestamp + 3 days);
-        GovernanceTimelock(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")])
-            .executeTransaction(txId, finalTarget, value, data, eta);
+        GovernanceTimelock(contractAddress[POLYGON_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+            txId, finalTarget, value, data, eta
+        );
     }
 }

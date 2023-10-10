@@ -11,10 +11,7 @@ interface IMultiBridgeMessageReceiver {
     /// @param nonce is the nonce of the message
     /// @param receiverAdapter is the address of the receiver adapter that received the message
     event BridgeMessageReceived(
-        bytes32 indexed msgId,
-        string indexed bridgeName,
-        uint256 nonce,
-        address receiverAdapter
+        bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
     );
 
     /// @notice emitted when a message has been queued for execution in the destination timelock contract.
@@ -24,20 +21,13 @@ interface IMultiBridgeMessageReceiver {
     /// @param nonce is the nonce of the message
     /// @param callData is the data that will be passed to the target address through low-level call
     event MessageExecutionScheduled(
-        bytes32 indexed msgId,
-        address indexed target,
-        uint256 nativeValue,
-        uint256 nonce,
-        bytes callData
+        bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
     );
 
     /// @notice emitted when receiver adapter of a specific bridge is updated.
     /// @param receiverAdapter is the new receiver adapter address
     /// @param add is true if the receiver adapter was added, false if removed
-    event BridgeReceiverAdapterUpdated(
-        address indexed receiverAdapter,
-        bool add
-    );
+    event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
 
     /// @notice emitted when the quorum for message validity is updated.
     /// @param oldQuorum is the old quorum value
@@ -57,18 +47,13 @@ interface IMultiBridgeMessageReceiver {
     /// @notice Sends a message, that has achieved quorum and has not yet expired, to the governance timelock for eventual execution.
     /// @param _msgId is the unique identifier of the message
     /// @param _execParams are the params for message execution
-    function scheduleMessageExecution(
-        bytes32 _msgId,
-        MessageLibrary.MessageExecutionParams calldata _execParams
-    ) external;
+    function scheduleMessageExecution(bytes32 _msgId, MessageLibrary.MessageExecutionParams calldata _execParams)
+        external;
 
     /// @notice adds or removes bridge receiver adapters.
     /// @param _receiverAdapters the list of receiver adapters to add or remove
     /// @param _operations the list of operations to perform for corresponding receiver adapters, true for add, false for remove
-    function updateReceiverAdapters(
-        address[] calldata _receiverAdapters,
-        bool[] calldata _operations
-    ) external;
+    function updateReceiverAdapters(address[] calldata _receiverAdapters, bool[] calldata _operations) external;
 
     /// @notice updates the quorum for message validity, which is the number of bridges that must deliver the message for it to be considered valid.
     /// @param _quorum is the new quorum value

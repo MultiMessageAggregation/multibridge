@@ -25,9 +25,7 @@ contract RemoteAdapterRemove is Setup {
     /// @dev just remove one adapter and assert
     function test_remoteRemoveReceiverAdapterSingle() public {
         address[] memory adaptersToRemove = new address[](1);
-        adaptersToRemove[0] = contractAddress[DST_CHAIN_ID][
-            "AXELAR_RECEIVER_ADAPTER"
-        ];
+        adaptersToRemove[0] = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
 
         /// true = add
         /// false = remove
@@ -45,12 +43,8 @@ contract RemoteAdapterRemove is Setup {
         _updateDummy();
 
         address[] memory adaptersToRemove = new address[](2);
-        adaptersToRemove[0] = contractAddress[DST_CHAIN_ID][
-            "AXELAR_RECEIVER_ADAPTER"
-        ];
-        adaptersToRemove[1] = contractAddress[DST_CHAIN_ID][
-            "WORMHOLE_RECEIVER_ADAPTER"
-        ];
+        adaptersToRemove[0] = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
+        adaptersToRemove[1] = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
 
         /// true = add
         /// false = remove
@@ -63,18 +57,14 @@ contract RemoteAdapterRemove is Setup {
         _adapterRemove(newQuorum, adaptersToRemove, operation);
     }
 
-    function _adapterRemove(
-        uint256 newQuorum,
-        address[] memory adaptersToRemove,
-        bool[] memory operation
-    ) internal {
+    function _adapterRemove(uint256 newQuorum, address[] memory adaptersToRemove, bool[] memory operation) internal {
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         vm.startPrank(caller);
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        (uint256 wormholeFee, ) = IWormholeRelayer(POLYGON_RELAYER)
-            .quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
         (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
             contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
             contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
@@ -85,18 +75,12 @@ contract RemoteAdapterRemove is Setup {
         _sendAndExecuteMessage(newQuorum, adaptersToRemove, operation, fees);
 
         /// @dev validates quorum post update
-        assertEq(
-            MultiBridgeMessageReceiver(
-                contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-            ).quorum(),
-            newQuorum
-        );
+        assertEq(MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum(), newQuorum);
 
         /// @dev validates adapters post update
         for (uint256 j; j < adaptersToRemove.length; ++j) {
-            bool isTrusted = MultiBridgeMessageReceiver(
-                contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-            ).isTrustedExecutor(adaptersToRemove[j]);
+            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
+                .isTrustedExecutor(adaptersToRemove[j]);
             assert(!isTrusted);
         }
     }
@@ -111,9 +95,9 @@ contract RemoteAdapterRemove is Setup {
         operation[0] = true;
 
         vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);
-        MultiBridgeMessageReceiver(
-            contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"]
-        ).updateReceiverAdapters(newDummyAdapter, operation);
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID]["MMA_RECEIVER"]).updateReceiverAdapters(
+            newDummyAdapter, operation
+        );
         vm.stopPrank();
     }
 
@@ -124,15 +108,10 @@ contract RemoteAdapterRemove is Setup {
         uint256[] memory fees
     ) private {
         bytes memory callData = abi.encodeWithSelector(
-            MultiBridgeMessageReceiver.updateReceiverAdaptersAndQuorum.selector,
-            adaptersToRemove,
-            operation,
-            newQuorum
+            MultiBridgeMessageReceiver.updateReceiverAdaptersAndQuorum.selector, adaptersToRemove, operation, newQuorum
         );
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
-        MultiBridgeMessageSender sender = MultiBridgeMessageSender(
-            contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]
-        );
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
         uint256 nonce = sender.nonce() + 1;
         sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
@@ -157,31 +136,23 @@ contract RemoteAdapterRemove is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(
-            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-        ).scheduleMessageExecution(
-                msgId,
-                MessageLibrary.MessageExecutionParams({
-                    target: contractAddress[DST_CHAIN_ID][
-                        bytes("MMA_RECEIVER")
-                    ],
-                    callData: callData,
-                    value: 0,
-                    nonce: nonce,
-                    expiration: expiration
-                })
-            );
-        (
-            uint256 txId,
-            address finalTarget,
-            uint256 value,
-            bytes memory data,
-            uint256 eta
-        ) = _getExecParams(vm.getRecordedLogs());
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            MessageLibrary.MessageExecutionParams({
+                target: contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")],
+                callData: callData,
+                value: 0,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
+        (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
+            _getExecParams(vm.getRecordedLogs());
 
         /// increment the time by 7 days (delay time)
         vm.warp(block.timestamp + 7 days);
-        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")])
-            .executeTransaction(txId, finalTarget, value, data, eta);
+        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+            txId, finalTarget, value, data, eta
+        );
     }
 }

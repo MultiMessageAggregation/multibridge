@@ -52,17 +52,14 @@ contract RemoteAdapterAdd is Setup {
         _adapterAdd(adaptersToAdd, operation);
     }
 
-    function _adapterAdd(
-        address[] memory adaptersToAdd,
-        bool[] memory operation
-    ) private {
+    function _adapterAdd(address[] memory adaptersToAdd, bool[] memory operation) private {
         vm.selectFork(fork[ETHEREUM_CHAIN_ID]);
         vm.startPrank(caller);
 
         /// send cross-chain message using MMA infra
         vm.recordLogs();
-        (uint256 wormholeFee, ) = IWormholeRelayer(POLYGON_RELAYER)
-            .quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
+        (uint256 wormholeFee,) =
+            IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(_wormholeChainId(DST_CHAIN_ID), 0, 0);
         (, uint256[] memory fees) = _sortTwoAdaptersWithFees(
             contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")],
             contractAddress[SRC_CHAIN_ID][bytes("WORMHOLE_SENDER_ADAPTER")],
@@ -73,27 +70,19 @@ contract RemoteAdapterAdd is Setup {
         _sendAndExecuteMessage(adaptersToAdd, operation, fees);
 
         for (uint256 j; j < adaptersToAdd.length; ++j) {
-            bool isTrusted = MultiBridgeMessageReceiver(
-                contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-            ).isTrustedExecutor(adaptersToAdd[j]);
+            bool isTrusted = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")])
+                .isTrustedExecutor(adaptersToAdd[j]);
             assert(isTrusted);
         }
     }
 
-    function _sendAndExecuteMessage(
-        address[] memory adaptersToAdd,
-        bool[] memory operation,
-        uint256[] memory fees
-    ) private {
-        MultiBridgeMessageSender sender = MultiBridgeMessageSender(
-            contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]
-        );
+    function _sendAndExecuteMessage(address[] memory adaptersToAdd, bool[] memory operation, uint256[] memory fees)
+        private
+    {
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
         uint256 nonce = sender.nonce() + 1;
-        bytes memory callData = abi.encodeWithSelector(
-            MultiBridgeMessageReceiver.updateReceiverAdapters.selector,
-            adaptersToAdd,
-            operation
-        );
+        bytes memory callData =
+            abi.encodeWithSelector(MultiBridgeMessageReceiver.updateReceiverAdapters.selector, adaptersToAdd, operation);
         uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
         sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
@@ -118,31 +107,23 @@ contract RemoteAdapterAdd is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(
-            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
-        ).scheduleMessageExecution(
-                msgId,
-                MessageLibrary.MessageExecutionParams({
-                    target: contractAddress[DST_CHAIN_ID][
-                        bytes("MMA_RECEIVER")
-                    ],
-                    callData: callData,
-                    value: 0,
-                    nonce: nonce,
-                    expiration: expiration
-                })
-            );
-        (
-            uint256 txId,
-            address finalTarget,
-            uint256 value,
-            bytes memory data,
-            uint256 eta
-        ) = _getExecParams(vm.getRecordedLogs());
+        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(
+            msgId,
+            MessageLibrary.MessageExecutionParams({
+                target: contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")],
+                callData: callData,
+                value: 0,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
+        (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
+            _getExecParams(vm.getRecordedLogs());
 
         /// increment the time by 3 days (delay time)
         vm.warp(block.timestamp + 3 days);
-        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")])
-            .executeTransaction(txId, finalTarget, value, data, eta);
+        GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
+            txId, finalTarget, value, data, eta
+        );
     }
 }
