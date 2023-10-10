@@ -13,14 +13,24 @@ import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
 import {IMultiBridgeMessageReceiver} from "src/interfaces/IMultiBridgeMessageReceiver.sol";
 
 contract MultiBridgeMessageReceiverTest is Setup {
-    event BridgeReceiverAdapterUpdated(address indexed receiverAdapter, bool add);
+    event BridgeReceiverAdapterUpdated(
+        address indexed receiverAdapter,
+        bool add
+    );
     event QuorumUpdated(uint64 oldValue, uint64 newValue);
     event GovernanceTimelockUpdated(address oldTimelock, address newTimelock);
     event BridgeMessageReceived(
-        bytes32 indexed msgId, string indexed bridgeName, uint256 nonce, address receiverAdapter
+        bytes32 indexed msgId,
+        string indexed bridgeName,
+        uint256 nonce,
+        address receiverAdapter
     );
     event MessageExecutionScheduled(
-        bytes32 indexed msgId, address indexed target, uint256 nativeValue, uint256 nonce, bytes callData
+        bytes32 indexed msgId,
+        address indexed target,
+        uint256 nativeValue,
+        uint256 nonce,
+        bytes callData
     );
 
     MultiBridgeMessageReceiver receiver;
@@ -33,9 +43,15 @@ contract MultiBridgeMessageReceiverTest is Setup {
         super.setUp();
 
         vm.selectFork(fork[DST_CHAIN_ID]);
-        receiver = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]);
-        axelarAdapterAddr = contractAddress[DST_CHAIN_ID]["AXELAR_RECEIVER_ADAPTER"];
-        wormholeAdapterAddr = contractAddress[DST_CHAIN_ID]["WORMHOLE_RECEIVER_ADAPTER"];
+        receiver = MultiBridgeMessageReceiver(
+            contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]
+        );
+        axelarAdapterAddr = contractAddress[DST_CHAIN_ID][
+            "AXELAR_RECEIVER_ADAPTER"
+        ];
+        wormholeAdapterAddr = contractAddress[DST_CHAIN_ID][
+            "WORMHOLE_RECEIVER_ADAPTER"
+        ];
         timelockAddr = contractAddress[DST_CHAIN_ID]["TIMELOCK"];
     }
 
@@ -140,12 +156,8 @@ contract MultiBridgeMessageReceiverTest is Setup {
         assertEq(receiver.msgDeliveryCount(msgId), 1);
 
         assertEq(
-            receiver.msgExecDataHash(msgId),
-            keccak256(
-                abi.encodePacked(
-                    message.target, message.callData, message.nativeValue, message.nonce, message.expiration
-                )
-            )
+            receiver.msgExecParamsHash(msgId),
+            MessageLibrary.computeExecutionParamsHash(message)
         );
     }
 
@@ -245,7 +257,9 @@ contract MultiBridgeMessageReceiverTest is Setup {
     }
 
     /// @dev duplicate message delivery should be rejected
-    function test_receiver_message_duplicate_message_delivery_by_adapter() public {
+    function test_receiver_message_duplicate_message_delivery_by_adapter()
+        public
+    {
         vm.startPrank(wormholeAdapterAddr);
 
         MessageLibrary.Message memory message = MessageLibrary.Message({
@@ -286,13 +300,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         receiver.scheduleMessageExecution(
             msgId,
-            IMultiBridgeMessageReceiver.ExecutionData({
-                target: message.target,
-                callData: message.callData,
-                value: message.nativeValue,
-                nonce: message.nonce,
-                expiration: message.expiration
-            })
+            MessageLibrary.extractExecutionParams(message)
         );
 
         vm.startPrank(axelarAdapterAddr);
@@ -325,15 +333,8 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         receiver.scheduleMessageExecution(
             msgId,
-            IMultiBridgeMessageReceiver.ExecutionData({
-                target: message.target,
-                callData: message.callData,
-                value: message.nativeValue,
-                nonce: message.nonce,
-                expiration: message.expiration
-            })
+            MessageLibrary.extractExecutionParams(message)
         );
-
         assertTrue(receiver.isExecutionScheduled(msgId));
     }
 
@@ -357,13 +358,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.expectRevert(Error.MSG_EXECUTION_PASSED_DEADLINE.selector);
         receiver.scheduleMessageExecution(
             msgId,
-            IMultiBridgeMessageReceiver.ExecutionData({
-                target: message.target,
-                callData: message.callData,
-                value: message.nativeValue,
-                nonce: message.nonce,
-                expiration: message.expiration
-            })
+            MessageLibrary.extractExecutionParams(message)
         );
     }
 
@@ -389,7 +384,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         receiver.scheduleMessageExecution(
             msgId,
-            IMultiBridgeMessageReceiver.ExecutionData({
+            MessageLibrary.MessageExecutionParams({
                 target: message.target,
                 callData: message.callData,
                 value: message.nativeValue,
@@ -401,13 +396,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.expectRevert(Error.MSG_ID_ALREADY_SCHEDULED.selector);
         receiver.scheduleMessageExecution(
             msgId,
-            IMultiBridgeMessageReceiver.ExecutionData({
-                target: message.target,
-                callData: message.callData,
-                value: message.nativeValue,
-                nonce: message.nonce,
-                expiration: message.expiration
-            })
+            MessageLibrary.extractExecutionParams(message)
         );
     }
 
@@ -431,13 +420,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.expectRevert(Error.QUORUM_NOT_ACHIEVED.selector);
         receiver.scheduleMessageExecution(
             msgId,
-            IMultiBridgeMessageReceiver.ExecutionData({
-                target: message.target,
-                callData: message.callData,
-                value: message.nativeValue,
-                nonce: message.nonce,
-                expiration: message.expiration
-            })
+            MessageLibrary.extractExecutionParams(message)
         );
     }
 
@@ -446,7 +429,10 @@ contract MultiBridgeMessageReceiverTest is Setup {
         vm.startPrank(timelockAddr);
 
         vm.expectEmit(true, true, true, true, address(receiver));
-        emit GovernanceTimelockUpdated(receiver.governanceTimelock(), address(42));
+        emit GovernanceTimelockUpdated(
+            receiver.governanceTimelock(),
+            address(42)
+        );
 
         receiver.updateGovernanceTimelock(address(42));
         assertEq(receiver.governanceTimelock(), address(42));
@@ -489,7 +475,12 @@ contract MultiBridgeMessageReceiverTest is Setup {
         bool[] memory operations = new bool[](1);
         operations[0] = true;
 
-        vm.expectRevert(abi.encodeWithSelector(Error.UPDATE_RECEIVER_ADAPTER_FAILED.selector, "adapter already added"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Error.UPDATE_RECEIVER_ADAPTER_FAILED.selector,
+                "adapter already added"
+            )
+        );
         receiver.updateReceiverAdapters(updatedAdapters, operations);
     }
 
@@ -524,7 +515,12 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         assertFalse(receiver.isTrustedExecutor(address(42)));
 
-        vm.expectRevert(abi.encodeWithSelector(Error.UPDATE_RECEIVER_ADAPTER_FAILED.selector, "adapter not found"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Error.UPDATE_RECEIVER_ADAPTER_FAILED.selector,
+                "adapter not found"
+            )
+        );
         receiver.updateReceiverAdapters(updatedAdapters, operations);
     }
 
@@ -571,7 +567,9 @@ contract MultiBridgeMessageReceiverTest is Setup {
     }
 
     /// @dev cannot remove one receiver adapter without reducing quorum first
-    function test_update_receiver_adapter_remove_invalid_quorum_threshold() public {
+    function test_update_receiver_adapter_remove_invalid_quorum_threshold()
+        public
+    {
         vm.startPrank(timelockAddr);
 
         address[] memory updatedAdapters = new address[](1);
@@ -649,7 +647,11 @@ contract MultiBridgeMessageReceiverTest is Setup {
         uint64 newQuorum = 1;
 
         /// @dev removes the newly updated adapter by reducing quorum by one
-        receiver.updateReceiverAdaptersAndQuorum(adapters, new bool[](1), newQuorum);
+        receiver.updateReceiverAdaptersAndQuorum(
+            adapters,
+            new bool[](1),
+            newQuorum
+        );
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -677,7 +679,11 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         uint64 newQuorum = 4;
 
-        receiver.updateReceiverAdaptersAndQuorum(addTwoAdapters, addTwoOps, newQuorum);
+        receiver.updateReceiverAdaptersAndQuorum(
+            addTwoAdapters,
+            addTwoOps,
+            newQuorum
+        );
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -695,7 +701,11 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         uint64 newQuorum = 1;
 
-        receiver.updateReceiverAdaptersAndQuorum(removeOneAdapter, new bool[](1), newQuorum);
+        receiver.updateReceiverAdaptersAndQuorum(
+            removeOneAdapter,
+            new bool[](1),
+            newQuorum
+        );
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -719,7 +729,11 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         uint64 newQuorum = 3;
 
-        receiver.updateReceiverAdaptersAndQuorum(removeAddAdapters, removeAddOps, newQuorum);
+        receiver.updateReceiverAdaptersAndQuorum(
+            removeAddAdapters,
+            removeAddOps,
+            newQuorum
+        );
 
         /// @dev asserts the quorum and adapter lengths
         assertEq(receiver.quorum(), newQuorum);
@@ -746,10 +760,17 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
         receiver.receiveMessage(message);
 
-        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
+        (
+            bool isScheduled,
+            uint256 msgCurrentVotes,
+            string[] memory successfulBridge
+        ) = receiver.getMessageInfo(msgId);
         assertFalse(isScheduled);
         assertEq(msgCurrentVotes, 1);
         assertEq(successfulBridge.length, 1);
-        assertEq(successfulBridge[0], WormholeReceiverAdapter(wormholeAdapterAddr).name());
+        assertEq(
+            successfulBridge[0],
+            WormholeReceiverAdapter(wormholeAdapterAddr).name()
+        );
     }
 }
