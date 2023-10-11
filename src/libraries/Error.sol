@@ -66,6 +66,9 @@ library Error {
     /// @dev is thrown if refund address is zero (or) invalid
     error INVALID_REFUND_ADDRESS();
 
+    /// @dev is thrown if execution params do not match the stored hash
+    error EXEC_PARAMS_HASH_MISMATCH();
+
     /*/////////////////////////////////////////////////////////////////
                                 ADAPTER ERRORS
     ////////////////////////////////////////////////////////////////*/

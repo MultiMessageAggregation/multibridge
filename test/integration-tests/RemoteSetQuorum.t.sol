@@ -10,6 +10,7 @@ import "test/Setup.t.sol";
 
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 import {MultiBridgeMessageReceiver} from "src/MultiBridgeMessageReceiver.sol";
+import "src/libraries/Message.sol";
 import {Error} from "src/libraries/Error.sol";
 import {GovernanceTimelock} from "src/controllers/GovernanceTimelock.sol";
 
@@ -37,10 +38,23 @@ contract RemoteQuorumUpdate is Setup {
             0.01 ether,
             wormholeFee
         );
-        MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]).remoteCall{value: 2 ether}(
+
+        _sendAndExecuteMessage(newQuorum, fees);
+
+        uint256 currQuorum = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum();
+        assertEq(currQuorum, newQuorum);
+    }
+
+    function _sendAndExecuteMessage(uint256 newQuorum, uint256[] memory fees) private {
+        address receiverAddr = contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")];
+        bytes memory callData = abi.encodeWithSelector(MultiBridgeMessageReceiver.updateQuorum.selector, newQuorum);
+        uint256 expiration = block.timestamp + EXPIRATION_CONSTANT;
+        MultiBridgeMessageSender sender = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID][bytes("MMA_SENDER")]);
+        uint256 nonce = sender.nonce() + 1;
+        sender.remoteCall{value: 2 ether}(
             DST_CHAIN_ID,
-            address(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]),
-            abi.encodeWithSelector(MultiBridgeMessageReceiver.updateQuorum.selector, newQuorum),
+            receiverAddr,
+            callData,
             0,
             EXPIRATION_CONSTANT,
             refundAddress,
@@ -61,7 +75,16 @@ contract RemoteQuorumUpdate is Setup {
         vm.selectFork(fork[DST_CHAIN_ID]);
         vm.recordLogs();
         /// schedule the message for execution by moving it to governance timelock contract
-        MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).scheduleMessageExecution(msgId);
+        MultiBridgeMessageReceiver(receiverAddr).scheduleMessageExecution(
+            msgId,
+            MessageLibrary.MessageExecutionParams({
+                target: receiverAddr,
+                callData: callData,
+                value: 0,
+                nonce: nonce,
+                expiration: expiration
+            })
+        );
         (uint256 txId, address finalTarget, uint256 value, bytes memory data, uint256 eta) =
             _getExecParams(vm.getRecordedLogs());
 
@@ -73,8 +96,5 @@ contract RemoteQuorumUpdate is Setup {
         GovernanceTimelock(contractAddress[DST_CHAIN_ID][bytes("TIMELOCK")]).executeTransaction(
             txId, finalTarget, value, data, eta
         );
-
-        uint256 currQuorum = MultiBridgeMessageReceiver(contractAddress[DST_CHAIN_ID][bytes("MMA_RECEIVER")]).quorum();
-        assertEq(currQuorum, newQuorum);
     }
 }

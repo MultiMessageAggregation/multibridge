@@ -5,20 +5,6 @@ import "../libraries/Message.sol";
 
 /// @notice interface for the multi-bridge message receiver
 interface IMultiBridgeMessageReceiver {
-    /// @notice encapsulates data that is relevant to a message's intended transaction execution.
-    struct ExecutionData {
-        // target contract address on the destination chain
-        address target;
-        // data to pass to target by low-level call
-        bytes callData;
-        // value to pass to target by low-level call
-        uint256 value;
-        // nonce of the message
-        uint256 nonce;
-        // expiration timestamp for the message beyond which it cannot be executed
-        uint256 expiration;
-    }
-
     /// @notice emitted when a message has been received from a single bridge.
     /// @param msgId is the unique identifier of the message
     /// @param bridgeName is the name of the bridge from which the message was received
@@ -60,7 +46,9 @@ interface IMultiBridgeMessageReceiver {
 
     /// @notice Sends a message, that has achieved quorum and has not yet expired, to the governance timelock for eventual execution.
     /// @param _msgId is the unique identifier of the message
-    function scheduleMessageExecution(bytes32 _msgId) external;
+    /// @param _execParams are the params for message execution
+    function scheduleMessageExecution(bytes32 _msgId, MessageLibrary.MessageExecutionParams calldata _execParams)
+        external;
 
     /// @notice adds or removes bridge receiver adapters.
     /// @param _receiverAdapters the list of receiver adapters to add or remove

@@ -22,6 +22,20 @@ library MessageLibrary {
         uint256 expiration;
     }
 
+    /// @notice encapsulates data that is relevant to a message's intended transaction execution.
+    struct MessageExecutionParams {
+        // target contract address on the destination chain
+        address target;
+        // data to pass to target by low-level call
+        bytes callData;
+        // value to pass to target by low-level call
+        uint256 value;
+        // nonce of the message
+        uint256 nonce;
+        // expiration timestamp for the message beyond which it cannot be executed
+        uint256 expiration;
+    }
+
     /// @notice computes the message id (32 byte hash of the encoded message parameters)
     /// @param _message is the cross-chain message
     function computeMsgId(Message memory _message) internal pure returns (bytes32) {
@@ -36,5 +50,25 @@ library MessageLibrary {
                 _message.callData
             )
         );
+    }
+
+    function extractExecutionParams(Message memory _message) internal pure returns (MessageExecutionParams memory) {
+        return MessageExecutionParams({
+            target: _message.target,
+            callData: _message.callData,
+            value: _message.nativeValue,
+            nonce: _message.nonce,
+            expiration: _message.expiration
+        });
+    }
+
+    function computeExecutionParamsHash(MessageExecutionParams memory _params) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(_params.target, _params.callData, _params.value, _params.nonce, _params.expiration)
+        );
+    }
+
+    function computeExecutionParamsHash(Message memory _message) internal pure returns (bytes32) {
+        return computeExecutionParamsHash(extractExecutionParams(_message));
     }
 }

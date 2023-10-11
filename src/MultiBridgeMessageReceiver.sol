@@ -21,6 +21,9 @@ import "./libraries/Message.sol";
 /// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
 /// IMessageReceiverAdapter interface.
 contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAware {
+    using MessageLibrary for MessageLibrary.Message;
+    using MessageLibrary for MessageLibrary.MessageExecutionParams;
+
     /// @notice the id of the source chain that this contract can receive messages from
     uint256 public immutable srcChainId;
     /// @notice the global access control contract
@@ -42,8 +45,8 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     /// @notice count of bridge adapters that have delivered each message
     mapping(bytes32 msgId => uint256 deliveryCount) public msgDeliveryCount;
 
-    /// @notice the data required for executing a message
-    mapping(bytes32 msgId => ExecutionData execData) public msgExecData;
+    /// @notice the hash of the params required for executing a message
+    mapping(bytes32 msgId => bytes32 execParamsHash) public msgExecParamsHash;
 
     /// @notice whether a message has been sent to the governance timelock for execution
     mapping(bytes32 msgId => bool scheduled) public isExecutionScheduled;
@@ -114,7 +117,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
         /// this msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiBridgeMessageReceiver.sol.
-        bytes32 msgId = MessageLibrary.computeMsgId(_message);
+        bytes32 msgId = _message.computeMsgId();
 
         if (msgDeliveries[msgId][msg.sender]) {
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
@@ -127,17 +130,15 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
         msgDeliveries[msgId][msg.sender] = true;
 
-        /// increment quorum
+        /// increment vote count for a message
         ++msgDeliveryCount[msgId];
 
-        /// stores the execution data required
-        ExecutionData memory prevStored = msgExecData[msgId];
+        /// stores the hash of the execution params required
+        bytes32 prevStoredHash = msgExecParamsHash[msgId];
 
         /// stores the message if the amb is the first one delivering the message
-        if (prevStored.target == address(0)) {
-            msgExecData[msgId] = ExecutionData(
-                _message.target, _message.callData, _message.nativeValue, _message.nonce, _message.expiration
-            );
+        if (prevStoredHash == bytes32(0)) {
+            msgExecParamsHash[msgId] = _message.computeExecutionParamsHash();
         }
 
         string memory bridgeName = IMessageReceiverAdapter(msg.sender).name();
@@ -145,11 +146,17 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
     }
 
     /// @inheritdoc IMultiBridgeMessageReceiver
-    function scheduleMessageExecution(bytes32 _msgId) external override {
-        ExecutionData memory _execData = msgExecData[_msgId];
+    function scheduleMessageExecution(bytes32 _msgId, MessageLibrary.MessageExecutionParams calldata _execParams)
+        external
+        override
+    {
+        bytes32 execParamsHash = msgExecParamsHash[_msgId];
+        if (_execParams.computeExecutionParamsHash() != execParamsHash) {
+            revert Error.EXEC_PARAMS_HASH_MISMATCH();
+        }
 
         /// @dev validates if msg execution is not beyond expiration
-        if (block.timestamp > _execData.expiration) {
+        if (block.timestamp > _execParams.expiration) {
             revert Error.MSG_EXECUTION_PASSED_DEADLINE();
         }
 
@@ -167,10 +174,12 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
         /// @dev queues the action on timelock for execution
         IGovernanceTimelock(governanceTimelock).scheduleTransaction(
-            _execData.target, _execData.value, _execData.callData
+            _execParams.target, _execParams.value, _execParams.callData
         );
 
-        emit MessageExecutionScheduled(_msgId, _execData.target, _execData.value, _execData.nonce, _execData.callData);
+        emit MessageExecutionScheduled(
+            _msgId, _execParams.target, _execParams.value, _execParams.nonce, _execParams.callData
+        );
     }
 
     /// @notice update the governance timelock contract.
