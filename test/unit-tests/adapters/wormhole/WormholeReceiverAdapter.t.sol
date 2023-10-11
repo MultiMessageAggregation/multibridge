@@ -15,6 +15,8 @@ import "src/libraries/TypeCasts.sol";
 import {WormholeReceiverAdapter} from "src/adapters/wormhole/WormholeReceiverAdapter.sol";
 
 contract WormholeReceiverAdapterTest is Setup {
+    using MessageLibrary for MessageLibrary.Message;
+
     event MessageIdExecuted(uint256 indexed fromChainId, bytes32 indexed messageId);
     event SenderAdapterUpdated(address indexed oldSenderAdapter, address indexed newSenderAdapter);
 
@@ -104,7 +106,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -140,7 +142,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -170,7 +172,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -201,7 +203,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -234,7 +236,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -264,7 +266,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -295,7 +297,7 @@ contract WormholeReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,

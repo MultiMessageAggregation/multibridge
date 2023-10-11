@@ -17,6 +17,8 @@ import "src/libraries/Message.sol";
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
 contract MultiBridgeMessageSenderTest is Setup {
+    using MessageLibrary for MessageLibrary.Message;
+
     event MultiBridgeMessageSent(
         bytes32 indexed msgId,
         uint256 nonce,
@@ -86,7 +88,7 @@ contract MultiBridgeMessageSenderTest is Setup {
             nativeValue: 0,
             expiration: block.timestamp + expiration
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MultiBridgeMessageSent(
@@ -161,7 +163,7 @@ contract MultiBridgeMessageSenderTest is Setup {
             nativeValue: 0,
             expiration: block.timestamp + EXPIRATION_CONSTANT
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         uint256[] memory fees = new uint256[](1);
         (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
@@ -539,7 +541,7 @@ contract MultiBridgeMessageSenderTest is Setup {
             nativeValue: 0,
             expiration: block.timestamp + expiration
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         vm.expectEmit(true, true, true, true, address(sender));
         emit MessageSendFailed(failingAdapterAddr, message);

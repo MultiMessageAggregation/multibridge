@@ -16,6 +16,7 @@ import "src/libraries/Types.sol";
 import {AxelarReceiverAdapter} from "src/adapters/axelar/AxelarReceiverAdapter.sol";
 
 contract AxelarReceiverAdapterTest is Setup {
+    using MessageLibrary for MessageLibrary.Message;
     using StringAddressConversion for address;
 
     event MessageIdExecuted(uint256 indexed fromChainId, bytes32 indexed messageId);
@@ -105,7 +106,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -137,7 +138,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -164,7 +165,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -191,7 +192,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -218,7 +219,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -247,7 +248,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -274,7 +275,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,
@@ -301,7 +302,7 @@ contract AxelarReceiverAdapterTest is Setup {
             nativeValue: 0,
             expiration: type(uint256).max
         });
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
 
         AdapterPayload memory payload = AdapterPayload({
             msgId: msgId,

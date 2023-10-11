@@ -17,6 +17,8 @@ import "./libraries/Error.sol";
 /// Both of these are configured in the Global Access Control contract. In the case of Uniswap, both the authorised caller
 /// and owner should be set to the Uniswap V2 Timelock contract on Ethereum.
 contract MultiBridgeMessageSender {
+    using MessageLibrary for MessageLibrary.Message;
+
     /*/////////////////////////////////////////////////////////////////
                                     STRUCTS
     ////////////////////////////////////////////////////////////////*/
@@ -268,7 +270,7 @@ contract MultiBridgeMessageSender {
             _args.nativeValue,
             block.timestamp + _args.expiration
         );
-        bytes32 msgId = MessageLibrary.computeMsgId(message);
+        bytes32 msgId = message.computeMsgId();
         (bool[] memory adapterSuccess, uint256 successCount) =
             _dispatchMessages(adapters, mmaReceiver, _args.dstChainId, message, _args.fees);
 

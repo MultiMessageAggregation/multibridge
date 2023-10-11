@@ -21,6 +21,9 @@ import "./libraries/Message.sol";
 /// @dev The contract only accepts messages from trusted bridge receiver adapters, each of which implements the
 /// IMessageReceiverAdapter interface.
 contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAware {
+    using MessageLibrary for MessageLibrary.Message;
+    using MessageLibrary for MessageLibrary.MessageExecutionParams;
+
     /// @notice the id of the source chain that this contract can receive messages from
     uint256 public immutable srcChainId;
     /// @notice the global access control contract
@@ -114,7 +117,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
         /// this msgId is totally different with each adapters' internal msgId(which is their internal nonce essentially)
         /// although each adapters' internal msgId is attached at the end of calldata, it's not useful to MultiBridgeMessageReceiver.sol.
-        bytes32 msgId = MessageLibrary.computeMsgId(_message);
+        bytes32 msgId = _message.computeMsgId();
 
         if (msgDeliveries[msgId][msg.sender]) {
             revert Error.DUPLICATE_MESSAGE_DELIVERY_BY_ADAPTER();
@@ -135,7 +138,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
 
         /// stores the message if the amb is the first one delivering the message
         if (prevStoredHash == bytes32(0)) {
-            msgExecParamsHash[msgId] = MessageLibrary.computeExecutionParamsHash(_message);
+            msgExecParamsHash[msgId] = _message.computeExecutionParamsHash();
         }
 
         string memory bridgeName = IMessageReceiverAdapter(msg.sender).name();
@@ -148,7 +151,7 @@ contract MultiBridgeMessageReceiver is IMultiBridgeMessageReceiver, ExecutorAwar
         override
     {
         bytes32 execParamsHash = msgExecParamsHash[_msgId];
-        if (MessageLibrary.computeExecutionParamsHash(_execParams) != execParamsHash) {
+        if (_execParams.computeExecutionParamsHash() != execParamsHash) {
             revert Error.EXEC_PARAMS_HASH_MISMATCH();
         }
 
