@@ -64,6 +64,14 @@ $  forge build
 
 **Step 4:** Run Tests
 
+To run the tests, you will need a local fork of Ethereum, Polygon, and BSC mainnet states. To accomplish this, you must specify RPC endpoints for each of these networks. You can obtain RPC endpoints to use for Ethereum and Polygon, from Alchemy, Infura, or other infrastructure providers. For BSC, you can choose from a list of public RPC endpoints available [here](https://docs.bscscan.com/misc-tools-and-utilities/public-rpc-nodes).
+
+To set the RPC endpoints, make a copy of the `.env.sample` file and rename it to `.env`. Then, fill in the respective values in the  file.
+
+Once you have set these values, you can run both the unit and integration tests using the following command:
+
+```sh 
+
 ```sh
 $  forge test
 ```
