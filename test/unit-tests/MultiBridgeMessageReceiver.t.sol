@@ -726,7 +726,8 @@ contract MultiBridgeMessageReceiverTest is Setup {
 
     /// @dev should get message info for invalid message id
     function test_get_message_info_invalid_message_id() public {
-        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(bytes32(0));
+        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) =
+            receiver.getMessageInfo(bytes32(0));
         assertFalse(isScheduled);
         assertEq(msgCurrentVotes, 0);
         assertEq(successfulBridge.length, 0);

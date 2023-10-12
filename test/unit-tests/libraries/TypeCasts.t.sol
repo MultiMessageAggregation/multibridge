@@ -33,12 +33,12 @@ contract TypeCastsTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev tests conversion of address to bytes32
-    function testAddressToBytes32() public {
+    function test_address_to_bytes32() public {
         address testAddr = address(0x1234567890123456789012345678901234567890);
         bytes32 expected = bytes32(uint256(uint160(testAddr))); // Correct casting here
         bytes32 result = typeCastsHelper.addressToBytes32(testAddr);
 
-        assertTrue(result == expected, "Converted bytes32 value does not match expected value");
+        assertEq(result, expected);
     }
 
     /// @dev tests conversion of bytes32 to address
@@ -48,6 +48,6 @@ contract TypeCastsTest is Test {
         address expected = address(uint160(uint256(testBytes))); // Correct casting here
         address result = typeCastsHelper.bytes32ToAddress(testBytes);
 
-        assertTrue(result == expected, "Converted address value does not match expected value");
+        assertEq(result, expected);
     }
 }

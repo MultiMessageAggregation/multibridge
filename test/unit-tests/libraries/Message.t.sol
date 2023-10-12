@@ -48,7 +48,7 @@ contract MessageLibraryTest is Test {
     }
 
     /// @dev tests computation of message id
-    function testComputeMsgId() public {
+    function test_compute_msg_id() public {
         // convert the string literal to bytes constant
         bytes memory callDataBytes = hex"abcdef";
 
@@ -77,11 +77,11 @@ contract MessageLibraryTest is Test {
             )
         );
 
-        assertTrue(computedId == expectedId, "Message ID does not match expected value");
+        assertEq(computedId, expectedId);
     }
 
     /// @dev tests extraction of execution parameters from a message
-    function testExtractExecutionParams() public {
+    function test_extract_execution_params() public {
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: 1,
             dstChainId: 2,
@@ -94,16 +94,15 @@ contract MessageLibraryTest is Test {
 
         MessageLibrary.MessageExecutionParams memory params = messageHelper.extractExecutionParams(message);
 
-        assertTrue(
-            params.target == address(0x1234567890123456789012345678901234567890)
-                && keccak256(params.callData) == keccak256(hex"abcdef") && params.value == 456 && params.nonce == 123
-                && params.expiration == 10000,
-            "Extracted execution parameters are incorrect"
-        );
+        assertEq(params.target, address(0x1234567890123456789012345678901234567890));
+        assertEq(keccak256(params.callData), keccak256(hex"abcdef"));
+        assertEq(params.value, 456);
+        assertEq(params.nonce, 123);
+        assertEq(params.expiration, 10000);
     }
 
     /// @dev tests computation of execution parameters hash directly from parameters
-    function testComputeExecutionParamsHash() public {
+    function test_compute_execution_params_hash() public {
         MessageLibrary.MessageExecutionParams memory params = MessageLibrary.MessageExecutionParams({
             target: address(0x1234567890123456789012345678901234567890),
             callData: hex"abcdef",
@@ -123,11 +122,11 @@ contract MessageLibraryTest is Test {
             )
         );
 
-        assertTrue(computedHash == expectedHash, "Execution parameters hash does not match expected value");
+        assertEq(computedHash, expectedHash);
     }
 
     /// @dev tests computation of execution parameters hash from a message
-    function testComputeExecutionParamsHashFromMessage() public {
+    function test_compute_execution_params_hash_from_message() public {
         MessageLibrary.Message memory message = MessageLibrary.Message({
             srcChainId: 1,
             dstChainId: 2,
@@ -149,6 +148,6 @@ contract MessageLibraryTest is Test {
             )
         );
 
-        assertTrue(computedHash == expectedHash, "Execution parameters hash from message does not match expected value");
+        assertEq(computedHash, expectedHash);
     }
 }

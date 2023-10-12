@@ -33,27 +33,27 @@ contract ExecutorAwareTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev tests adding a trusted executor
-    function testAddTrustedExecutor() public {
+    function test_add_trusted_executor() public {
         address executor = address(0x1234567890123456789012345678901234567890);
         bool added = executorAware.addTrustedExecutor(executor);
 
-        assertTrue(added, "Executor should be added successfully");
-        assertTrue(executorAware.isTrustedExecutor(executor), "Executor should be trusted after addition");
+        assertEq(added, true);
+        assertEq(executorAware.isTrustedExecutor(executor), true);
     }
 
     /// @dev tests removing a trusted executor
-    function testRemoveTrustedExecutor() public {
+    function test_remove_trusted_executor() public {
         address executor = address(0x1234567890123456789012345678901234567890);
         executorAware.addTrustedExecutor(executor);
 
         bool removed = executorAware.removeTrustedExecutor(executor);
 
-        assertTrue(removed, "Executor should be removed successfully");
-        assertFalse(executorAware.isTrustedExecutor(executor), "Executor should no longer be trusted after removal");
+        assertEq(removed, true);
+        assertEq(executorAware.isTrustedExecutor(executor), false);
     }
 
     /// @dev tests retrieval of trusted executors
-    function testGetTrustedExecutors() public {
+    function test_get_trusted_executors() public {
         address executor1 = address(420);
         address executor2 = address(421);
         executorAware.addTrustedExecutor(executor1);
@@ -61,13 +61,13 @@ contract ExecutorAwareTest is Test {
 
         address[] memory executors = executorAware.getTrustedExecutors();
 
-        assertTrue(executors.length == 2, "There should be two trusted executors");
-        assertTrue(executors[0] == executor1 || executors[1] == executor1, "Executor1 should be in the returned list");
-        assertTrue(executors[0] == executor2 || executors[1] == executor2, "Executor2 should be in the returned list");
+        assertEq(executors.length == 2, true);
+        assertEq(executors[0], executor1);
+        assertEq(executors[1], executor2);
     }
 
     /// @dev tests counting the number of trusted executors
-    function testTrustedExecutorsCount() public {
+    function test_trusted_executors_count() public {
         address executor1 = address(420);
         address executor2 = address(421);
         executorAware.addTrustedExecutor(executor1);
@@ -75,6 +75,6 @@ contract ExecutorAwareTest is Test {
 
         uint256 count = executorAware.trustedExecutorsCount();
 
-        assertTrue(count == 2, "There should be two trusted executors");
+        assertEq(count, 2);
     }
 }
