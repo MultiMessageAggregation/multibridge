@@ -60,7 +60,7 @@ contract ExecutorAwareTest is Test {
         executorAware.addTrustedExecutor(executor2);
 
         address[] memory executors = executorAware.getTrustedExecutors();
-        
+
         assertTrue(executors.length == 2, "There should be two trusted executors");
         assertTrue(executors[0] == executor1 || executors[1] == executor1, "Executor1 should be in the returned list");
         assertTrue(executors[0] == executor2 || executors[1] == executor2, "Executor2 should be in the returned list");
@@ -74,7 +74,7 @@ contract ExecutorAwareTest is Test {
         executorAware.addTrustedExecutor(executor2);
 
         uint256 count = executorAware.trustedExecutorsCount();
-        
+
         assertTrue(count == 2, "There should be two trusted executors");
     }
 }

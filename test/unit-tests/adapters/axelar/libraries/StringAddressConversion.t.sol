@@ -96,4 +96,22 @@ contract StringAddressConversionTest is Test {
         vm.expectRevert(selector);
         conversionHelper.toAddress(invalidCharacterAddressString);
     }
+
+    /// @dev tests conversion of string with lowercase hex characters to address
+    function testLowercaseHexCharacterToAddress() public {
+        string memory testString = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
+        address result = conversionHelper.toAddress(testString);
+        address expected = address(0xABcdEFABcdEFabcdEfAbCdefabcdeFABcDEFabCD);
+
+        assertTrue(result == expected, "Converted address with lowercase hex characters does not match expected value");
+    }
+
+    /// @dev tests conversion of string with uppercase hex characters to address
+    function testUppercaseHexCharacterToAddress() public {
+        string memory testString = "0xABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD";
+        address result = conversionHelper.toAddress(testString);
+        address expected = address(0xABcdEFABcdEFabcdEfAbCdefabcdeFABcDEFabCD);
+
+        assertTrue(result == expected, "Converted address with uppercase hex characters does not match expected value");
+    }
 }
