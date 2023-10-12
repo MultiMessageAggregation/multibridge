@@ -40,9 +40,7 @@ contract StringAddressConversionTest is Test {
         string memory result = conversionHelper.toString(testAddr);
         string memory expected = "0x1234567890123456789012345678901234567890";
 
-        assertEq(
-            keccak256(bytes(result)), keccak256(bytes(expected))
-        );
+        assertEq(keccak256(bytes(result)), keccak256(bytes(expected)));
     }
 
     /// @dev tests conversion of string to address
@@ -51,7 +49,7 @@ contract StringAddressConversionTest is Test {
         address result = conversionHelper.toAddress(testString);
         address expected = address(0x1234567890123456789012345678901234567890);
 
-        assertEq(result,expected);
+        assertEq(result, expected);
     }
 
     /// @dev tests invalid address conversion
@@ -105,7 +103,7 @@ contract StringAddressConversionTest is Test {
         address result = conversionHelper.toAddress(testString);
         address expected = address(0xABcdEFABcdEFabcdEfAbCdefabcdeFABcDEFabCD);
 
-        assertEq(result,expected);
+        assertEq(result, expected);
     }
 
     /// @dev tests conversion of string with uppercase hex characters to address
