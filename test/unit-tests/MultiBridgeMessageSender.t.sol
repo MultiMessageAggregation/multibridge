@@ -16,6 +16,12 @@ import "src/libraries/Error.sol";
 import "src/libraries/Message.sol";
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
+contract EthReceiverRevert {
+    receive() external payable {
+        revert();
+    }
+}
+
 contract MultiBridgeMessageSenderTest is Setup {
     using MessageLibrary for MessageLibrary.Message;
 
@@ -39,6 +45,8 @@ contract MultiBridgeMessageSenderTest is Setup {
     address wormholeAdapterAddr;
     address axelarAdapterAddr;
 
+    address revertingReceiver;
+
     /// @dev initializes the setup
     function setUp() public override {
         super.setUp();
@@ -49,6 +57,8 @@ contract MultiBridgeMessageSenderTest is Setup {
         senderGAC = MessageSenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]);
         wormholeAdapterAddr = contractAddress[SRC_CHAIN_ID]["WORMHOLE_SENDER_ADAPTER"];
         axelarAdapterAddr = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
+
+        revertingReceiver = address(new EthReceiverRevert());
     }
 
     /// @dev constructor
@@ -108,6 +118,36 @@ contract MultiBridgeMessageSenderTest is Setup {
         );
 
         assertEq(sender.nonce(), 1);
+    }
+
+    /// @dev perform remote call with invalid refund receiver
+    function test_remote_call_reverting_refund_receiver() public {
+        vm.startPrank(caller);
+
+        // Wormhole requires exact fees to be passed in
+        (uint256 wormholeFee,) = IWormholeRelayer(POLYGON_RELAYER).quoteEVMDeliveryPrice(
+            _wormholeChainId(DST_CHAIN_ID), 0, senderGAC.msgDeliveryGasLimit()
+        );
+        (, uint256[] memory fees) =
+            _sortTwoAdaptersWithFees(axelarAdapterAddr, wormholeAdapterAddr, 0.01 ether, wormholeFee);
+        bool[] memory adapterSuccess = new bool[](2);
+        adapterSuccess[0] = true;
+        adapterSuccess[1] = true;
+
+        uint256 expiration = EXPIRATION_CONSTANT;
+
+        vm.expectRevert("safeTransferETH: ETH transfer failed");
+        sender.remoteCall{value: fees[0] + fees[1] + 1 ether}(
+            DST_CHAIN_ID,
+            address(42),
+            bytes("42"),
+            0,
+            expiration,
+            revertingReceiver,
+            fees,
+            DEFAULT_SUCCESS_THRESHOLD,
+            new address[](0)
+        );
     }
 
     /// @dev perform remote call, checking for refund
