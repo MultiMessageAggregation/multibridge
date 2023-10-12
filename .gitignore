@@ -3,7 +3,6 @@ bin/
 build/
 cache/
 out/
-coverage/
 
 *.pid
 *.log
