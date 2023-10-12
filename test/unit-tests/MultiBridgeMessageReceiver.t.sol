@@ -723,4 +723,69 @@ contract MultiBridgeMessageReceiverTest is Setup {
         assertEq(successfulBridge.length, 1);
         assertEq(successfulBridge[0], WormholeReceiverAdapter(wormholeAdapterAddr).name());
     }
+
+    /// @dev should get message info for invalid message id
+    function test_get_message_info_invalid_message_id() public {
+        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(bytes32(0));
+        assertFalse(isScheduled);
+        assertEq(msgCurrentVotes, 0);
+        assertEq(successfulBridge.length, 0);
+    }
+
+    /// @dev should get message info for partial delivery
+    function test_get_message_info_partial_delivery() public {
+        vm.startPrank(wormholeAdapterAddr);
+
+        // Assuming there's a function to add executors or that multiple executors exist by default
+
+        MessageLibrary.Message memory message = MessageLibrary.Message({
+            srcChainId: SRC_CHAIN_ID,
+            dstChainId: DST_CHAIN_ID,
+            target: address(42),
+            nonce: 42,
+            callData: bytes("42"),
+            nativeValue: 0,
+            expiration: type(uint256).max
+        });
+        bytes32 msgId = message.computeMsgId();
+
+        receiver.receiveMessage(message);
+
+        // You may need a mechanism to simulate or enforce failed deliveries for certain executors
+
+        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
+        assertFalse(isScheduled);
+        // Adjust the following assertions as needed based on your setup
+        assertTrue(msgCurrentVotes > 0); // Ensure there's at least one successful delivery
+        assertEq(successfulBridge.length, msgCurrentVotes);
+    }
+
+    /// @dev should get message info scheduled for execution
+    function test_get_message_info_scheduled_execution() public {
+        // Reduce quorum first
+        vm.startPrank(address(timelockAddr));
+        receiver.updateQuorum(1);
+        vm.stopPrank();
+
+        vm.startPrank(wormholeAdapterAddr);
+
+        MessageLibrary.Message memory message = MessageLibrary.Message({
+            srcChainId: SRC_CHAIN_ID,
+            dstChainId: DST_CHAIN_ID,
+            target: address(42),
+            nonce: 42,
+            callData: bytes("42"),
+            nativeValue: 0,
+            expiration: type(uint256).max
+        });
+        bytes32 msgId = message.computeMsgId();
+
+        receiver.receiveMessage(message);
+        receiver.scheduleMessageExecution(msgId, message.extractExecutionParams());
+
+        (bool isScheduled, uint256 msgCurrentVotes, string[] memory successfulBridge) = receiver.getMessageInfo(msgId);
+        assertTrue(isScheduled);
+        assertEq(msgCurrentVotes, 1);
+        assertEq(successfulBridge.length, 1);
+    }
 }
