@@ -8,7 +8,9 @@ import {Test, Vm} from "forge-std/Test.sol";
 import "src/libraries/Message.sol";
 
 /// @dev is a helper function to test library contracts
-contract MessageHelper {
+/// @dev library testing using foundry can only be done through helper contracts
+/// @dev see https://github.com/foundry-rs/foundry/issues/2567
+contract MessageLibraryTestClient {
     using MessageLibrary for MessageLibrary.Message;
 
     function computeMsgId(MessageLibrary.Message memory _message) external pure returns (bytes32) {
@@ -41,10 +43,10 @@ contract MessageHelper {
 }
 
 contract MessageLibraryTest is Test {
-    MessageHelper messageHelper;
+    MessageLibraryTestClient messageLibraryTestClient;
 
     function setUp() public {
-        messageHelper = new MessageHelper();
+        messageLibraryTestClient = new MessageLibraryTestClient();
     }
 
     /// @dev tests computation of message id
@@ -62,7 +64,7 @@ contract MessageLibraryTest is Test {
             expiration: 10000
         });
 
-        bytes32 computedId = messageHelper.computeMsgId(message);
+        bytes32 computedId = messageLibraryTestClient.computeMsgId(message);
 
         // Update the expectedId calculation to use the bytes constant
         bytes32 expectedId = keccak256(
@@ -92,7 +94,7 @@ contract MessageLibraryTest is Test {
             expiration: 10000
         });
 
-        MessageLibrary.MessageExecutionParams memory params = messageHelper.extractExecutionParams(message);
+        MessageLibrary.MessageExecutionParams memory params = messageLibraryTestClient.extractExecutionParams(message);
 
         assertEq(params.target, address(0x1234567890123456789012345678901234567890));
         assertEq(keccak256(params.callData), keccak256(hex"abcdef"));
@@ -111,7 +113,7 @@ contract MessageLibraryTest is Test {
             expiration: 10000
         });
 
-        bytes32 computedHash = messageHelper.computeExecutionParamsHash(params);
+        bytes32 computedHash = messageLibraryTestClient.computeExecutionParamsHash(params);
         bytes32 expectedHash = keccak256(
             abi.encodePacked(
                 address(0x1234567890123456789012345678901234567890),
@@ -137,7 +139,7 @@ contract MessageLibraryTest is Test {
             expiration: 10000
         });
 
-        bytes32 computedHash = messageHelper.computeExecutionParamsHashFromMessage(message);
+        bytes32 computedHash = messageLibraryTestClient.computeExecutionParamsHashFromMessage(message);
         bytes32 expectedHash = keccak256(
             abi.encodePacked(
                 address(0x1234567890123456789012345678901234567890),

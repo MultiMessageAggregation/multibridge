@@ -8,7 +8,7 @@ import {Test, Vm} from "forge-std/Test.sol";
 import "src/libraries/EIP5164/ExecutorAware.sol";
 
 /// @dev helper to test abstract contract
-contract ExecutorAwareHelper is ExecutorAware {
+contract ExecutorAwareTestClient is ExecutorAware {
     function addTrustedExecutor(address _executor) external returns (bool) {
         return _addTrustedExecutor(_executor);
     }
@@ -19,13 +19,13 @@ contract ExecutorAwareHelper is ExecutorAware {
 }
 
 contract ExecutorAwareTest is Test {
-    ExecutorAwareHelper public executorAware;
+    ExecutorAwareTestClient public executorAware;
 
     /*///////////////////////////////////////////////////////////////
                                 SETUP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
-        executorAware = new ExecutorAwareHelper();
+        executorAware = new ExecutorAwareTestClient();
     }
 
     /*///////////////////////////////////////////////////////////////

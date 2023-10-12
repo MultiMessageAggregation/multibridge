@@ -8,7 +8,9 @@ import {Test, Vm} from "forge-std/Test.sol";
 import "src/libraries/TypeCasts.sol";
 
 /// @dev helper to test TypeCasts library
-contract TypeCastsHelper {
+/// @dev library testing using foundry can only be done through helper contracts
+/// @dev see https://github.com/foundry-rs/foundry/issues/2567
+contract TypeCastsLibraryTestClient {
     function addressToBytes32(address _addr) external pure returns (bytes32) {
         return TypeCasts.addressToBytes32(_addr);
     }
@@ -19,13 +21,13 @@ contract TypeCastsHelper {
 }
 
 contract TypeCastsTest is Test {
-    TypeCastsHelper public typeCastsHelper;
+    TypeCastsLibraryTestClient public typeCastsLibraryTestClient;
 
     /*///////////////////////////////////////////////////////////////
                                 SETUP
     //////////////////////////////////////////////////////////////*/
     function setUp() public {
-        typeCastsHelper = new TypeCastsHelper();
+        typeCastsLibraryTestClient = new TypeCastsLibraryTestClient();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -36,17 +38,17 @@ contract TypeCastsTest is Test {
     function test_address_to_bytes32() public {
         address testAddr = address(0x1234567890123456789012345678901234567890);
         bytes32 expected = bytes32(uint256(uint160(testAddr))); // Correct casting here
-        bytes32 result = typeCastsHelper.addressToBytes32(testAddr);
+        bytes32 result = typeCastsLibraryTestClient.addressToBytes32(testAddr);
 
         assertEq(result, expected);
     }
 
     /// @dev tests conversion of bytes32 to address
-    function testBytes32ToAddress() public {
+    function test_bytes32_to_address() public {
         bytes32 testBytes = bytes32(uint256(uint160(0x1234567890123456789012345678901234567890)));
 
         address expected = address(uint160(uint256(testBytes))); // Correct casting here
-        address result = typeCastsHelper.bytes32ToAddress(testBytes);
+        address result = typeCastsLibraryTestClient.bytes32ToAddress(testBytes);
 
         assertEq(result, expected);
     }
