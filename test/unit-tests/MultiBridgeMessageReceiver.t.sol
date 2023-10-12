@@ -313,6 +313,28 @@ contract MultiBridgeMessageReceiverTest is Setup {
         assertTrue(receiver.isExecutionScheduled(msgId));
     }
 
+    /// @dev cannot execute mismatched message params and hash
+    function test_schedule_message_hash_mismatch() public {
+        vm.startPrank(wormholeAdapterAddr);
+
+        MessageLibrary.Message memory message = MessageLibrary.Message({
+            srcChainId: SRC_CHAIN_ID,
+            dstChainId: DST_CHAIN_ID,
+            target: address(42),
+            nonce: 42,
+            callData: bytes("42"),
+            nativeValue: 0,
+            expiration: 0
+        });
+        bytes32 msgId = message.computeMsgId();
+
+        receiver.receiveMessage(message);
+
+        message.nonce = 43;
+        vm.expectRevert(Error.EXEC_PARAMS_HASH_MISMATCH.selector);
+        receiver.scheduleMessageExecution(msgId, message.extractExecutionParams());
+    }
+
     /// @dev cannot schedule execution of message past deadline
     function test_schedule_message_execution_passed_deadline() public {
         vm.startPrank(wormholeAdapterAddr);
