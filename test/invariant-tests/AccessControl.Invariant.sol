@@ -15,6 +15,7 @@ contract AccessControlHandlerInvariant is Setup {
 
     /// @notice nonce snapshot for assertions
     uint256 public localNonceState;
+    uint256 public localAddState;
 
     function setUp() public override {
         /// @dev calls setup to spin up test contracts
@@ -31,10 +32,30 @@ contract AccessControlHandlerInvariant is Setup {
         targetContract(address(handler));
     }
 
+    /// @notice invariant-1: only authorized callers can execute calls
+    /// @notice invariant-2: only the global owner should be able to add an adapter to the allowed lis
     function invariant_test_acess_control_src() public {
-        if (handler.lastCaller() == MessageSenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]).authorisedCaller()) {
+        if (
+            handler.lastCaller() == MessageSenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]).authorisedCaller()
+                && handler.lastCalledFunction() == 1
+        ) {
             ++localNonceState;
         }
+
+        if (
+            handler.lastCaller() == MessageSenderGAC(contractAddress[SRC_CHAIN_ID]["GAC"]).authorisedCaller()
+                && handler.lastCalledFunction() == 2
+        ) {
+            ++localAddState;
+        }
+
         assertEq(MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]).nonce(), localNonceState);
+
+        if (localAddState > 0) {
+            assertTrue(
+                MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]).senderAdapters(localAddState - 1)
+                    != address(0)
+            );
+        }
     }
 }

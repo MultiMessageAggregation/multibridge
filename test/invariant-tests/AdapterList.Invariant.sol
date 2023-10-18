@@ -8,7 +8,7 @@ import {Vm, Test} from "forge-std/Test.sol";
 import "test/Setup.t.sol";
 
 /// handler import
-import {AdapterListHandler} from "test/invariant-tests/handlers/AdapterList.handler.sol";
+import {AdapterListHandler} from "test/invariant-tests/handlers/AdapterList.Handler.sol";
 
 /// @notice invariants for maintaining adapter list on `MultiBridgeMessageSender`
 contract AdapterListInvariant is Setup {
@@ -37,7 +37,7 @@ contract AdapterListInvariant is Setup {
 
     /// @notice invariant-5: removing an adapter should always decrease the length of the adapter list
     /// @notice invariant-6: once a trusted executor is removed, it should not persist in the adapter list
-    function invariant_test_adapter_additions() public {
+    function invariant_test_adapter_mutations() public {
         MultiBridgeMessageSender targetContract = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]);
 
         if (handler.success()) {

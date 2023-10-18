@@ -16,6 +16,7 @@ contract AccessControlSenderHandler is Test {
 
     /// @notice logs last caller for validations
     address public lastCaller;
+    uint8 public lastCalledFunction;
 
     /// @notice modifier to prank caller
     modifier prank(address _prankster) {
@@ -43,6 +44,7 @@ contract AccessControlSenderHandler is Test {
         uint256 _successThreshold,
         address[] memory _excludedAdapters
     ) external prank(simulatedCaller) {
+        lastCalledFunction = 1;
         multiBridgeMessageSender.remoteCall(
             _dstChainId,
             _target,
@@ -54,5 +56,17 @@ contract AccessControlSenderHandler is Test {
             _successThreshold,
             _excludedAdapters
         );
+    }
+
+    /// @notice for sender adapter addition
+    function addSenderAdapters(address simulatedCaller, address _newSenderAdapter) external prank(simulatedCaller) {
+        vm.assume(_newSenderAdapter != address(0));
+
+        address[] memory _additions = new address[](1);
+        _additions[0] = _newSenderAdapter;
+
+        try multiBridgeMessageSender.addSenderAdapters(_additions) {
+            lastCalledFunction = 2;
+        } catch {}
     }
 }
