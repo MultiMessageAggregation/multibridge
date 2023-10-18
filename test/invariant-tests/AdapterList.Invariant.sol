@@ -6,7 +6,6 @@ import {Vm, Test} from "forge-std/Test.sol";
 
 /// local imports
 import "test/Setup.t.sol";
-import "test/contracts-mock/MockUniswapReceiver.sol";
 
 /// handler import
 import {AdapterListHandler} from "test/invariant-tests/handlers/AdapterList.handler.sol";
@@ -40,7 +39,7 @@ contract AdapterListInvariant is Setup {
     /// @notice invariant-6: once a trusted executor is removed, it should not persist in the adapter list
     function invariant_test_adapter_additions() public {
         MultiBridgeMessageSender targetContract = MultiBridgeMessageSender(contractAddress[SRC_CHAIN_ID]["MMA_SENDER"]);
-        
+
         if (handler.success()) {
             uint256 currAdds = handler.currAdds();
 
@@ -56,10 +55,7 @@ contract AdapterListInvariant is Setup {
             /// @dev assertions for invariant-3, invariant-4, invariant-5, invariant-6
             if (currAdds > 1) {
                 for (uint256 i = currAdds; i > 0; i--) {
-                    assertTrue(
-                        targetContract.senderAdapters(i)
-                            > targetContract.senderAdapters(i - 1)
-                    );
+                    assertTrue(targetContract.senderAdapters(i) > targetContract.senderAdapters(i - 1));
                 }
             }
         }

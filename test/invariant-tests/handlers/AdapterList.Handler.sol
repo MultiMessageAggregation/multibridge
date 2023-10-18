@@ -4,7 +4,7 @@ pragma solidity >=0.8.9;
 /// library imports
 import "forge-std/Test.sol";
 
-/// library imports
+/// local imports
 import {MessageSenderGAC} from "src/controllers/MessageSenderGAC.sol";
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
