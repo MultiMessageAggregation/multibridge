@@ -8,9 +8,8 @@ import "forge-std/Test.sol";
 import {MessageSenderGAC} from "src/controllers/MessageSenderGAC.sol";
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
-/// @notice handler for testing adding adapters to multi message sender
-/// @dev simulates the ideal criteria for a successful adapter addition
-contract SenderAdapterAddHandler is Test {
+/// @notice handler for testing maintaining adapter list
+contract AdapterListHandler is Test {
     /// @notice local state
     MultiBridgeMessageSender public multiBridgeMessageSender;
     MessageSenderGAC public gac;
@@ -18,7 +17,7 @@ contract SenderAdapterAddHandler is Test {
     bool public success;
     uint256 public currAdds;
 
-    /// @notice modifier to prank the add sender adapter call
+    /// @notice modifier to prank caller
     modifier prank(address _prankster) {
         vm.startPrank(_prankster);
         _;
@@ -34,6 +33,7 @@ contract SenderAdapterAddHandler is Test {
     /// @notice helper for adding new adapters
     function addSenderAdapters(address _newSenderAdapter) external prank(gac.getGlobalOwner()) {
         success = false;
+
         vm.assume(_newSenderAdapter != address(0));
 
         address[] memory _additions = new address[](1);
@@ -42,6 +42,20 @@ contract SenderAdapterAddHandler is Test {
         try multiBridgeMessageSender.addSenderAdapters(_additions) {
             success = true;
             currAdds++;
+        } catch {}
+    }
+
+    /// @notice helper for removing existing adapters
+    function removeSenderAdapters() external prank(gac.getGlobalOwner()) {
+        vm.assume(currAdds > 0);
+        success = false;
+
+        address[] memory _removals = new address[](1);
+        _removals[0] = multiBridgeMessageSender.senderAdapters(currAdds - 1);
+
+        try multiBridgeMessageSender.removeSenderAdapters(_removals) {
+            success = true;
+            currAdds--;
         } catch {}
     }
 }
