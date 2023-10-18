@@ -8,7 +8,7 @@ import {Vm, Test} from "forge-std/Test.sol";
 import "test/Setup.t.sol";
 
 /// handler import
-import {AccessControlSenderHandler} from "test/invariant-tests/handlers/AccessControlSender.handler.sol";
+import {AccessControlSenderHandler} from "test/invariant-tests/handlers/AccessControlSender.Handler.sol";
 
 contract AccessControlHandlerInvariant is Setup {
     AccessControlSenderHandler public handler;

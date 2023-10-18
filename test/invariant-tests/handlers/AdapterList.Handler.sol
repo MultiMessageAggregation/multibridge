@@ -8,7 +8,7 @@ import "forge-std/Test.sol";
 import {MessageSenderGAC} from "src/controllers/MessageSenderGAC.sol";
 import {MultiBridgeMessageSender} from "src/MultiBridgeMessageSender.sol";
 
-/// @notice handler for testing maintaining adapter list
+/// @notice handler for invariant testing maintaining adapter list
 contract AdapterListHandler is Test {
     /// @notice local state
     MultiBridgeMessageSender public multiBridgeMessageSender;
