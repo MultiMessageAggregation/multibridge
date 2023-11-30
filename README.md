@@ -1,4 +1,3 @@
-##
 # Multi-Message Aggregation (MMA) Design
 
 > **For latest GitBook, you can find it here:** https://multi-message-aggregation.gitbook.io/multi-message-aggregation/
