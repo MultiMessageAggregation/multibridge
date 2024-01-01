@@ -327,8 +327,9 @@ contract AxelarReceiverAdapterTest is Setup {
         vm.startPrank(currOwner);
 
         senderAdapter = contractAddress[SRC_CHAIN_ID]["AXELAR_SENDER_ADAPTER"];
-        dummyAdapter =
-        new AxelarReceiverAdapter(address(new MockAxelarGateway(_validateCall)), "ethereum", contractAddress[DST_CHAIN_ID]["GAC"]);
+        dummyAdapter = new AxelarReceiverAdapter(
+            address(new MockAxelarGateway(_validateCall)), "ethereum", contractAddress[DST_CHAIN_ID]["GAC"]
+        );
         dummyAdapter.updateSenderAdapter(senderAdapter);
 
         vm.startPrank(contractAddress[DST_CHAIN_ID]["TIMELOCK"]);

@@ -176,7 +176,9 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             address receiverAdapter = address(
-                new WormholeReceiverAdapter{salt: _salt}(WORMHOLE_RELAYERS[i], srcChainId, contractAddress[chainId][bytes("GAC")])
+                new WormholeReceiverAdapter{salt: _salt}(
+                    WORMHOLE_RELAYERS[i], srcChainId, contractAddress[chainId][bytes("GAC")]
+                )
             );
             contractAddress[chainId][bytes("WORMHOLE_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
@@ -203,7 +205,9 @@ abstract contract Setup is Test {
         /// @notice deploy source adapter to Ethereum
         vm.selectFork(fork[SRC_CHAIN_ID]);
         contractAddress[SRC_CHAIN_ID][bytes("AXELAR_SENDER_ADAPTER")] = address(
-            new AxelarSenderAdapter{salt: _salt}(ETH_GAS_SERVICE, ETH_GATEWAY, contractAddress[SRC_CHAIN_ID][bytes("GAC")])
+            new AxelarSenderAdapter{salt: _salt}(
+                ETH_GAS_SERVICE, ETH_GATEWAY, contractAddress[SRC_CHAIN_ID][bytes("GAC")]
+            )
         );
 
         uint256 len = DST_CHAINS.length;
@@ -216,7 +220,9 @@ abstract contract Setup is Test {
             vm.selectFork(fork[chainId]);
 
             address receiverAdapter = address(
-                new AxelarReceiverAdapter{salt: _salt}(AXELAR_GATEWAYS[i], "ethereum", contractAddress[chainId][bytes("GAC")])
+                new AxelarReceiverAdapter{salt: _salt}(
+                    AXELAR_GATEWAYS[i], "ethereum", contractAddress[chainId][bytes("GAC")]
+                )
             );
             contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")] = receiverAdapter;
             _receiverAdapters[i] = receiverAdapter;
@@ -282,7 +288,9 @@ abstract contract Setup is Test {
             _receiverAdapters[1] = contractAddress[chainId][bytes("AXELAR_RECEIVER_ADAPTER")];
 
             address mmaReceiver = address(
-                new MultiBridgeMessageReceiver{salt: _salt}(SRC_CHAIN_ID, contractAddress[chainId][bytes("GAC")], _receiverAdapters, 2)
+                new MultiBridgeMessageReceiver{salt: _salt}(
+                    SRC_CHAIN_ID, contractAddress[chainId][bytes("GAC")], _receiverAdapters, 2
+                )
             );
             contractAddress[chainId][bytes("MMA_RECEIVER")] = mmaReceiver;
             contractAddress[chainId][bytes("TIMELOCK")] =
