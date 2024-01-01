@@ -65,12 +65,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(43);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiBridgeMessageReceiver(
-            SRC_CHAIN_ID,
-            address(0),
-            receiverAdapters,
-            1
-        );
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(0), receiverAdapters, 1);
     }
 
     /// @dev cannot be called with receiver adapters containing zero address
@@ -79,12 +74,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(0);
 
         vm.expectRevert(Error.ZERO_ADDRESS_INPUT.selector);
-        new MultiBridgeMessageReceiver(
-            SRC_CHAIN_ID,
-            address(42),
-            receiverAdapters,
-            1
-        );
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(42), receiverAdapters, 1);
     }
 
     /// @dev cannot be called with zero quorum
@@ -93,12 +83,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(42);
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        new MultiBridgeMessageReceiver(
-            SRC_CHAIN_ID,
-            address(43),
-            receiverAdapters,
-            0
-        );
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(43), receiverAdapters, 0);
     }
 
     /// @dev cannot be called with quorum too large
@@ -107,12 +92,7 @@ contract MultiBridgeMessageReceiverTest is Setup {
         receiverAdapters[0] = address(42);
 
         vm.expectRevert(Error.INVALID_QUORUM_THRESHOLD.selector);
-        new MultiBridgeMessageReceiver(
-            SRC_CHAIN_ID,
-            address(43),
-            receiverAdapters,
-            2
-        );
+        new MultiBridgeMessageReceiver(SRC_CHAIN_ID, address(43), receiverAdapters, 2);
     }
 
     /// @dev receives message from one adapter
