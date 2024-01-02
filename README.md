@@ -103,10 +103,11 @@ All code changes must be thoroughly tested. Please ensure that your tests cover 
 
 ## Contracts
 ```
-contracts
+src
 ├── MultiBridgeMessageReceiver.sol
 ├── MultiBridgeMessageSender.sol
 ├── adapters
+│   ├── BaseReceiverAdapter.sol
 │   ├── BaseSenderAdapter.sol
 │   ├── axelar
 │   │   ├── AxelarReceiverAdapter.sol
@@ -122,19 +123,24 @@ contracts
 │       └── WormholeSenderAdapter.sol
 ├── controllers
 │   ├── GAC.sol
-│   └── GovernanceTimelock.sol
+│   ├── GovernanceTimelock.sol
+│   ├── MessageReceiverGAC.sol
+│   └── MessageSenderGAC.sol
 ├── interfaces
 │   ├── EIP5164
-│   │   ├── ExecutorAware.sol
 │   │   ├── MessageDispatcher.sol
 │   │   ├── MessageExecutor.sol
 │   │   └── SingleMessageDispatcher.sol
-│   ├── IGAC.sol
-│   ├── IGovernanceTimelock.sol
-│   ├── IMessageReceiverAdapter.sol
-│   ├── IMessageSenderAdapter.sol
-│   └── IMultiBridgeMessageReceiver.sol
+│   ├── IMultiBridgeMessageReceiver.sol
+│   ├── adapters
+│   │   ├── IMessageReceiverAdapter.sol
+│   │   └── IMessageSenderAdapter.sol
+│   └── controllers
+│       ├── IGAC.sol
+│       └── IGovernanceTimelock.sol
 └── libraries
+    ├── EIP5164
+    │   └── ExecutorAware.sol
     ├── Error.sol
     ├── Message.sol
     ├── TypeCasts.sol
