@@ -1,105 +1,54 @@
-# Multi-Message Aggregation (MMA) Design
+# Multi-bridge Message Aggregation (MMA)
 
-> **For latest GitBook, you can find it here:** https://multi-message-aggregation.gitbook.io/multi-message-aggregation/
-
-![A World with MMA](https://i.imgur.com/MBnJdid.png)
-
+> Additional Technical documentation can be found on [Gitbook here.](https://multi-message-aggregation.gitbook.io/multi-message-aggregation/)
 
 ## Introduction
+Multi-bridge Message Aggregation (MMA) is an additive security module for cross-chain communication across different EVM chains. It uses multiple [Arbitrary Messaging Bridges](https://blog.li.fi/navigating-arbitrary-messaging-bridges-a-comparison-framework-8720f302e2aa) to send messages, rather than relying on a single AMB.
+The protocol can be set up to withstand the failure of a subset of AMBs, significantly improving the security and resilience of cross-chain communication. If a subset of AMBs, below the failure threshold, is compromised or fails, invalid messages will not be executed on the target chain, and the protocol will continue to operate without disruptions. This improves the [safety and liveness properties](https://crosschainriskframework.github.io/framework/20categories/20architecture/architecture/#messaging-protocol) of the protocol.
 
-**Multi-Message Aggregation (MMA) is an additive security module for cross-chain communication.** It utilizes multiple [Arbitrary Messaging Bridges](https://blog.li.fi/navigating-arbitrary-messaging-bridges-a-comparison-framework-8720f302e2aa) (AMB) to send messages from one EVM chain to another EVM chain.
+Specifically, the protocol offers the following benefits:
 
-Instead of relying on a single AMB, MMA allows the message sender to relay the message through multiple AMBs. This way, even if one AMB is exploited, no malicious actions can be executed on the destination chain.
+1.**Increased Safety Guarantees** by verifying cross-chain messages across multiple bridges.
+
+2.**Improve Liveness and Censorship Resistance** guarantees by providing redundancy through multiple bridges.
+
+3.**Increase Flexibility** by allowing dApps a more seamless integration with new cross-chain protocols and a less disruptive phasing-out of defunct protocols over time.
+
+## Design
+The design of MMA is guided by the following goals:
+- **Simplicity**: MMA provides a thin layer of abstraction over existing cross-chain protocols, adding minimal complexity and significantly reducing implementation risk.
+- **Extensibility**: The design of MMA allows for the seamless integration of new AMBs, and accommodates changes to the design and implementation of AMBs without requiring modifications to the core protocol.
+- **Flexibility**: The protocol offers flexibility, enabling dApps to choose the set of bridges and validation parameters to use for different chains and for specific messages.
+
+The protocol comprises core contracts and adapters. The core contracts implement the protocol's central logic, which includes sending and receiving messages across chains using multiple bridges for enhanced security and resilience. Adapters facilitate interaction between the core components and specific AMBs. They follow a standard interface (EIP-5164) for easy integration with the core protocol. The core contracts are designed for simplicity, while the adapters are designed for flexibility. This design approach allows for easy integration of new AMBs. It also accommodates changes in the design and implementation details of AMBs without necessitating modifications to the core protocol.
 
 ## Features
-### Core MMA architecture
-- **Minimized feature sets**: barebone implementation, low level of complexity.
-- **Configurable**: during deployment, individual project can configure their own parameters to fit their specific use case and risk tolerance.
-### Adapter
-- **Standardization**: Implements EIP-5164 for all APIs on the sending and receiving end.
-- **Industry buyin**: currently more than **SIX** bridge providers have their adapters for MMA.
+**The current version of MMA is specifically tailored to address the cross-chain governance use case of the Uniswap protocol.** 
+As a result, the capabilities are intentionally in the following two ways:
+1. Uni-directional communication: Only a single sender chain is supported, allowing communication solely from the designated sender chain to other recipient chains.
+2. Only EVM Chains are supported.
+3. Timelock on destination chain. Messages are executed on the destination chain only after a specified timelock period has elapsed.
 
-## Workflow for crosschain governance
+The core features of the protocol are:
+1. Sending and receive messages across EVM chains using multiple bridges.
+1. Adding and removing bridges.
+1. Configuring message validation parameters.
+1. Administering adapter-specific parameters.
 
-Assume, we use 3 bridges to relay governance message from Ethereum mainnet to a destination chain. (This number can be changed during actual deployment or via a later governance vote.)
+A [different fork](https://github.com/lifinance/MMAxERC20) of this repository is expanding the current capabilities of MMA to support a broader range of cross-chain interaction patterns, additional use-cases, and non-EVM chains.
 
+## Life-cycle of a Message
+The diagram below illustrates a typical scenario for the MMA protocol in the context of Uniswap's cross-chain governance workflow. 
 
-On the destination chain, if 2 of the 3 AMB agree with each other, we would consider the message.
+The Uniswap DAO wants to send a governance action message to a remote chain for execution. An example of such a message could be changing fee parameters on the Uniswap deployment on the destination chain. The life cycle of a cross-chain governance transaction proceeds as follows, once it has passed the standard process of on-chain voting and time-lock queue on the governance chain (Ethereum):
+1. The governance message is sent from the Uniswap V2 Timelock contract to the `MultiBridgeMessageSender` contract
+1. The `MultiBridgeMessageSender` sends the message to all available AMB sender adapters (a caller could choose to exclude one or more AMBs in this process)
+1. The AMB sender adapters (`IMessageSenderAdapter`) send the message to AMB-specific components to relay the message to the intended destination
+1. AMB receiver adapters receive the message from off-chain components (e.g. bridge validators or relayers) and forward them to the `MultiBridgeMessageReceiver`
+1. Once enough AMBs have relayed a specific message (i.e. a quorum has been achieved), anyone can call `scheduleMessageExecution()` on the `MultiBridgeMessageReceiver` which then queues the message for execution on the governance timelock.
+1. Once a configured delay period has elapsed on the governance timelock, anyone can execute a time-locked message, which performs the intended execution on the target contract on the destination chain.
 
-The flow of the message and how it is transformed and relayed is detailed below:
-
-1. Uniswap Ethereum governance structure, `src`, approves to execute a message `msg` on destination chain `dst`.
-2. Uniswap governance sends `msg` to `MultiBridgeMessageSender`.
-3. `MultiBridgeMessageSender` relays `msg` to different adapters `adapter`.
-4. `adapter` encodes `msg` into the corresponding formatted message, `formatted_msg`, and sends it to the hardcoded AMB contracts `AMB`.
-5. Each `AMB` independently carries `formatted_msg` to `dst`.
-6. On the destination chain, another set of `adapters` decodes `formatted_msgs` into the original `msg`.
-7. `msg` is collected inside the `MultiBridgeMessageReceiver` contract.
-8. If 2 out of 3 `msg` is the same, the `msg` will be executed on `dst`.
-
-![Illustration of ](https://files.gitbook.com/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FyWOfgotvwuIBhzylK0ud%2Fuploads%2Fco073eKSrR7xUmhObi7v%2FMMA_Highlevel.png?alt=media&token=bff8ec55-c04f-4ab9-b362-caae601154db)
-
-## Local Development
-
-**Step 1:** Clone the repository
-
-```sh
-$   git clone https://github.com/MultiMessageAggregation/multibridge
-```
-
-**note:** Please make sure [foundry](https://github.com/foundry-rs/foundry) is installed to proceed further.
-
-**Step 2:** Install required forge submodules
-
-```sh
-$  forge install
-```
-
-**Step 3:** Compile
-
-```sh
-$  forge build
-```
-
-**Step 4:** Run Tests
-
-To run the tests, you will need a local fork of Ethereum, Polygon, and BSC mainnet states. To accomplish this, you must specify RPC endpoints for each of these networks. You can obtain RPC endpoints to use for Ethereum and Polygon, from Alchemy, Infura, or other infrastructure providers. For BSC, you can choose from a list of public RPC endpoints available [here](https://docs.bscscan.com/misc-tools-and-utilities/public-rpc-nodes).
-
-To set the RPC endpoints, make a copy of the `.env.sample` file and name it `.env`. The file contains a list of parameter names (e.g. `ETH_FORK_URL`) that correspond to each network. Set the respective values of each of these parameters to the RPC endpoints you wish to use.
-
-Once you have set these values, you can run both the unit and integration tests using the following command:
-
-```sh 
-
-```sh
-$  forge test
-```
-
-**note:** We use [pigeon](https://github.com/exp-table/pigeon/tree/docs) to simulate the cross-chain behavior on forked mainnets.
-
-## Contribution guidelines
-Thank you for your interest in contributing to MMA! We welcome all contributions to make our project better!
-
-### Before you start
-Before you start contributing to the project, please make sure you have read and understood the project's [Gitbook documentation](https://multi-message-aggregation.gitbook.io/multi-message-aggregation/). If you have any questions, drop Kydo a DM on [Twitter](https://twitter.com/0xkydo).
-
-### How to contribute
-#### Reporting bugs and issues
-If you find any bugs or issues with the project, please create a GitHub issue and include as much detail as possible.
-
-#### Code contribution
-If you want to contribute code to the project, please follow these guidelines:
-
-1. Fork the project repository and clone it to your local machine.
-1. Create a new branch for your changes.
-1. Make your changes and test them thoroughly.
-1. Ensure that your changes are well-documented.
-1. Create a pull request and explain your changes in detail.
-1. Code review
-1. All code changes will be reviewed by the project maintainers. The maintainers may ask for additional changes, and once the changes have been approved, they will be merged into the main branch.
-
-#### Testing
-All code changes must be thoroughly tested. Please ensure that your tests cover all new functionality and edge cases.
+![Illustration of ](https://314948482-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FyWOfgotvwuIBhzylK0ud%2Fuploads%2FYrd16Z8BdyejNqvCF5eO%2FScreenshot%202023-09-25%20at%207.57.32%20pm.png?alt=media&token=eb3ef911-1f44-4657-b234-8acbd55ddf1c)
 
 ## Contracts
 ```
@@ -147,5 +96,9 @@ src
     └── Types.sol
 ```
 
-## License
-By contributing to the project, you agree that your contributions will be licensed under the project's [LICENSE](https://github.com/MultiMessageAggregation/multibridge/blob/main/LICENSE).
+
+## Development
+Refer to the [Development Guide](./DEVELOP.md) for instructions on how to set up a development environment and run tests.
+
+## Contributing
+Thank you for your interest in contributing to MMA! Please refer to our [Contributing Guidelines](./CONTRIBUTING.md) for more information. By contributing to the project, you agree that your contributions will be licensed under the project's [LICENSE](./LICENSE).
