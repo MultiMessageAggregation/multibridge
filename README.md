@@ -50,46 +50,6 @@ The Uniswap DAO wants to send a governance action message to a remote chain for 
 
 ![Illustration of ](https://314948482-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FyWOfgotvwuIBhzylK0ud%2Fuploads%2FYrd16Z8BdyejNqvCF5eO%2FScreenshot%202023-09-25%20at%207.57.32%20pm.png?alt=media&token=eb3ef911-1f44-4657-b234-8acbd55ddf1c)
 
-
-## Local Development
-**Pre-requisites:** 
-- Install the [Foundry](https://github.com/foundry-rs/foundry) toolkit.
-
-**Step 1:** Clone the repository
-
-```sh
-$   git clone https://github.com/MultiMessageAggregation/multibridge
-```
-
-**note:** Please make sure [foundry](https://github.com/foundry-rs/foundry) is installed to proceed further.
-
-**Step 2:** Install required forge submodules
-
-```sh
-$  forge install
-```
-
-**Step 3:** Compile
-
-```sh
-$  forge build
-```
-
-**Step 4:** Run Tests
-
-To run the tests, you will need a local fork of Ethereum, Polygon, and BSC mainnet states. To accomplish this, you must specify RPC endpoints for each of these networks. You can obtain RPC endpoints to use for Ethereum and Polygon, from Alchemy, Infura, or other infrastructure providers. For BSC, you can choose from a list of public RPC endpoints available [here](https://docs.bscscan.com/misc-tools-and-utilities/public-rpc-nodes).
-
-To set the RPC endpoints, make a copy of the `.env.sample` file and name it `.env`. The file contains a list of parameter names (e.g. `ETH_FORK_URL`) that correspond to each network. Set the respective values of each of these parameters to the RPC endpoints you wish to use.
-
-Once you have set these values, you can run both the unit and integration tests using the following command:
-
-```sh 
-
-```sh
-$  forge test
-```
-**note:** We use [pigeon](https://github.com/exp-table/pigeon/tree/docs) to simulate the cross-chain behavior on forked mainnets.
-
 ## Contracts
 ```
 src
@@ -136,8 +96,9 @@ src
     └── Types.sol
 ```
 
-## License
-By contributing to the project, you agree that your contributions will be licensed under the project's [LICENSE](https://github.com/MultiMessageAggregation/multibridge/blob/main/LICENSE).
+
+## Development
+Refer to the [Development Guide](./DEVELOP.md) for instructions on how to set up a development environment and run tests.
 
 ## Contributing
-Thank you for your interest in contributing to MMA! We welcome all contributions that improve our project. Please refer to our [Contributing Guidelines](./CONTRIBUTING.md) for more information.
+Thank you for your interest in contributing to MMA! Please refer to our [Contributing Guidelines](./CONTRIBUTING.md) for more information. By contributing to the project, you agree that your contributions will be licensed under the project's [LICENSE](./LICENSE).

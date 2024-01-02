@@ -17,4 +17,6 @@ If you want to contribute code or documentation to the project, please follow th
 1. Code review
 1. All code changes will be reviewed by the project maintainers. The maintainers may ask for additional changes, and once the changes have been approved, they will be merged into the main branch.
 
-All code changes must be thoroughly tested. Please ensure that your tests cover all new functionality and edge cases.
+**Testing**: All code changes must be thoroughly tested. Please ensure that your tests cover all new functionality and edge cases. Use the [forge coverage tool](https://book.getfoundry.sh/reference/forge/forge-coverage) to ensure that changes have adequate code coverage. 
+
+**License**: By contributing to the project, you agree that your contributions will be licensed under the project's [LICENSE](https://github.com/MultiMessageAggregation/multibridge/blob/main/LICENSE).  
