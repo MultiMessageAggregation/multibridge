@@ -1,19 +1,22 @@
-# Multi-Message Aggregation (MMA) Design
+# Multi-bridge Message Aggregation (MMA)
 
-> **For latest GitBook, you can find it here:** https://multi-message-aggregation.gitbook.io/multi-message-aggregation/
-
-![A World with MMA](https://i.imgur.com/MBnJdid.png)
-
+> **Technical Documentation:** https://multi-message-aggregation.gitbook.io/multi-message-aggregation/
 
 ## Introduction
+Multi-bridge Message Aggregation (MMA) is an additive security module for cross-chain communication across different EVM chains. It uses multiple [Arbitrary Messaging Bridges](https://blog.li.fi/navigating-arbitrary-messaging-bridges-a-comparison-framework-8720f302e2aa) to send messages, rather than relying on a single AMB. This approach significantly improves security and resilience of cross-chain communication. Even if a small subset of AMBs is compromised, invalid messages cannot be executed on the destination chain, which enhances the [safety property](https://crosschainriskframework.github.io/framework/20categories/20architecture/architecture/#messaging-protocol) of the protocol. Likewise, the failure of a small subset of AMBs will also not disrupt the protocol's ability to send messages, thus improving its [liveness and censorship resistance](https://crosschainriskframework.github.io/framework/20categories/20architecture/architecture/#messaging-protocol) properties.
 
-**Multi-Message Aggregation (MMA) is an additive security module for cross-chain communication.** It utilizes multiple [Arbitrary Messaging Bridges](https://blog.li.fi/navigating-arbitrary-messaging-bridges-a-comparison-framework-8720f302e2aa) (AMB) to send messages from one EVM chain to another EVM chain.
+Specifically, the protocol offers the following benefits:
 
-Instead of relying on a single AMB, MMA allows the message sender to relay the message through multiple AMBs. This way, even if one AMB is exploited, no malicious actions can be executed on the destination chain.
+1.**Increased Safety Guarantees** by verifying cross-chain messages across multiple bridges.
+
+2.**Improve Liveness and Censorship Resistance** guarantees by providing redundancy through multiple bridges.
+
+3.**Increase Flexibility** by allowing dApps a more seamless integration with new cross-chain protocols and a less disruptive phasing-out of defunct protocols over time.
 
 ## Features
+
 ### Core MMA architecture
-- **Minimized feature sets**: barebone implementation, low level of complexity.
+- **Minimized Feature Sets**: barebone implementation, low level of complexity.
 - **Configurable**: during deployment, individual project can configure their own parameters to fit their specific use case and risk tolerance.
 ### Adapter
 - **Standardization**: Implements EIP-5164 for all APIs on the sending and receiving end.
