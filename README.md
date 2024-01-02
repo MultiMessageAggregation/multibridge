@@ -3,7 +3,8 @@
 > Additional Technical documentation can be found on [Gitbook here.](https://multi-message-aggregation.gitbook.io/multi-message-aggregation/)
 
 ## Introduction
-Multi-bridge Message Aggregation (MMA) is an additive security module for cross-chain communication across different EVM chains. It uses multiple [Arbitrary Messaging Bridges](https://blog.li.fi/navigating-arbitrary-messaging-bridges-a-comparison-framework-8720f302e2aa) to send messages, rather than relying on a single AMB. This approach significantly improves security and resilience of cross-chain communication. Even if a small subset of AMBs is compromised, invalid messages cannot be executed on the destination chain, which enhances the [safety property](https://crosschainriskframework.github.io/framework/20categories/20architecture/architecture/#messaging-protocol) of the protocol. Likewise, the failure of a small subset of AMBs will also not disrupt the protocol's ability to send messages, thus improving its [liveness and censorship resistance](https://crosschainriskframework.github.io/framework/20categories/20architecture/architecture/#messaging-protocol) properties.
+Multi-bridge Message Aggregation (MMA) is an additive security module for cross-chain communication across different EVM chains. It uses multiple [Arbitrary Messaging Bridges](https://blog.li.fi/navigating-arbitrary-messaging-bridges-a-comparison-framework-8720f302e2aa) to send messages, rather than relying on a single AMB.
+The protocol can be set up to withstand the failure of a subset of AMBs, significantly improving the security and resilience of cross-chain communication. If a subset of AMBs, below the failure threshold, is compromised or fails, invalid messages will not be executed on the target chain, and the protocol will continue to operate without disruptions. This improves the [safety and liveness properties](https://crosschainriskframework.github.io/framework/20categories/20architecture/architecture/#messaging-protocol) of the protocol.
 
 Specifically, the protocol offers the following benefits:
 
@@ -52,7 +53,7 @@ The Uniswap DAO wants to send a governance action message to a remote chain for 
 
 ## Local Development
 **Pre-requisites:** 
-- Install [foundry](https://github.com/foundry-rs/foundry)
+- Install the [Foundry](https://github.com/foundry-rs/foundry) toolkit.
 
 **Step 1:** Clone the repository
 
@@ -137,3 +138,6 @@ src
 
 ## License
 By contributing to the project, you agree that your contributions will be licensed under the project's [LICENSE](https://github.com/MultiMessageAggregation/multibridge/blob/main/LICENSE).
+
+## Contributing
+Thank you for your interest in contributing to MMA! We welcome all contributions that improve our project. Please refer to our [Contributing Guidelines](./CONTRIBUTING.md) for more information.
